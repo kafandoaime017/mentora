@@ -4,9 +4,9 @@
 
       <!-- Ma classe -->
          <p class="text-2xl font-extrabold text-black font-body leading-tight m-0 mb-4">Bonjour Aimé 👋</p>
-               <h2 class="font-[Roboto] text-xl font-extrabold text-[#1e3a2f] text-base mb-4">Ma classe</h2>
+               <!-- <h2 class="font-[Roboto] text-xl font-extrabold text-[#1e3a2f] text-base mb-4">Ma classe</h2> -->
 
-      <section
+      <!-- <section
         class="bg-secondary shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)]  md:w-[500px]  border-[#e2ddd4] rounded-lg p-5 mb-5">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8  rounded-md flex items-center justify-center   shrink-0">
@@ -23,7 +23,7 @@
             <p class="text-xs font-body text-black mt-0.5">{{ classe.filiere }}</p>
           </div>
         </div>
-      </section>
+      </section> -->
 
       <!-- Mes sessions à venir -->
       <div class="flex items-center md:w-[500px] justify-between ">
