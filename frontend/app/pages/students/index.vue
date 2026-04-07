@@ -3,8 +3,11 @@
     <StudentLayout>
 
       <!-- Ma classe -->
-         <p class="text-2xl font-extrabold text-black font-body leading-tight m-0 mb-4">Bonjour Aimé 👋</p>
-               <!-- <h2 class="font-[Roboto] text-xl font-extrabold text-[#1e3a2f] text-base mb-4">Ma classe</h2> -->
+        <div class=" shadow-[1px_1px_2px_1px_rgba(0,0,0,0.16)] p-3 bg-white rounded-lg mb-5">
+           <p class="text-2xl font-extrabold text-black font-body leading-tight m-0 mb-1">Bonjour {{ user?.nom }} 👋</p>
+          <p class="font-light font-body text-[0.85rem] text-"><span class="font-bold">{{ user?.profil.filiere }}</span> à <span class="font-bold">{{ user?.profil.ecole }}</span></p>
+        </div>
+          <br>
 
       <!-- <section
         class="bg-secondary shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)]  md:w-[500px]  border-[#e2ddd4] rounded-lg p-5 mb-5">
@@ -84,11 +87,15 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useAuth } from '~~/composables/useAuth'
 
-const classe = ref({
-  nom: 'L2 Informatique',
-  filiere: 'Filière Informatique',
-})
+const { getUser } = useAuth()
+
+// Récupérer l'utilisateur depuis localStorage
+const user = getUser()
+
+
+console.log('Utilisateur connecté :', user)
 
 const sessions = ref([
   {

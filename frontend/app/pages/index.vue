@@ -76,7 +76,7 @@
         </div>
         
         <nuxt-link 
-          to="/auth/login" 
+          to="/auth" 
           :class="[
             'font-medium text-sm px-5 py-3 rounded-md transition-colors',
             isScrolled 
@@ -106,7 +106,7 @@
               <!-- <button class="w-full md:w-auto font-body  bg-cream text-primary font-bold px-7 py-3.5 rounded-md hover:bg-cream/90 transition-colors">
               Espace Étudiant
               </button> -->
-              <nuxt-link to="/auth/login" class="w-full md:w-auto bg-secondary font-body text-white font-bold px-7 py-3.5 rounded-md hover:bg-secondary/70 transition-colors">
+              <nuxt-link to="/auth" class="w-full md:w-auto bg-secondary font-body text-white font-bold px-7 py-3.5 rounded-md hover:bg-secondary/70 transition-colors">
               Connectez-vous
               </nuxt-link>
             </div>
