@@ -10,6 +10,10 @@ import { User } from "../app/models/User";
 import { Classe } from "../app/models/Classe";
 import { Filiere } from "../app/models/Filiere";
 import { Ecole } from "../app/models/Ecole";
+import { Question } from "../app/models/Question";
+import { Session } from "../app/models/Session";
+import { SessionParticipant } from "../app/models/SessionParticipant";
+import { ReponseEtudiant } from "../app/models/ReponseEtudiant";
 
 dotenv.config();
 
@@ -22,7 +26,7 @@ const AppDataSource = new DataSource({
     database: process.env.DB_NAME,
     synchronize: false,
     logging: true, // Met true pour voir les erreurs
-    entities: [EtudiantProfil, ProfesseurProfil, User, Classe, Filiere, Ecole],
+    entities: [EtudiantProfil, ProfesseurProfil, User, Classe, Filiere, Ecole,Question,Session,SessionParticipant,ReponseEtudiant],
     migrations: ["src/app/migrations/*.ts"],
     subscribers: [],
 });
