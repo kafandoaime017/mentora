@@ -83,6 +83,8 @@ export const useTeacher = () => {
         duree: number
         classe_id: number
         filiere_id: number
+        questions?: any[]  // ✅ AJOUTER cette ligne
+
     }>) => {
         try {
             const res = await $fetch(`/api/teacher/qcm/${id}`, {
@@ -317,6 +319,36 @@ export const useTeacher = () => {
         }
     }
 
+    /**
+ * Récupérer les réponses d'un étudiant pour une session
+ */
+    const getEtudiantReponses = async (sessionId: number, etudiantId: number) => {
+        try {
+            const res = await $fetch(`/api/teacher/sessions/${sessionId}/etudiant/${etudiantId}/reponses`, {
+                headers: getAuthHeader()
+            })
+            return res
+        } catch (error: any) {
+            console.error('Erreur récupération réponses étudiant:', error)
+            return error.data || { success: false, data: [] }
+        }
+    }
+
+    /**
+ * Récupérer les statistiques du professeur (total sessions, à venir, terminées, etc.)
+ */
+const getTeacherStats = async () => {
+    try {
+        const res = await $fetch('/api/teacher/stats', {
+            headers: getAuthHeader()
+        })
+        return res
+    } catch (error: any) {
+        console.error('Erreur récupération statistiques:', error)
+        return error.data || { success: false, data: null }
+    }
+}
+
     return {
         // QCM
         createQCM,
@@ -333,7 +365,7 @@ export const useTeacher = () => {
         getNotes,
         publishNotes,
         exportResults,
-        
+        getEtudiantReponses,
         // Données pour formulaires
         getFilieres,
         getClassesByFiliere,
@@ -342,6 +374,7 @@ export const useTeacher = () => {
         
         // Utilitaires
         generateQRCode,
-        generateNewCode
+        generateNewCode,
+        getTeacherStats
     }
 }

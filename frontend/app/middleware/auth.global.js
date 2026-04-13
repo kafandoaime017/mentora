@@ -1,14 +1,18 @@
+// middleware/auth.global.js
 export default defineNuxtRouteMiddleware((to) => {
   if (import.meta.server) return
+
+  // 🔥 Ignorer les routes API
+  if (to.path.startsWith('/api/')) {
+    return
+  }
 
   if (import.meta.client) {
     const token = useCookie('auth_token').value
     const user = JSON.parse(localStorage.getItem('user') || 'null')
 
-    // Routes publiques (accessibles sans connexion)
     const publicRoutes = ['/auth', '/', '/verify-email', '/auth/forgot-password', '/auth/reinitialisation-password']
     
-    // Si déjà connecté et tente d'accéder à une route publique → dashboard
     if (publicRoutes.includes(to.path)) {
       if (token && user?.role) {
         const allowedRoutes = {
@@ -18,15 +22,13 @@ export default defineNuxtRouteMiddleware((to) => {
         }
         return navigateTo(allowedRoutes[user.role] || '/auth')
       }
-      return // pas connecté → laisser passer
+      return
     }
 
-    // Non connecté → /auth (sauf pour verify-email qui est déjà dans publicRoutes)
     if (!token || !user?.role) {
       return navigateTo('/auth')
     }
 
-    // Mauvais rôle → son dashboard
     const allowedRoutes = {
       etudiant: '/students',
       professeur: '/teachers',

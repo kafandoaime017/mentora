@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-screen bg-cream font-['DM_Sans','Nunito',system-ui]" v-if="authChecked">
+  <div class="flex min-h-screen bg-layout font-['DM_Sans','Nunito',system-ui]" v-if="authChecked">
   
     <!-- ═══════════════════════════════
          DESKTOP SIDEBAR (cachée sur mobile)
@@ -80,7 +80,8 @@
     >
 
       <!-- ── TEAL HEADER ── -->
-      <header class="bg-secondary font-body px-5 pt-4 pb-3 flex items-center justify-between flex-shrink-0">
+     <header class="bg-secondary font-body px-5 p-2 flex items-center justify-between flex-shrink-0 
+               fixed top-0 left-0 w-full z-50 md:static">
         <div class="flex-1">
           <img src="/images/logo-blanc.png" alt="Mentora" 
                class="h-16 md:hidden transition-all duration-300"/>
@@ -172,8 +173,8 @@
       </header>
 
       <!-- ── PAGE CONTENT ── -->
-      <main class="flex-1 p-6 md:p-7 pb-24 md:pb-6">
-        <slot />
+      <main class="flex-1 mt-16 md:mt-4 p-6 md:p-7 pb-24 md:pb-6">
+            <slot />
       </main>
     </div>
 
@@ -205,7 +206,7 @@
         <svg class="w-7 h-7 mb-1" :class="{ 'text-primary': $route.path === '/teachers/my-sessions', 'text-gray-500 group-hover:text-primary': $route.path !== '/teachers/my-sessions' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
         </svg>
-        <span class="text-sm" :class="{ 'text-primary font-semibold': $route.path === '/teachers/my-sessions', 'text-gray-600': $route.path !== '/teachers/my-sessions' }">Mes QCM</span>
+        <span class="text-sm" :class="{ 'text-primary font-semibold': $route.path === '/teachers/my-sessions', 'text-gray-600': $route.path !== '/teachers/my-sessions' }">Sessions</span>
         </nuxt-link>
 
         <!-- Créer un QCM (bouton central surélevé) -->
@@ -374,10 +375,8 @@ const IconLogout = () => h('svg', {
 
 const navItems = [
   { key: 'home',     to: '/teachers',  label: 'Accueil',      shortLabel: 'Accueil',    icon: IconHome,     badge: null },
-  { key: 'sessions', to: '/teachers/my-sessions',   label: 'Mes QCM', shortLabel: 'Sessions',   icon: IconCalendar, badge: 3 },
-  { key: 'join',     to: '/teachers/create-session',  label: 'Créer un QCM',    shortLabel: 'Rejoindre',  icon: IconUsers,    badge: null },
-  { key: 'history',  to: '/historique', label: 'Sessions',   shortLabel: 'Historique', icon: IconHistory,  badge: null },
-  { key: 'history',  to: '/historique', label: 'Sessions',   shortLabel: 'Resultats', icon: IconHistory,  badge: null },
+  { key: 'sessions', to: '/teachers/my-sessions',   label: 'Sessions', shortLabel: 'Sessions',   icon: IconCalendar, badge: 3 },
+  { key: 'join',     to: '/teachers/create-session',  label: 'Créer une Session',    shortLabel: 'Rejoindre',  icon: IconUsers,    badge: null },
   { key: 'profile',  to: '/teachers/profile',     label: 'Profil',       shortLabel: 'Profil',     icon: IconUser,     badge: null },
 ]
 

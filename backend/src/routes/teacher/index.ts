@@ -29,17 +29,25 @@ router.post('/sessions/:id/end', teacherController.endSession);
 // ==================== PARTICIPANTS ====================
 router.get('/sessions/:id/participants', teacherController.getParticipants);
 
-// ==================== STATISTIQUES ET NOTES ====================
+// ==================== RÉPONSES D'UN ÉTUDIANT ====================
+router.get('/sessions/:id/etudiant/:etudiantId/reponses', teacherController.getEtudiantReponses);
+
+// ==================== STATISTIQUES ====================
 router.get('/sessions/:id/statistiques', teacherController.getStatistics);
 router.get('/sessions/:id/notes', teacherController.getNotes);
 router.post('/sessions/:id/notes/publier', teacherController.publishNotes);
 router.get('/sessions/:id/export', teacherController.exportResults);
 
-// 🆕 ROUTE POUR RÉCUPÉRER LES FILIÈRES
+router.get('/stats', teacherController.getTeacherStats);
+
+// ROUTE POUR RÉCUPÉRER LES FILIÈRES
 router.get('/filieres', teacherController.getFilieres);
 
-// 🆕 ROUTE POUR RÉCUPÉRER LES CLASSES
+// ROUTE POUR RÉCUPÉRER LES CLASSES
 router.get('/classes', teacherController.getClasses);
+
+
+
 
 
 export default router;

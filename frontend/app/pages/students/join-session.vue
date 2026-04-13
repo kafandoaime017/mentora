@@ -1,102 +1,94 @@
 <template>
-  <div class="bg-[#f5f0e8] font-body">
+  <div class="bg-layout font-body min-h-screen">
     <StudentLayout>
 
-      <!-- Titre page -->
-     
+      <div class="max-w-xl mx-auto">
+        <h2 class=" font-body text-2xl font-extrabold text-[#1e3a2f] mb-6">
+          Rejoindre une session
+        </h2>
 
-      <div class="flex flex-col lg:flex-row gap-6 lg:items-center">
-
-        <!-- ══════════════════════════
-             COLONNE PRINCIPALE (gauche)
-        ═══════════════════════════════ -->
-        <div class="w-full lg:max-w-[480px] mx-auto">
- <h2 class="font-['Roboto'] text-xl font-extrabold text-[#1e3a2f] mb-6">
-        Rejoindre une session
-      </h2>
-          <!-- ── Scanner QR ── -->
-          <section class="bg-white md:hidden font-body shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)] border border-[#e2ddd4] rounded-lg p-5 mb-5">
-            <p class="font-bold text-lg text-[#1e3a2f] mb-1">Scanner le QR code</p>
-            <p class="text-xs text-[#6b6b6b] mb-4 leading-relaxed">
-              Positionne le QR code fourni par votre professeur dans le cadre.
-            </p>
-
-            <!-- Zone scanner -->
-            <div class="b rounded-xl flex items-center justify-center p-5 mb-1">
-              <div class="relative w-64 h-64 flex items-center justify-center">
-                <!-- Coins de scan -->
-                <span class="absolute top-0 left-0 w-7 h-7 border-t-[3px] border-l-[3px] border-[#4a7c5e] rounded-tl-xl"></span>
-                <span class="absolute top-0 right-0 w-7 h-7 border-t-[3px] border-r-[3px] border-[#4a7c5e] rounded-tr-xl"></span>
-                <span class="absolute bottom-0 left-0 w-7 h-7 border-b-[3px] border-l-[3px] border-[#4a7c5e] rounded-bl-xl"></span>
-                <span class="absolute bottom-0 right-0 w-7 h-7 border-b-[3px] border-r-[3px] border-[#4a7c5e] rounded-br-xl"></span>
-
-                <!-- Conteneur vidéo pour le scanner -->
-                <div id="qr-reader" class="w-60 h-60 overflow-hidden rounded"></div>
-                
-                <!-- Message d'erreur caméra -->
-                <div v-if="cameraError" class="absolute inset-0 bg-white rounded flex flex-col items-center justify-center gap-2 ">
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#e74c3c" stroke-width="1.5">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="8" x2="12" y2="12"/>
-                    <line x1="12" y1="16" x2="12.01" y2="16"/>
-                  </svg>
-                  <p class="text-[0.7rem] text-[#e74c3c] text-center px-2">{{ cameraError }}</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Bouton activer caméra -->
-            <button
-              @click="toggleCamera"
-              class="w-full mt-3 border border-primary text-primary text-sm font-semibold py-2.5 rounded-lg hover:bg-primary/80 hover:text-white transition-colors duration-200"
-            >
-              {{ cameraActive ? 'Arrêter la caméra' : 'Activer la caméra' }}
-            </button>
-          </section>
-
-          <!-- ── Séparateur ── -->
-          <div class="flex md:hidden items-center gap-3 my-1 text-[#9b9589] text-xs font-semibold">
-            <div class="flex-1 h-px bg-[#ccc7bc]"></div>
-            ou
-            <div class="flex-1 h-px bg-[#ccc7bc]"></div>
-          </div>
-
-          <!-- ── Code d'accès ── -->
-          <section class="bg-white font-body shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)] border border-[#e2ddd4] rounded-lg p-5 mt-5">
-            <label class="block text-[0.82rem] font-bold text-[#1e3a2f] mb-2">
-              Code d'accès
-            </label>
-             <p class="text-xs hidden md:block text-black mb-4 leading-relaxed">
-                Saisis le code d'accès fourni par ton professeur pour rejoindre la session.
+        <!-- Desktop : Formulaire de code uniquement -->
+        <div class="hidden md:block">
+          <section class="bg-white shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)] rounded-lg p-6">
+            <label class="block  font-body text-md font-bold text-black mb-2">Code d'accès</label>
+            <p class="text-sm font-body text-gray-800 mb-4">
+              Saisissez le code d'accès fourni par l'intervenant.
             </p>
             <input
-              v-model="codeAcces"
+              v-model="code"
               type="text"
-              placeholder="Ex. AB12-CD34"
-              maxlength="9"
-                  class="w-full mb-3 pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 focus:text-md focus:text-black focus:font-extrabold bg-input border-gray-200 rounded-xl focus:bg-input focus:outline-none"
+              placeholder="Ex: XK7P9M"
+              maxlength="10"
+              class="w-full mb-4 px-4 py-3 font-body font-bold text-sm text-gray-800 bg-input  outline-none focus:border-0  border-gray-200 rounded-lg focus:outline-none focus:border-primary uppercase"
+              @keyup.enter="verifyAndJoin"
             />
-
             <button
-              @click="rejoindreParCode"
-              :disabled="!codeAcces"
-              class="w-full bg-secondary text-white text-sm font-bold py-3 rounded-lg transition-colors duration-200"
-              :class="codeAcces ? 'hover:bg-secondary/80 cursor-pointer' : 'opacity-40 cursor-not-allowed'"
+              @click="verifyAndJoin"
+              :disabled="loading || !code"
+              class="w-full bg-secondary  font-body text-white text-md font-bold py-2.5 rounded-lg hover:bg-secondary/80 disabled:opacity-50"
             >
-              Rejoindre la session
+              {{ loading ? 'Vérification...' : 'Rejoindre' }}
             </button>
           </section>
-
-         
-
         </div>
 
-        <!-- ══════════════════════════
-             COLONNE DROITE (desktop uniquement)
-             Sessions disponibles
-        ═══════════════════════════════ -->
-     
+        <!-- Mobile : Bouton scanner QR code uniquement -->
+        <div class="md:hidden">
+          <button
+            @click="openScanner"
+            class="w-full bg-primary text-white text-sm font-bold py-3 rounded-lg flex items-center justify-center gap-2"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+            </svg>
+            Scanner un QR code
+          </button>
+        </div>
+      </div>
 
+      <!-- Modal scanner QR code (mobile) -->
+      <div v-if="showScanner" class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" @click.self="closeScanner">
+        <div class="bg-white rounded-xl w-full max-w-sm p-4">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-[#1e3a2f]">Scanner le QR code</h3>
+            <button @click="closeScanner" class="text-gray-500">&times;</button>
+          </div>
+          <div id="qr-reader" class="w-full"></div>
+          <p class="text-xs text-center text-gray-500 mt-4">Positionnez le QR code dans le cadre</p>
+        </div>
+      </div>
+
+      <!-- Modal de confirmation -->
+      <div v-if="showConfirmModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="showConfirmModal = false">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 text-center">
+          <div class="w-16 h-16 bg-green-200 rounded-full flex items-center justify-center mx-auto mb-3">
+            <svg class="w-14 h-14 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-body font-bold text-[#1e3a2f] mb-2">Session trouvée !</h3>
+          <p class="text-gray-600 text-xl font-body font-extrabold">{{ sessionInfo?.titre }}</p>
+          <p class="text-sm text-gray-500 font-body mt-1">Par : {{ sessionInfo?.professeur?.prenom }} {{ sessionInfo?.professeur?.nom }}</p>
+          <p class="text-sm text-gray-500 font-body mt-1">Durée: {{ sessionInfo?.duree }} minutes</p>
+          <div class="flex gap-3 mt-6">
+            <button @click="showConfirmModal = false" class="flex-1 bg-red-500 text-white hover:bg-red-700 font-body py-2 border rounded-lg">Annuler</button>
+            <button @click="confirmJoin" class="flex-1 py-2 bg-primary font-body text-white rounded-lg">Rejoindre</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal d'erreur -->
+      <div v-if="errorModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="errorModal = false">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 text-center">
+          <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <svg class="w-14 h-14 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <!-- <h3 class="text-xl font-bold font-body text-red-600 mb-2">Accès refusé</h3> -->
+          <p class="text-gray-600 font-body mb-6">{{ errorMessage }}</p>
+          <button @click="errorModal = false" class="w-full font-body py-2.5 font-bold bg-primary text-white rounded-lg">OK</button>
+        </div>
       </div>
 
     </StudentLayout>
@@ -104,145 +96,138 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { Html5Qrcode } from 'html5-qrcode'
+import { useStudent } from '~~/composables/useStudent'
+import { useToast } from '~~/composables/useToast'
 
-const codeAcces = ref('')
-const cameraActive = ref(false)
-const cameraError = ref('')
+
+const route = useRoute()  // ✅ Récupérer la route
+
+
+const { verifySessionCode, joinSession } = useStudent()
+const toast = useToast()
+
+
+// ✅ Fonction pour préremplir le code depuis l'URL
+const prefillCodeFromUrl = () => {
+  // Récupérer le paramètre 'code' dans l'URL
+  const urlCode = route.query.code
+  
+  if (urlCode && typeof urlCode === 'string') {
+    code.value = urlCode.toUpperCase()
+    
+    // Optionnel : Auto-vérifier après un court délai
+    setTimeout(() => {
+      if (code.value) {
+        verifyAndJoin()
+      }
+    }, 500)
+  }
+}
+
+onMounted(() => {
+  prefillCodeFromUrl()
+})
+
+
+
+const code = ref('')
+const loading = ref(false)
+const showConfirmModal = ref(false)
+const errorModal = ref(false)
+const errorMessage = ref('')
+const sessionInfo = ref(null)
+const showScanner = ref(false)
 let html5QrCode = null
 
-// Fonction pour arrêter le scanner
-async function stopScanner() {
-  if (html5QrCode && html5QrCode.isScanning) {
-    try {
-      await html5QrCode.stop()
-      html5QrCode.clear()
-    } catch (error) {
-      console.error('Erreur arrêt scanner:', error)
-    }
+const verifyAndJoin = async () => {
+  if (!code.value.trim()) return
+  
+  loading.value = true
+  const cleanCode = code.value.trim().toUpperCase()
+  
+  const result = await verifySessionCode(cleanCode)
+  
+  if (result.success) {
+    sessionInfo.value = result.data
+    showConfirmModal.value = true
+  } else {
+    errorMessage.value = result.message || 'Code invalide'
+    errorModal.value = true
   }
-  html5QrCode = null
-  cameraActive.value = false
+  loading.value = false
 }
 
-// Fonction pour démarrer le scanner
-async function startScanner() {
-  cameraError.value = ''
+const confirmJoin = async () => {
+  showConfirmModal.value = false
+  loading.value = true
   
+  const result = await joinSession(sessionInfo.value.sessionId)
+  
+  if (result.success) {
+    toast.success('Vous avez rejoint la session !')
+    await navigateTo(`/students/sessions/${sessionInfo.value.sessionId}/participate?code=${code.value}`)
+  } else {
+    errorMessage.value = result.message || 'Erreur lors du rejoignement'
+    errorModal.value = true
+  }
+  loading.value = false
+}
+
+const openScanner = () => {
+  showScanner.value = true
+  setTimeout(() => {
+    startScanner()
+  }, 100)
+}
+
+const closeScanner = () => {
+  showScanner.value = false
+  stopScanner()
+}
+
+const startScanner = async () => {
   try {
     html5QrCode = new Html5Qrcode('qr-reader')
-    
     await html5QrCode.start(
-      { facingMode: 'environment' }, // Caméra arrière par défaut
-      {
-        fps: 10,
-        qrbox: { width: 150, height: 150 },
-        aspectRatio: 1.0
-      },
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
       (decodedText) => {
-        // QR code scanné avec succès
-        console.log('QR code scanné:', decodedText)
-        codeAcces.value = decodedText
-        rejoindreParCode()
-        stopScanner()
+        code.value = decodedText
+        closeScanner()
+        verifyAndJoin()
       },
-      (errorMessage) => {
-        // Ignorer les erreurs de scan normales
-        if (!errorMessage.includes('No MultiFormat Readers')) {
-          console.debug('Erreur scan:', errorMessage)
-        }
+      (error) => {
+        console.log('Scan error:', error)
       }
     )
-    
-    cameraActive.value = true
   } catch (error) {
-    console.error('Erreur démarrage caméra:', error)
-    cameraError.value = 'Impossible d\'accéder à la caméra. Vérifiez les permissions.'
-    cameraActive.value = false
+    console.error('Erreur caméra:', error)
+    toast.error('Impossible d\'accéder à la caméra')
+    closeScanner()
   }
 }
 
-// Fonction pour activer/désactiver la caméra
-async function toggleCamera() {
-  if (cameraActive.value) {
-    await stopScanner()
-  } else {
-    await startScanner()
+const stopScanner = () => {
+  if (html5QrCode && html5QrCode.isScanning) {
+    html5QrCode.stop()
+    html5QrCode.clear()
+    html5QrCode = null
   }
 }
 
-// Fonction pour rejoindre par code
-function rejoindreParCode() {
-  if (!codeAcces.value) return
-  
-  // Nettoyer le code (enlever espaces, mettre en majuscules)
-  const cleanCode = codeAcces.value.trim().toUpperCase()
-  
-  console.log('Rejoindre avec code :', cleanCode)
-  alert(`Rejoindre la session avec le code: ${cleanCode}`)
-  // Redirection vers la session
-  // navigateTo(`/session/${cleanCode}`)
-}
-
-// Fonction pour rejoindre une session depuis la liste
-function rejoindreSession(session) {
-  console.log('Rejoindre session :', session.titre)
-  alert(`Rejoindre la session: ${session.titre}`)
-  // navigateTo(`/session/${session.id}`)
-}
-
-// Nettoyage au démontage du composant
 onUnmounted(() => {
   stopScanner()
 })
-
-// Sessions disponibles (mock)
-const sessionsDisponibles = ref([
-  {
-    id: 1,
-    titre: 'Mathématiques - Fonctions & Limites',
-    date: "Aujourd'hui · 14:00 – 15:00",
-    statut: 'En cours',
-  },
-  {
-    id: 2,
-    titre: 'Algorithmique - Tri et Complexité',
-    date: "Aujourd'hui · 16:00 – 17:30",
-    statut: 'À venir',
-  },
-  {
-    id: 3,
-    titre: 'Bases de données - Modèle relationnel',
-    date: "Aujourd'hui · 18:00 – 19:00",
-    statut: 'À venir',
-  },
-])
 </script>
 
 <style scoped>
 #qr-reader video {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
 }
-
-#qr-reader {
-  position: relative;
-}
-
-/* Style pour le cadre du scanner */
-#qr-reader__scan_region {
-  border: none !important;
-  background: transparent !important;
-}
-
-/* Masquer les éléments par défaut de html5-qrcode */
-#qr-reader button {
-  display: none !important;
-}
-
-#qr-reader select {
+#qr-reader button, #qr-reader select {
   display: none !important;
 }
 </style>

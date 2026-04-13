@@ -3,9 +3,9 @@
     <TeacherLayout>
       
       <div class="max-w-2xl mx-auto">
-        <h2 class="font-['Roboto'] text-xl font-extrabold text-[#1e3a2f] mb-2">
-          Mon profil
-        </h2>
+       <h2 class="font-body text-2xl font-extrabold text-[#1e3a2f] mb-2">
+               Mon profil
+              </h2>
         
         <!-- ══════════════════════════
              SECTION AVATAR
