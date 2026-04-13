@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-cream font-body flex flex-col relative overflow-hidden">
+  <div class="min-h-screen bg-layout font-body flex flex-col relative overflow-hidden">
 
     <!-- Header -->
     <div style="box-shadow: 1px 1px 8px 1px #cfcfcf;" class="h-20 flex-shrink-0 bg-white flex items-center justify-between px-6 md:px-20 relative">
@@ -17,7 +17,7 @@
     <!-- Body -->
     <div class="flex-1 flex flex-col mt-20 items-center px-6 pb-10 relative z-10">
       <!-- Card -->
-      <div style="box-shadow: 1px 1px 8px 1px #cfcfcf;" class="-mt-14 bg-white w-full max-w-md md:rounded-md backdrop-blur-sm px-8  pt-8 pb-8">
+      <div style="box-shadow: 1px 1px 5px 1px #cfcfcf;" class="-mt-14 bg-white w-full max-w-md md:rounded-md backdrop-blur-sm px-8  pt-8 pb-8">
         <!-- Title -->
         <div class="text-center mb-6">
           <h1 class="text-3xl font-extrabold text-black mb-2">

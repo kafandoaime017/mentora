@@ -1,75 +1,86 @@
 <template>
-  <div class="flex min-h-screen bg-cream font-['DM_Sans','Nunito',system-ui]" v-if="authChecked">
+  <div class="flex min-h-screen bg-layout font-['DM_Sans','Nunito',system-ui]" v-if="authChecked">
   
+    <!-- Indicateur de connexion WebSocket (fixe en bas à droite) -->
+    <div class="fixed bottom-20 right-4 z-50 md:bottom-4">
+      <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-lg text-xs border border-gray-200">
+        <div 
+          class="w-2 h-2 rounded-full"
+          :class="isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'"
+        ></div>
+        <span class="text-gray-500">
+          {{ isConnected ? 'Connecté' : 'Connexion...' }}
+        </span>
+      </div>
+    </div>
+
     <!-- ═══════════════════════════════
          DESKTOP SIDEBAR (cachée sur mobile)
     ════════════════════════════════ -->
-   <aside 
-  class="hidden md:flex fixed left-0 top-0 bottom-0 bg-white flex-col p-3 z-200 overflow-hidden shadow-[1px_1px_2px_1px_rgba(0,0,0,0.16)] transition-all duration-300"
-  :class="sidebarCollapsed ? 'w-[68px] items-center' : 'w-[220px] items-start'"
+    <aside 
+      class="hidden md:flex fixed left-0 top-0 bottom-0 bg-white flex-col p-3 z-200 overflow-hidden shadow-[1px_1px_2px_1px_rgba(0,0,0,0.16)] transition-all duration-300"
+      :class="sidebarCollapsed ? 'w-[68px] items-center' : 'w-[220px] items-start'"
     >
 
-  <!-- Logo -->
-  <div class="flex items-center justify-center w-full h-16 mb-6 mt-3">
-    <img src="/images/logo-color.png" alt="Mentora" 
-         class="h-20 transition-all duration-300"
-         :class="sidebarCollapsed ? ' ' : ''"/>
-  </div>
+      <!-- Logo -->
+      <div class="flex items-center justify-center w-full h-16 mb-6 mt-3">
+        <img src="/images/logo-color.png" alt="Mentora" 
+             class="h-20 transition-all duration-300"
+             :class="sidebarCollapsed ? ' ' : ''"/>
+      </div>
 
-  <!-- Collapse btn -->
-  <button 
-    @click="sidebarCollapsed = !sidebarCollapsed"
-    class="self-end w-7 h-7 rounded-lg bg-secondary text-primary hover:bg-primary hover:text-white flex items-center justify-center cursor-pointer mb-5 flex-shrink-0 transition-colors duration-200"
-  >
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-      <path v-if="!sidebarCollapsed" d="M15 18l-6-6 6-6"/>
-      <path v-else d="M9 18l6-6-6-6"/>
-    </svg>
-  </button>
-
-  <!-- Nav -->
-  <nav class="flex flex-col flex-1 w-full">
-    <nuxt-link
-      v-for="item in navItems" 
-      :key="item.key"
-      :to="item.to"
-      class="flex items-center font-body gap-2 px-2 py-1 rounded-md text-muted hover:bg-primary/10 hover:text-primary transition-all duration-200 w-full"
-      :class="{ 
-        'bg-secondary/20 ': $route.path === item.to,
-        'justify-center': sidebarCollapsed 
-      }"
-      :title="item.label"
-    >
-      <span 
-        class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors duration-200"
-       
+      <!-- Collapse btn -->
+      <button 
+        @click="sidebarCollapsed = !sidebarCollapsed"
+        class="self-end w-7 h-7 rounded-lg bg-secondary text-primary hover:bg-primary hover:text-white flex items-center justify-center cursor-pointer mb-5 flex-shrink-0 transition-colors duration-200"
       >
-        <component :is="item.icon" class="w-5 h-5"/>
-      </span>
-      <transition name="fade-x">
-        <span v-if="!sidebarCollapsed" class="flex-1 text-md font-medium truncate">{{ item.label }}</span>
-      </transition>
-     
-    </nuxt-link>
-  </nav>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path v-if="!sidebarCollapsed" d="M15 18l-6-6 6-6"/>
+          <path v-else d="M9 18l6-6-6-6"/>
+        </svg>
+      </button>
 
-  <!-- Logout -->
-  <div class="border-t border-[#f0ebe0] pt-2 mt-2 w-full flex justify-center md:justify-start">
-    <button 
-      @click="handleLogout" 
-      class="flex items-center gap-3 px-2 py-2 rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600 transition-all duration-200 w-full"
-      :class="sidebarCollapsed ? 'justify-center' : 'justify-start'"
-      title="Déconnexion"
-    >
-      <span class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
-        <IconLogout class="w-5 h-5"/>
-      </span>
-      <transition name="fade-x">
-        <span v-if="!sidebarCollapsed" class="text-sm font-medium truncate">Déconnexion</span>
-      </transition>
-    </button>
-  </div>
-</aside>
+      <!-- Nav -->
+      <nav class="flex flex-col flex-1 w-full">
+        <nuxt-link
+          v-for="item in navItems" 
+          :key="item.key"
+          :to="item.to"
+          class="flex items-center font-body gap-2 px-2 py-1 rounded-md text-muted hover:bg-primary/10 hover:text-primary transition-all duration-200 w-full"
+          :class="{ 
+            'bg-secondary/20 ': $route.path === item.to,
+            'justify-center': sidebarCollapsed 
+          }"
+          :title="item.label"
+        >
+          <span 
+            class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors duration-200"
+          >
+            <component :is="item.icon" class="w-5 h-5"/>
+          </span>
+          <transition name="fade-x">
+            <span v-if="!sidebarCollapsed" class="flex-1 text-md font-medium truncate">{{ item.label }}</span>
+          </transition>
+        </nuxt-link>
+      </nav>
+
+      <!-- Logout -->
+      <div class="border-t border-[#f0ebe0] pt-2 mt-2 w-full flex justify-center md:justify-start">
+        <button 
+          @click="handleLogoutClick" 
+          class="flex items-center gap-3 px-2 py-2 rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600 transition-all duration-200 w-full"
+          :class="sidebarCollapsed ? 'justify-center' : 'justify-start'"
+          title="Déconnexion"
+        >
+          <span class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
+            <IconLogout class="w-5 h-5"/>
+          </span>
+          <transition name="fade-x">
+            <span v-if="!sidebarCollapsed" class="text-sm font-medium truncate">Déconnexion</span>
+          </transition>
+        </button>
+      </div>
+    </aside>
 
     <!-- ═══════════════════════════════
          MAIN AREA
@@ -98,7 +109,6 @@
               :alt="student.firstName"
               class="w-[40px] h-[40px] rounded-full object-cover border-3 border-white/50 bg-white/20 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
             />
-            <!-- Petit indicateur de dropdown -->
             <svg 
               class="w-4 h-4 text-white transition-transform duration-200 hidden sm:block"
               :class="{ 'rotate-180': dropdownOpen }"
@@ -122,16 +132,14 @@
             <div 
               v-if="dropdownOpen"
               style="box-shadow: 1px 1px 8px 1px #cfcfcf;"
-              class="absolute right-0 mt-3 w-56 bg-white rounded-xl  py-2 z-50 border border-gray-100"
+              class="absolute right-0 mt-3 w-56 bg-white rounded-xl py-2 z-50 border border-gray-100"
             >
-              <!-- Info utilisateur compacte -->
               <div class="px-4 py-3 border-b border-gray-100">
                 <p class="text-sm font-medium text-gray-800">{{ student.firstName }} {{ student.lastName }}</p>
-                <p class="text-xs font-medium  text-gray-800 mt-0.5">{{ student.role }}</p>
-                <p class="text-xs font-medium  text-gray-800 mt-1">{{ currentUser?.email }}</p>
+                <p class="text-xs font-medium text-gray-800 mt-0.5">{{ student.role }}</p>
+                <p class="text-xs font-medium text-gray-800 mt-1">{{ currentUser?.email }}</p>
               </div>
 
-              <!-- Liens -->
               <nuxt-link
                 to="/students/profile"
                 @click="closeDropdown"
@@ -155,10 +163,8 @@
                 <span>Paramètres</span>
               </nuxt-link>
 
-              <!-- Séparateur -->
               <div class="border-t border-gray-100 my-1"></div>
 
-              <!-- Déconnexion -->
               <button 
                 @click="handleLogoutClick"
                 class="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200 w-full text-left"
@@ -180,13 +186,12 @@
     </div>
 
     <!-- ═══════════════════════════════
-         MOBILE BOTTOM NAV (visible uniquement sur mobile)
+         MOBILE BOTTOM NAV
     ════════════════════════════════ -->
     <nav class="md:hidden fixed bottom-0 left-0 right-0 z-50 pb-[env(safe-area-inset-bottom)]">
       <div class="fixed bottom-0 left-0 z-50 w-full h-20 bg-white shadow-[0_-1px_2px_1px_rgba(0,0,0,0.16)]">
         <div class="grid h-full max-w-lg grid-cols-5 mx-auto font-medium">
           
-          <!-- Accueil -->
           <nuxt-link
             to="/students"
             class="inline-flex flex-col font-body items-center justify-center px-5 border-x border-gray-300 hover:bg-teal-800/10 transition-colors duration-200 group"
@@ -198,7 +203,6 @@
             <span class="text-sm" :class="{ 'text-primary font-semibold': $route.path === '/students', 'text-gray-600': $route.path !== '/students' }">Accueil</span>
           </nuxt-link>
 
-          <!-- Sessions -->
           <nuxt-link
             to="/students/my-sessions"
             class="inline-flex flex-col font-body items-center justify-center px-5 border-r border-gray-200 hover:bg-gray-50 transition-colors duration-200 group relative"
@@ -210,7 +214,6 @@
             <span class="text-sm" :class="{ 'text-primary font-semibold': $route.path === '/students/my-sessions', 'text-gray-600': $route.path !== '/students/my-sessions' }">Sessions</span>
           </nuxt-link>
 
-          <!-- Rejoindre (bouton central surélevé) -->
           <div class="flex items-center justify-center">
             <nuxt-link
               to="/students/join-session"
@@ -223,7 +226,6 @@
             </nuxt-link>
           </div>
 
-          <!-- Historique -->
           <nuxt-link
             to="/historique"
             class="inline-flex font-body flex-col items-center justify-center px-5 border-x border-gray-200 hover:bg-gray-50 transition-colors duration-200 group"
@@ -235,7 +237,6 @@
             <span class="text-sm" :class="{ 'text-primary font-semibold': $route.path === '/historique', 'text-gray-600': $route.path !== '/historique' }">Historique</span>
           </nuxt-link>
 
-          <!-- Profil -->
           <nuxt-link
             to="/students/profile"
             class="inline-flex font-body flex-col items-center justify-center px-5 border-r border-gray-200 hover:bg-gray-50 transition-colors duration-200 group"
@@ -259,27 +260,41 @@
 import { ref, h, onMounted, onUnmounted, computed, onBeforeMount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../../composables/useAuth'
+import { useWebSocket } from '../../composables/useWebSocket'
+import { useToast } from '../../composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
 const { getUser, logout, getProfile } = useAuth()
+const { connect, disconnect, isConnected, onNewSession, onSessionStarted } = useWebSocket()
+const toast = useToast()
 
 const sidebarCollapsed = ref(false)
 const dropdownOpen = ref(false)
 const authChecked = ref(false)
 const currentUser = ref(null)
+const etudiantProfil = ref(null)
 
 // Charger les données utilisateur
 const loadUserData = async () => {
   try {
-    // D'abord essayer de récupérer depuis l'API
     const result = await getProfile()
     if (result.success && result.user) {
       currentUser.value = result.user
       localStorage.setItem('user', JSON.stringify(result.user))
+      
+      // Extraire le profil étudiant
+      if (result.user.etudiantProfil) {
+        etudiantProfil.value = result.user.etudiantProfil
+        localStorage.setItem('etudiantProfil', JSON.stringify(etudiantProfil.value))
+      }
     } else {
-      // Fallback sur localStorage
       currentUser.value = getUser()
+      // Essayer de récupérer le profil depuis le localStorage
+      const savedProfil = localStorage.getItem('etudiantProfil')
+      if (savedProfil) {
+        etudiantProfil.value = JSON.parse(savedProfil)
+      }
     }
   } catch (error) {
     console.error('Erreur chargement profil:', error)
@@ -302,6 +317,65 @@ const avatarUrl = computed(() => {
   return `http://localhost:5000${student.value.avatar}`
 })
 
+// ==================== WEBSOCKET GLOBAL ====================
+
+// Initialiser la connexion WebSocket
+const initWebSocket = () => {
+  if (currentUser.value?.id && etudiantProfil.value) {
+    console.log('🔌 Initialisation WebSocket globale...')
+    console.log('User ID:', currentUser.value.id)
+    console.log('Classe ID:', etudiantProfil.value.classeId)
+    console.log('Filière ID:', etudiantProfil.value.filiereId)
+    
+    connect(
+      currentUser.value.id,
+      'etudiant',
+      etudiantProfil.value.classeId,
+      etudiantProfil.value.filiereId
+    )
+  } else {
+    console.warn('⚠️ Impossible d\'initialiser WebSocket: données manquantes', {
+      userId: currentUser.value?.id,
+      profil: etudiantProfil.value
+    })
+  }
+}
+
+// Gérer l'arrivée d'une nouvelle session (notification globale)
+const handleNewSession = (data) => {
+  console.log('📢 Nouvelle session - Notification globale:', data)
+  
+  toast.info(data.message, {
+    duration: 8000,
+    position: 'top-right',
+    action: {
+      text: 'Voir',
+      onClick: () => router.push('/students')
+    }
+  })
+  
+  // Déclencher un événement pour que les pages puissent réagir
+  window.dispatchEvent(new CustomEvent('global-new-session', { detail: data }))
+}
+
+// Gérer le démarrage d'une session
+const handleSessionStarted = (data) => {
+  console.log('▶️ Session démarrée - Notification globale:', data)
+  
+  toast.warning(data.message, {
+    duration: 10000,
+    position: 'top-right',
+    action: {
+      text: 'Rejoindre',
+      onClick: () => router.push(`/students/join?sessionId=${data.session.id}&code=${data.session.code}`)
+    }
+  })
+  
+  window.dispatchEvent(new CustomEvent('global-session-started', { detail: data }))
+}
+
+// ==================== FIN WEBSOCKET ====================
+
 // Fermer le dropdown en cliquant à l'extérieur
 const handleClickOutside = (event) => {
   const dropdown = document.querySelector('.relative')
@@ -316,18 +390,28 @@ const handleStorageChange = () => {
 }
 
 onBeforeMount(() => {
-  // Charger les données avant le montage
   currentUser.value = getUser()
 })
 
 onMounted(async () => {
   authChecked.value = true
   await loadUserData()
+  
+  // Initialiser WebSocket après chargement des données
+  setTimeout(() => {
+    initWebSocket()
+  }, 1000)
+  
+  // Écouter les événements WebSocket
+  onNewSession(handleNewSession)
+  onSessionStarted(handleSessionStarted)
+  
   document.addEventListener('click', handleClickOutside)
   window.addEventListener('storage', handleStorageChange)
 })
 
 onUnmounted(() => {
+  disconnect()
   document.removeEventListener('click', handleClickOutside)
   window.removeEventListener('storage', handleStorageChange)
 })
@@ -341,6 +425,7 @@ const closeDropdown = () => {
 }
 
 function handleLogout() {
+  disconnect() // Déconnecter WebSocket avant logout
   logout()
   router.push('/auth')
 }

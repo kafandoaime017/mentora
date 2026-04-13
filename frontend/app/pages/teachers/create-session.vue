@@ -1,7 +1,7 @@
 <template>
   <div class="bg-[#f5f0e8] font-body min-h-screen">
     <TeacherLayout>
-      <div class="max-w-3xl mx-auto  py-3">
+      <div class="max-w-3xl mx-auto py-3">
         <!-- En-tête -->
         <div class="mb-8">
           <div class="flex items-center justify-between">
@@ -9,13 +9,10 @@
               <h2 class="font-body text-2xl font-extrabold text-[#1e3a2f] mb-2">
                 Créer une session de QCM
               </h2>
-              <!-- <p class="text-[#9b9589] text-sm">
-                Créez votre évaluation et planifiez-la pour vos étudiants
-              </p> -->
             </div>
             <button 
               @click="$router.back()"
-              class="text-[#4a7c5e] hover:text-[#1e3a2f] transition-colors"
+              class="text-[#4a7c5e] bg-gray-200 hover:bg-gray-300 font-body font-bold px-4 py-2 rounded-lg hover:text-[#1e3a2f] transition-colors"
             >
               ← Retour
             </button>
@@ -24,10 +21,8 @@
 
         <!-- Formulaire -->
         <form @submit.prevent="submitQCM" class="space-y-6">
-          <!-- ═══════════════════════════════════════
-               INFORMATIONS GÉNÉRALES
-          ═══════════════════════════════════════ -->
-          <div class="bg-white font-body shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)]   overflow-hidden">
+          <!-- INFORMATIONS GÉNÉRALES -->
+          <div class="bg-white font-body shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)] overflow-hidden">
             <div class="border-b border-[#e2ddd4] p-4 bg-[#f5f0e8]/30">
               <h3 class="font-['Roboto'] text-lg font-bold text-[#1e3a2f]">
                 Informations générales
@@ -42,7 +37,7 @@
                 <input 
                   v-model="form.titre"
                   type="text"
-                  class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 focus:text-md focus:text-black  bg-input  rounded-xl focus:bg-input focus:outline-none "
+                  class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:bg-input focus:outline-none"
                   placeholder="Ex: Examen JavaScript"
                   required
                 >
@@ -55,7 +50,7 @@
                 <input 
                   v-model="form.theme"
                   type="text"
-                  class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 focus:text-md focus:text-black  bg-input  rounded-xl focus:bg-input focus:outline-none "
+                  class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:bg-input focus:outline-none"
                   placeholder="Ex: JavaScript Fondamentaux"
                 >
               </div>
@@ -67,17 +62,15 @@
                 <textarea 
                   v-model="form.description"
                   rows="3"
-                  class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 focus:text-md focus:text-black  bg-input  rounded-xl focus:bg-input focus:outline-none  resize-none"
+                  class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:bg-input focus:outline-none resize-none"
                   placeholder="Décrivez l'objectif de cette évaluation..."
                 ></textarea>
               </div>
             </div>
           </div>
 
-          <!-- ═══════════════════════════════════════
-               PLANIFICATION
-          ═══════════════════════════════════════ -->
-          <div class="bg-white shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)]   overflow-hidden">
+          <!-- PLANIFICATION AVEC DATEPICKER MODERNE -->
+          <div class="bg-white shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)] overflow-hidden">
             <div class="border-b border-[#e2ddd4] p-4 bg-[#f5f0e8]/30">
               <h3 class="font-['Roboto'] text-lg font-bold text-[#1e3a2f]">
                 Planification
@@ -91,11 +84,15 @@
                     Date et heure de début <span class="text-red-500">*</span>
                   </label>
                   <input 
-                    v-model="form.date_debut"
-                    type="datetime-local"
-                    class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input  rounded-xl focus:bg-input focus:outline-none "
-                    required
+                    ref="dateDebutInput"
+                    type="text"
+                    class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:bg-input focus:outline-none cursor-pointer"
+                    placeholder="Sélectionner la date et l'heure"
+                    readonly
                   >
+                  <p class="text-xs text-[#9b9589] mt-1">
+                    {{ formattedDateDebut }}
+                  </p>
                 </div>
                 
                 <div>
@@ -103,11 +100,15 @@
                     Date et heure de fin <span class="text-red-500">*</span>
                   </label>
                   <input 
-                    v-model="form.date_fin"
-                    type="datetime-local"
-                    class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input  rounded-xl focus:bg-input focus:outline-none "
-                    required
+                    ref="dateFinInput"
+                    type="text"
+                    class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:bg-input focus:outline-none cursor-pointer"
+                    placeholder="Sélectionner la date et l'heure"
+                    readonly
                   >
+                  <p class="text-xs text-[#9b9589] mt-1">
+                    {{ formattedDateFin }}
+                  </p>
                 </div>
                 
                 <div>
@@ -118,18 +119,19 @@
                     v-model.number="form.duree"
                     type="number"
                     min="1"
-                    class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input  rounded-xl focus:bg-input focus:outline-none "
-                    required
+                    disabled
+                    class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 bg-gray-100 rounded-xl cursor-not-allowed opacity-75"
                   >
+                  <p class="text-xs text-[#9b9589] mt-1">
+                    Durée calculée automatiquement entre les dates
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- ═══════════════════════════════════════
-               CIBLE (Filière et Classe)
-          ═══════════════════════════════════════ -->
-          <div class="bg-white shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)]   overflow-hidden">
+          <!-- CIBLE (Filière et Classe) -->
+          <div class="bg-white shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)] overflow-hidden">
             <div class="border-b border-[#e2ddd4] p-4 bg-[#f5f0e8]/30">
               <h3 class="font-['Roboto'] text-lg font-bold text-[#1e3a2f]">
                 Cible de la session
@@ -145,7 +147,7 @@
                   <select 
                     v-model="form.filiere_id"
                     @change="onFiliereChange"
-                    class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 bg-input  rounded-xl focus:bg-input focus:outline-none "
+                    class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 bg-input rounded-xl focus:bg-input focus:outline-none"
                     required
                   >
                     <option value="">Sélectionner une filière</option>
@@ -164,7 +166,7 @@
                   </label>
                   <select 
                     v-model="form.classe_id"
-                    class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 bg-input  rounded-xl focus:bg-input focus:outline-none "
+                    class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 bg-input rounded-xl focus:bg-input focus:outline-none"
                     :disabled="!form.filiere_id"
                     required
                   >
@@ -181,10 +183,8 @@
             </div>
           </div>
 
-          <!-- ═══════════════════════════════════════
-               QUESTIONS
-          ═══════════════════════════════════════ -->
-          <div class="bg-white shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)]   overflow-hidden">
+          <!-- QUESTIONS -->
+          <div class="bg-white shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)] overflow-hidden">
             <div class="border-b border-[#e2ddd4] p-4 bg-[#f5f0e8]/30 flex justify-between items-center">
               <h3 class="font-['Roboto'] text-lg font-bold text-[#1e3a2f]">
                 Questions
@@ -192,7 +192,7 @@
               <button 
                 type="button"
                 @click="addQuestion"
-                class="px-4 py-2 bg-[#4a7c5e] text-white text-sm font-semibold hover:bg-[#1e3a2f] transition-colors"
+                class="px-4 py-2 bg-[#4a7c5e] text-white text-sm font-semibold hover:bg-[#1e3a2f] transition-colors rounded-lg"
               >
                 + Ajouter une question
               </button>
@@ -211,7 +211,7 @@
                 <div 
                   v-for="(question, index) in form.questions" 
                   :key="index"
-                  class="  overflow-hidden bg-[#f5f0e8]/20"
+                  class="overflow-hidden bg-[#f5f0e8]/20 rounded-lg border border-[#e2ddd4]"
                 >
                   <div class="bg-[#f5f0e8]/50 p-4 flex justify-between items-center border-b border-[#e2ddd4]">
                     <h4 class="font-['Roboto'] font-bold text-[#1e3a2f]">
@@ -235,7 +235,7 @@
                       <textarea 
                         v-model="question.texte"
                         rows="2"
-                    class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input  rounded-xl focus:bg-input focus:outline-none "
+                        class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:bg-input focus:outline-none"
                         placeholder="Ex: Qu'est-ce que JavaScript ?"
                       ></textarea>
                     </div>
@@ -246,7 +246,7 @@
                         <label class="block text-sm font-semibold text-[#1e3a2f] mb-2">Type</label>
                         <select 
                           v-model="question.type"
-                    class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input  rounded-xl focus:bg-input focus:outline-none "
+                          class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:bg-input focus:outline-none"
                         >
                           <option value="qcm">QCM (une seule réponse)</option>
                           <option value="qcm_multiple">QCM multiple</option>
@@ -259,7 +259,7 @@
                           v-model.number="question.points"
                           type="number"
                           min="1"
-                    class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input  rounded-xl focus:bg-input focus:outline-none "
+                          class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:bg-input focus:outline-none"
                         >
                       </div>
                     </div>
@@ -276,7 +276,7 @@
                           <input 
                             v-model="question.options[optIndex]"
                             type="text"
-                            class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input  rounded-xl focus:bg-input focus:outline-none "
+                            class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:bg-input focus:outline-none"
                             :placeholder="`Option ${optIndex + 1}`"
                           >
                           <button 
@@ -350,7 +350,7 @@
             <button 
               type="button"
               @click="$router.back()"
-              class="px-6 py-3  bg-red-500 font-body text-white  rounded-xl text-sm font-semibold text-[#1e3a2f] hover:bg-red-700 transition-colors"
+              class="px-6 py-3 bg-red-500 font-body text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors"
             >
               Annuler
             </button>
@@ -370,9 +370,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useTeacher } from '../../../composables/useTeacher'
 import { useToast } from '../../../composables/useToast'
+import flatpickr from 'flatpickr'
+import 'flatpickr/dist/flatpickr.css'
+import 'flatpickr/dist/themes/material_green.css'
 
 const { getFilieres, getClassesByFiliere, createQCM } = useTeacher()
 const toast = useToast()
@@ -381,16 +384,60 @@ const loading = ref(false)
 const filieres = ref([])
 const classes = ref([])
 
+// Références pour les inputs Flatpickr
+const dateDebutInput = ref(null)
+const dateFinInput = ref(null)
+
+let dateDebutPicker = null
+let dateFinPicker = null
+
 const form = ref({
   titre: '',
   description: '',
   theme: '',
   date_debut: '',
   date_fin: '',
-  duree: 60,
+  duree: 0,
   filiere_id: '',
   classe_id: '',
   questions: []
+})
+
+// Formatage des dates pour l'affichage
+const formatDateDisplay = (date) => {
+  if (!date) return ''
+  const d = new Date(date)
+  return d.toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const formattedDateDebut = ref('')
+const formattedDateFin = ref('')
+
+// Calculer la durée automatiquement
+const calculateDuration = () => {
+  if (form.value.date_debut && form.value.date_fin) {
+    const debut = new Date(form.value.date_debut)
+    const fin = new Date(form.value.date_fin)
+    
+    if (fin > debut) {
+      const diffMinutes = Math.round((fin - debut) / (1000 * 60))
+      form.value.duree = diffMinutes
+    } else if (fin <= debut) {
+      form.value.duree = 0
+      toast.warning('La date de fin doit être postérieure à la date de début')
+    }
+  }
+}
+
+// Watcher pour recalculer la durée quand les dates changent
+watch(() => [form.value.date_debut, form.value.date_fin], () => {
+  calculateDuration()
 })
 
 // Ajouter une question
@@ -430,6 +477,34 @@ const onFiliereChange = async () => {
   }
 }
 
+// Valider la cohérence des dates
+const validateDates = () => {
+  if (!form.value.date_debut || !form.value.date_fin) {
+    return false
+  }
+  
+  const debut = new Date(form.value.date_debut)
+  const fin = new Date(form.value.date_fin)
+  const now = new Date()
+  
+  if (debut < now) {
+    toast.error('La date de début ne peut pas être dans le passé')
+    return false
+  }
+  
+  if (fin <= debut) {
+    toast.error('La date de fin doit être postérieure à la date de début')
+    return false
+  }
+  
+  if (form.value.duree <= 0) {
+    toast.error('La durée doit être positive')
+    return false
+  }
+  
+  return true
+}
+
 // Soumettre le formulaire
 const submitQCM = async () => {
   // Validation
@@ -437,14 +512,16 @@ const submitQCM = async () => {
     toast.error('Veuillez saisir un titre')
     return
   }
-  if (!form.value.date_debut || !form.value.date_fin) {
-    toast.error('Veuillez définir les dates')
+  
+  if (!validateDates()) {
     return
   }
+  
   if (!form.value.filiere_id || !form.value.classe_id) {
     toast.error('Veuillez sélectionner une filière et une classe')
     return
   }
+  
   if (form.value.questions.length === 0) {
     toast.error('Veuillez ajouter au moins une question')
     return
@@ -477,7 +554,7 @@ const submitQCM = async () => {
   
   if (result.success) {
     toast.success('QCM créé avec succès !')
-    await navigateTo(`/teacher/qcm/${result.data.id}`)
+    await navigateTo(`/teachers/my-sessions`)
   } else {
     toast.error(result.message || 'Erreur lors de la création')
   }
@@ -485,11 +562,85 @@ const submitQCM = async () => {
   loading.value = false
 }
 
+// Initialiser Flatpickr
+const initDatePickers = () => {
+  if (dateDebutInput.value) {
+    dateDebutPicker = flatpickr(dateDebutInput.value, {
+      enableTime: true,
+      dateFormat: 'Y-m-d H:i:s',
+      time_24hr: true,
+      locale: 'fr',
+      minDate: 'today',
+      minuteIncrement: 1,
+      onChange: (selectedDates, dateStr) => {
+        form.value.date_debut = dateStr
+        formattedDateDebut.value = formatDateDisplay(dateStr)
+        
+        // Mettre à jour la date min du picker de fin
+        if (dateFinPicker && selectedDates[0]) {
+          const minEndDate = new Date(selectedDates[0])
+          minEndDate.setMinutes(minEndDate.getMinutes() + 1)
+          dateFinPicker.set('minDate', minEndDate)
+        }
+        
+        // Si la date de fin est antérieure, la réinitialiser
+        if (form.value.date_fin && new Date(form.value.date_fin) <= new Date(dateStr)) {
+          form.value.date_fin = ''
+          formattedDateFin.value = ''
+          if (dateFinPicker) {
+            dateFinPicker.clear()
+          }
+        }
+      },
+      onReady: (selectedDates, dateStr, instance) => {
+        if (form.value.date_debut) {
+          instance.setDate(form.value.date_debut)
+        }
+      }
+    })
+  }
+  
+  if (dateFinInput.value) {
+    dateFinPicker = flatpickr(dateFinInput.value, {
+      enableTime: true,
+      dateFormat: 'Y-m-d H:i:s',
+      time_24hr: true,
+      locale: 'fr',
+      minDate: form.value.date_debut ? new Date(new Date(form.value.date_debut).getTime() + 60000) : 'today',
+      minuteIncrement: 1,
+      onChange: (selectedDates, dateStr) => {
+        form.value.date_fin = dateStr
+        formattedDateFin.value = formatDateDisplay(dateStr)
+      },
+      onReady: (selectedDates, dateStr, instance) => {
+        if (form.value.date_fin) {
+          instance.setDate(form.value.date_fin)
+        }
+      }
+    })
+  }
+}
+
 // Charger les filières
 onMounted(async () => {
   const res = await getFilieres()
   if (res.success) {
     filieres.value = res.data
+  }
+  
+  // Initialiser les datepickers après le montage
+  setTimeout(() => {
+    initDatePickers()
+  }, 100)
+})
+
+// Nettoyer les instances Flatpickr
+onUnmounted(() => {
+  if (dateDebutPicker) {
+    dateDebutPicker.destroy()
+  }
+  if (dateFinPicker) {
+    dateFinPicker.destroy()
   }
 })
 </script>
@@ -503,5 +654,37 @@ onMounted(async () => {
 .border:hover {
   border-color: #4a7c5e;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+/* Styles personnalisés pour Flatpickr */
+:deep(.flatpickr-calendar) {
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  font-family: 'DM Sans', system-ui;
+}
+
+:deep(.flatpickr-day.selected) {
+  background: #4a7c5e;
+  border-color: #4a7c5e;
+}
+
+:deep(.flatpickr-day.selected:hover) {
+  background: #1e3a2f;
+  border-color: #1e3a2f;
+}
+
+:deep(.flatpickr-time input:hover) {
+  background: #f5f0e8;
+}
+
+:deep(.flatpickr-time .numInputWrapper:hover) {
+  background: #f5f0e8;
+}
+
+/* Désactiver les flèches sur le champ durée désactivé */
+input:disabled::-webkit-inner-spin-button, 
+input:disabled::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 </style>

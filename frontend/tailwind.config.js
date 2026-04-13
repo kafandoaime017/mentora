@@ -9,9 +9,10 @@ module.exports = {
       colors: {
         primary: '#054348',
         secondary: '#709134',
-        cream: '#fffdf5',
+        cream: '#fffcee',
         input: '#e7e7e7',
         danger: '#e53e3e',
+        layout: '#f5f5f5',
       },
    fontFamily: {
   display: ['Syne', 'sans-serif'],
