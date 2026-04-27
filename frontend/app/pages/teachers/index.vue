@@ -1,7 +1,7 @@
 <template>
   <div class="bg-[#f5f0e8] font-body min-h-screen">
     <TeacherLayout>
-      <div class="p-6">
+      <div class="py-3">
         
         <!-- En-tête -->
         <div class="mb-8">
@@ -18,14 +18,14 @@
           <!-- Cartes statistiques -->
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <!-- Total sessions -->
-            <div class="bg-white rounded-xl shadow p-6">
+            <div class="bg-primary rounded-xl  p-6">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-gray-500 font-body text-sm">Total sessions</p>
-                  <p class="text-3xl font-body font-bold text-[#1e3a2f]">{{ statsData.stats.total }}</p>
+                  <p class="text-white font-body  mb-1">Total sessions</p>
+                  <p class="text-3xl font-body font-extrabold text-white">{{ statsData.stats.total }}</p>
                 </div>
-                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                   </svg>
                 </div>
@@ -33,14 +33,14 @@
             </div>
 
             <!-- Sessions à venir -->
-            <div class="bg-white rounded-xl shadow p-6">
+            <div class="bg-danger rounded-xl shadow p-6">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-gray-500 font-body text-sm">Sessions à venir</p>
-                  <p class="text-3xl font-body font-bold text-yellow-600">{{ statsData.stats.aVenir }}</p>
+                  <p class="text-white font-body ">Sessions à venir</p>
+                  <p class="text-3xl font-body font-bold text-white">{{ statsData.stats.aVenir }}</p>
                 </div>
-                <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                  <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                   </svg>
                 </div>
@@ -48,14 +48,14 @@
             </div>
 
             <!-- Sessions en cours -->
-            <div class="bg-white rounded-xl shadow p-6">
+            <div class="bg-yellow-600 rounded-xl shadow p-6">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-gray-500 font-body text-sm">En cours</p>
-                  <p class="text-3xl font-body font-bold text-green-600">{{ statsData.stats.enCours }}</p>
+                  <p class="text-white font-body ">En cours</p>
+                  <p class="text-3xl font-body font-bold text-white">{{ statsData.stats.enCours }}</p>
                 </div>
-                <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                  <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
                   </svg>
                 </div>
@@ -63,11 +63,11 @@
             </div>
 
             <!-- Sessions terminées -->
-            <div class="bg-white rounded-xl shadow p-6">
+            <div class="bg-secondary rounded-xl shadow p-6">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-gray-500 font-body text-sm">Terminées</p>
-                  <p class="text-3xl font-body font-bold text-gray-600">{{ statsData.stats.terminees }}</p>
+                  <p class="text-white font-body ">Terminées</p>
+                  <p class="text-3xl font-body font-bold text-white">{{ statsData.stats.terminees }}</p>
                 </div>
                 <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
                   <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

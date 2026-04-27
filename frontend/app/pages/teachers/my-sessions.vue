@@ -82,7 +82,7 @@
         </div>
 
         <!-- ==================== LISTE DES QCM ==================== -->
-        <div v-else class="bg-white shadow-[1px_1px_4px_1px_rgba(0,0,0,0.16)] overflow-hidden">
+        <div v-else class="bg-white shadow-[1px_1px_2px_1px_rgba(0,0,0,0.16)] overflow-hidden">
           
           <!-- En-tête des colonnes -->
           <div class="hidden md:grid md:grid-cols-12 gap-3 px-4 py-2 bg-primary border-b border-[#e2ddd4] text-sm font-body font-semibold text-white font-bold uppercase tracking-wider">

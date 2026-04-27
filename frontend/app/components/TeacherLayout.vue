@@ -33,9 +33,9 @@
       v-for="item in navItems" 
       :key="item.key"
       :to="item.to"
-      class="flex items-center font-body gap-2 px-2 py-1 rounded-md text-muted hover:bg-primary/10 hover:text-primary transition-all duration-200 w-full"
+      class="flex items-center bg-gray-200 mb-1 font-body gap-2 px-2 py-1 rounded-md text-muted hover:bg-primary/10 hover:text-primary transition-all duration-200 w-full"
       :class="{ 
-        'bg-secondary/20 ': $route.path === item.to,
+        'bg-secondary/60 ': $route.path === item.to,
         'justify-center': sidebarCollapsed 
       }"
       :title="item.label"
@@ -83,8 +83,8 @@
      <header class="bg-secondary font-body px-5 p-2 flex items-center justify-between flex-shrink-0 
                fixed top-0 left-0 w-full z-50 md:static">
         <div class="flex-1">
-          <img src="/images/logo-blanc.png" alt="Mentora" 
-               class="h-16 md:hidden transition-all duration-300"/>
+          <img src="/images/logo-color.png" alt="Mentora" 
+               class="h-16 brightness-0 invert md:hidden transition-all duration-300"/>
         </div>
         
         <!-- ── AVATAR DROPDOWN ── -->
@@ -92,7 +92,7 @@
           <!-- Avatar button -->
           <button 
             @click="toggleDropdown"
-            class="flex items-center gap-2 focus:outline-none group"
+            class="flex items-center  gap-2 focus:outline-none group"
           >
             <img
               :src="student.avatar || 'https://img.freepik.com/premium-photo/young-student-avatar-generative-ai_138015-2404.jpg'"
@@ -101,7 +101,7 @@
             />
             <!-- Petit indicateur de dropdown (facultatif) -->
             <svg 
-              class="w-4 h-4 text-white transition-transform duration-200 hidden sm:block"
+              class="w-4 h-4 text-white transition-transform duration-200  sm:block"
               :class="{ 'rotate-180': dropdownOpen }"
               fill="none" 
               stroke="currentColor" 
@@ -213,7 +213,7 @@
         <div class="flex items-center justify-center">
         <nuxt-link
           to="/teachers/create-session"
-          class="inline-flex font-body items-center justify-center text-white bg-secondary hover:bg-primary-dark focus:ring-4 focus:ring-primary/30 shadow-lg w-16 h-16 rounded-full focus:outline-none transition-all duration-200"
+          class="inline-flex font-body top-[-4px] relative items-center justify-center text-white bg-secondary hover:bg-primary-dark focus:ring-4 focus:ring-primary/30  w-12 h-12 rounded-full focus:outline-none transition-all duration-200"
           :class="{ 'ring-4 ring-primary/50': $route.path === '/teachers/create-session' }"
         >
           <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">

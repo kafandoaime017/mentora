@@ -106,7 +106,7 @@
               <!-- <button class="w-full md:w-auto font-body  bg-cream text-primary font-bold px-7 py-3.5 rounded-md hover:bg-cream/90 transition-colors">
               Espace Étudiant
               </button> -->
-              <nuxt-link to="/auth" class="w-full md:w-auto bg-secondary font-body text-white font-bold px-7 py-3.5 rounded-md hover:bg-secondary/70 transition-colors">
+              <nuxt-link to="/auth" class="w-full text-center  bg-secondary font-body text-white font-bold px-7 py-3.5 rounded-md hover:bg-secondary/70 transition-colors">
               Connectez-vous
               </nuxt-link>
             </div>
@@ -117,7 +117,7 @@
           <div class="hidden md:block flex-shrink-0 w-48">
             <div class="rounded-2xl overflow-hidden shadow-2xl transform ">
               <img 
-                src="/images/image.png" 
+                src="/images/images.webp" 
                 alt="Student studying" 
                 class="w-full h-auto object-cover"
               />
@@ -139,11 +139,11 @@
     <section class="bg-white py-20">
       <div class="max-w-7xl mx-auto px-8 md:px-16">
         <div class="text-center mb-12">
-          <h2 class="text-3xl md:text-4xl font-bold text-primary mb-4">
+          <h2 class="text-3xl md:text-4xl font-body font-bold text-primary mb-4">
             Fonctionnalités
           </h2>
-          <p class="text-gray-600 text-lg max-w-2xl mx-auto">
-            Découvrez tous les outils pour réussir vos études
+          <p class="text-gray-600 font-body text-lg max-w-2xl mx-auto">
+            Découvrez tous les outils pour réussir vos évaluations et accompagner vos étudiants
           </p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -153,8 +153,8 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
               </svg>
             </div>
-            <h3 class="text-xl font-bold text-primary mb-3">QCM Interactifs</h3>
-            <p class="text-gray-600">Entraînez-vous avec des centaines de questions et suivez votre progression</p>
+            <h3 class="text-xl font-bold text-primary font-body mb-3">QCM Interactifs</h3>
+            <p class="text-gray-600 font-body">Entraînez-vous avec des centaines de questions et suivez votre progression</p>
           </div>
           <div class="bg-gray-200 rounded-xl p-8 text-center hover:shadow-xl transition-shadow">
             <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -162,8 +162,8 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
               </svg>
             </div>
-            <h3 class="text-xl font-bold text-primary mb-3">Suivi Personnalisé</h3>
-            <p class="text-gray-600">Analysez vos résultats et identifiez vos points faibles</p>
+            <h3 class="text-xl font-body font-bold text-primary mb-3">Suivi Personnalisé</h3>
+            <p class="text-gray-600 font-body">Analysez vos résultats et identifiez vos points faibles</p>
           </div>
           <div class="bg-gray-200 rounded-xl p-8 text-center hover:shadow-xl transition-shadow">
             <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -171,8 +171,8 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
               </svg>
             </div>
-            <h3 class="text-xl font-bold text-primary mb-3">Communauté Active</h3>
-            <p class="text-gray-600">Échangez avec d'autres étudiants et professeurs</p>
+            <h3 class="text-xl font-body font-bold text-primary mb-3">Communauté Active</h3>
+            <p class="text-gray-600 font-body">Échangez avec d'autres étudiants et professeurs</p>
           </div>
         </div>
       </div>
