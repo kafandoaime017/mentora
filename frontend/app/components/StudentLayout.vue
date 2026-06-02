@@ -46,7 +46,7 @@
           v-for="item in navItems" 
           :key="item.key"
           :to="item.to"
-          class="flex items-center font-body gap-2 px-2 py-1 rounded-md text-muted hover:bg-primary/10 hover:text-primary transition-all duration-200 w-full"
+          class="flex items-center font-body gap-2 bg-gray-100 px-2 py-1 mb-1 rounded-md text-muted hover:bg-primary/10 hover:text-primary transition-all duration-200 w-full"
           :class="{ 
             'bg-secondary/20 ': $route.path === item.to,
             'justify-center': sidebarCollapsed 
@@ -499,7 +499,7 @@ const IconLogout = () => h('svg', {
 const navItems = [
   { key: 'home',     to: '/students',  label: 'Accueil',      shortLabel: 'Accueil',    icon: IconHome,     badge: null },
   { key: 'sessions', to: '/students/my-sessions',   label: 'Mes sessions', shortLabel: 'Sessions',   icon: IconCalendar, badge: 3 },
-  { key: 'join',     to: '/students/join-session',  label: 'Rejoindre',    shortLabel: 'Rejoindre',  icon: IconUsers,    badge: null },
+  { key: 'join',     to: '/students/join-session',  label: 'Rejoindre session',    shortLabel: 'Rejoindre',  icon: IconUsers,    badge: null },
   { key: 'history',  to: '/historique', label: 'Historique',   shortLabel: 'Historique', icon: IconHistory,  badge: null },
   { key: 'profile',  to: '/students/profile',     label: 'Profil',       shortLabel: 'Profil',     icon: IconUser,     badge: null },
 ]
