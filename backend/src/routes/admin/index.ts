@@ -22,7 +22,8 @@ import {
     adminEndSession,
     adminGetNotes,
     adminToggleResultatsVisibles,
-    adminExportResultsPdf
+    adminExportResultsPdf,
+    adminExportUserHistoryPdf
 } from '../../app/controllers/adminController'
 import { checkLimiteEtudiants, checkLimiteProfesseurs } from '../../app/middleware/checkPlan'
 import { uploadEcoleLogo as uploadEcoleLogoMiddleware } from '../../app/middleware/upload'
@@ -57,6 +58,7 @@ router.get('/users',                      ...isAdmin, getUsers)
 router.patch('/users/:id/toggle-active',  ...isAdmin, toggleUserActive)
 router.delete('/users/:id',               ...isAdmin, deleteUser)
 router.get('/users/:id', ...isAdmin, getUserById)
+router.get('/users/:id/historique/pdf', ...isAdmin, adminExportUserHistoryPdf)
 
 router.patch('/users/:id/activate-prof',  ...isAdmin, activateProfesseur)
 

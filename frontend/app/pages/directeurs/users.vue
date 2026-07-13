@@ -142,6 +142,18 @@
             Valider
           </button>
 
+          <!-- Télécharger l'historique -->
+          <button @click="downloadHistorique(user)"
+            :disabled="downloadingId === user.id"
+            class="inline-flex items-center gap-1 text-xs font-body font-semibold px-2.5 py-2 rounded-md bg-secondary text-white hover:bg-secondary/90 transition-colors disabled:opacity-50">
+            <svg v-if="downloadingId !== user.id" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <div v-else class="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"/>
+            Historique
+          </button>
+
           <!-- Activer/Désactiver -->
           <button @click="toggleActive(user)"
             class="inline-flex items-center gap-1 text-xs font-body font-semibold px-2.5 py-2 rounded-md transition-colors"
@@ -182,6 +194,7 @@ const loading = ref(true)
 const allUsers = ref([])
 const roleFiltre = ref('tous')
 const search = ref('')
+const downloadingId = ref(null)
 
 const apiFetch = async (url, options = {}) => {
   const config = useRuntimeConfig()
@@ -228,6 +241,31 @@ const activateProf = async (userId) => {
     await loadUsers()
   } catch {
     toast.error('Erreur')
+  }
+}
+
+const downloadHistorique = async (user) => {
+  downloadingId.value = user.id
+  try {
+    const config = useRuntimeConfig()
+    const token  = useCookie('auth_token').value
+    const res = await fetch(`${config.public.apiBase}/admin/users/${user.id}/historique/pdf`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) throw new Error('Erreur lors de la génération du PDF')
+    const blob = await res.blob()
+    const url  = window.URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href = url
+    a.download = `historique_${user.nom}_${user.prenom}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  } catch {
+    toast.error('Erreur lors du téléchargement de l\'historique')
+  } finally {
+    downloadingId.value = null
   }
 }
 

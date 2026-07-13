@@ -1194,6 +1194,7 @@ export const getUserById = async (req: AuthRequest, res: Response, next: NextFun
         .innerJoinAndSelect('p.session', 's')
         .innerJoinAndSelect('s.filiere', 'f')
         .innerJoinAndSelect('s.classe', 'c')
+        .leftJoinAndSelect('s.questions', 'q')
         .where('p.etudiant_id = :id', { id })
         .orderBy('s.created_at', 'DESC')
         .getMany()
@@ -1256,7 +1257,189 @@ export const getUserById = async (req: AuthRequest, res: Response, next: NextFun
         sessions
       }
     })
-  } catch (err) { 
-    next(err) 
+  } catch (err) {
+    next(err)
   }
+}
+
+// ==================== EXPORT PDF HISTORIQUE UTILISATEUR (directeur) ====================
+// Fiche complète d'un étudiant ou professeur : infos, statistiques, historique
+// des sessions (avec notes pour un étudiant). Utilisé par le bouton
+// "Télécharger l'historique" de la page Utilisateurs.
+export const adminExportUserHistoryPdf = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const ecoleId = getEcoleId(req, res)
+    if (!ecoleId) return
+
+    const id = parseInt(req.params.id as string)
+
+    const user = await userRepo
+      .createQueryBuilder('u')
+      .leftJoinAndSelect('u.etudiantProfil', 'ep')
+      .leftJoinAndSelect('ep.classe', 'c')
+      .leftJoinAndSelect('ep.filiere', 'f')
+      .leftJoinAndSelect('u.professeurProfil', 'pp')
+      .leftJoinAndSelect('pp.filiere', 'pf')
+      .where('u.id = :id', { id })
+      .andWhere('(ep.ecoleId = :ecoleId OR pp.ecoleId = :ecoleId)', { ecoleId })
+      .getOne()
+
+    if (!user) { res.status(404).json({ success: false, message: 'Utilisateur non trouvé' }); return }
+
+    const ecole = await ecoleRepo.findOne({ where: { id: ecoleId } })
+
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename=historique_${user.nom}_${user.prenom}.pdf`)
+
+    const doc = new PDFDocument({ margin: 40, size: 'A4' })
+    doc.pipe(res)
+
+    // ─── En-tête ──────────────────────────────────────────────────────────
+    doc.fontSize(16).font('Helvetica-Bold').fillColor('#000').text(ecole?.nom || 'Mentora')
+    doc.fontSize(10).font('Helvetica').fillColor('#555').text("Historique de l'utilisateur")
+    doc.moveDown(1)
+
+    // ─── Infos utilisateur ────────────────────────────────────────────────
+    doc.fillColor('#000').fontSize(14).font('Helvetica-Bold').text(`${user.prenom} ${user.nom}`)
+    doc.fontSize(10).font('Helvetica').fillColor('#333')
+    doc.text(`Rôle : ${user.role === UserRole.ETUDIANT ? 'Étudiant' : 'Professeur'}`)
+    doc.text(`Email : ${user.email}`)
+    doc.text(`Statut : ${user.isActive ? 'Actif' : 'Inactif'}   ·   Email vérifié : ${user.isVerified ? 'Oui' : 'Non'}`)
+    doc.text(`Inscrit le : ${new Date(user.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`)
+
+    if (user.role === UserRole.ETUDIANT) {
+      doc.text(`Filière : ${user.etudiantProfil?.filiere?.nom || '-'}   ·   Classe : ${user.etudiantProfil?.classe?.nom || '-'}`)
+    } else {
+      doc.text(`Filière : ${user.professeurProfil?.filiere?.nom || '-'}   ·   Statut : ${user.professeurProfil?.statut || '-'}`)
+    }
+    doc.moveDown(1)
+
+    const colX = { rang: 40, titre: 80, classe: 250, date: 350, statut: 440, note: 500 }
+
+    if (user.role === UserRole.ETUDIANT) {
+      const participants = await participantRepo
+        .createQueryBuilder('p')
+        .innerJoinAndSelect('p.session', 's')
+        .leftJoinAndSelect('s.filiere', 'f')
+        .leftJoinAndSelect('s.classe', 'c')
+        .leftJoinAndSelect('s.questions', 'q')
+        .where('p.etudiant_id = :id', { id })
+        .orderBy('s.date_debut', 'DESC')
+        .getMany()
+
+      const notes = participants
+        .filter(p => p.statut === ParticipantStatus.TERMINE)
+        .map(p => {
+          const totalPoints = p.session.questions?.reduce((sum, q) => sum + q.points, 0) || 0
+          return totalPoints > 0 ? ((p.score || 0) / totalPoints) * 20 : 0
+        })
+
+      const moyenne     = notes.length > 0 ? notes.reduce((a, b) => a + b, 0) / notes.length : 0
+      const meilleure    = notes.length > 0 ? Math.max(...notes) : 0
+      const moinsBonne   = notes.length > 0 ? Math.min(...notes) : 0
+
+      // ─── Statistiques ────────────────────────────────────────────────
+      doc.font('Helvetica-Bold').fontSize(11).text('Statistiques')
+      doc.font('Helvetica').fontSize(10)
+      doc.text(`Sessions participées : ${participants.length}   ·   Terminées : ${notes.length}`)
+      doc.text(`Moyenne générale : ${moyenne.toFixed(2)}/20   ·   Meilleure note : ${meilleure.toFixed(2)}/20   ·   Moins bonne : ${moinsBonne.toFixed(2)}/20`)
+      doc.moveDown(1)
+
+      // ─── Historique des sessions ─────────────────────────────────────
+      doc.font('Helvetica-Bold').fontSize(11).text('Historique des sessions')
+      doc.moveDown(0.3)
+
+      const drawRow = (y: number, titre: string, classe: string, date: string, statut: string, note: string, bold = false) => {
+        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9)
+        doc.text(titre, colX.titre, y, { width: 165 })
+        doc.text(classe, colX.classe, y, { width: 95 })
+        doc.text(date, colX.date, y, { width: 85 })
+        doc.text(statut, colX.statut, y, { width: 55 })
+        doc.text(note, colX.note, y, { width: 60 })
+      }
+
+      let y = doc.y
+      drawRow(y, 'Session', 'Filière / Classe', 'Date', 'Statut', 'Note', true)
+      y += 16
+      doc.moveTo(40, y).lineTo(555, y).strokeColor('#ccc').stroke()
+      y += 6
+
+      participants.forEach(p => {
+        if (y > 760) { doc.addPage(); y = 40 }
+        const totalPoints = p.session.questions?.reduce((sum, q) => sum + q.points, 0) || 0
+        const noteSur20 = totalPoints > 0 ? Math.round(((p.score || 0) / totalPoints) * 20 * 100) / 100 : null
+        const statutLabel = p.statut === ParticipantStatus.TERMINE ? 'Terminé' : p.statut === ParticipantStatus.PRESENT ? 'En cours' : 'Inscrit'
+        drawRow(
+          y,
+          p.session.titre,
+          `${p.session.filiere?.nom || '-'} / ${p.session.classe?.nom || '-'}`,
+          new Date(p.session.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }),
+          statutLabel,
+          noteSur20 !== null ? `${noteSur20}/20` : '-'
+        )
+        y += 16
+      })
+
+      if (participants.length === 0) {
+        doc.font('Helvetica').fontSize(10).fillColor('#666').text('Aucune session pour le moment.')
+      }
+    } else {
+      const sessions = await sessionRepo
+        .createQueryBuilder('s')
+        .leftJoinAndSelect('s.filiere', 'f')
+        .leftJoinAndSelect('s.classe', 'c')
+        .where('s.created_by = :id', { id })
+        .orderBy('s.date_debut', 'DESC')
+        .getMany()
+
+      const nbParticipantsParSession = await Promise.all(
+        sessions.map(s => participantRepo.count({ where: { session_id: s.id } }))
+      )
+      const totalParticipants = nbParticipantsParSession.reduce((a, b) => a + b, 0)
+
+      // ─── Statistiques ────────────────────────────────────────────────
+      doc.font('Helvetica-Bold').fontSize(11).text('Statistiques')
+      doc.font('Helvetica').fontSize(10)
+      doc.text(`Sessions créées : ${sessions.length}   ·   Total participants : ${totalParticipants}`)
+      doc.moveDown(1)
+
+      // ─── Historique des sessions ─────────────────────────────────────
+      doc.font('Helvetica-Bold').fontSize(11).text('Sessions créées')
+      doc.moveDown(0.3)
+
+      const drawRow = (y: number, titre: string, classe: string, date: string, statut: string, participantsCol: string, bold = false) => {
+        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9)
+        doc.text(titre, colX.titre, y, { width: 165 })
+        doc.text(classe, colX.classe, y, { width: 95 })
+        doc.text(date, colX.date, y, { width: 85 })
+        doc.text(statut, colX.statut, y, { width: 55 })
+        doc.text(participantsCol, colX.note, y, { width: 60 })
+      }
+
+      let y = doc.y
+      drawRow(y, 'Session', 'Filière / Classe', 'Date', 'Statut', 'Participants', true)
+      y += 16
+      doc.moveTo(40, y).lineTo(555, y).strokeColor('#ccc').stroke()
+      y += 6
+
+      sessions.forEach((s, i) => {
+        if (y > 760) { doc.addPage(); y = 40 }
+        drawRow(
+          y,
+          s.titre,
+          `${s.filiere?.nom || '-'} / ${s.classe?.nom || '-'}`,
+          new Date(s.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }),
+          s.status,
+          `${nbParticipantsParSession[i]}`
+        )
+        y += 16
+      })
+
+      if (sessions.length === 0) {
+        doc.font('Helvetica').fontSize(10).fillColor('#666').text('Aucune session créée pour le moment.')
+      }
+    }
+
+    doc.end()
+  } catch (err) { next(err) }
 }
