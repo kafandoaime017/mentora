@@ -1083,6 +1083,50 @@ export const adminToggleResultatsVisibles = async (req: AuthRequest, res: Respon
 }
 
 // ==================== EXPORT PDF DES RÉSULTATS (directeur) ====================
+// ─── Helper : en-tête PDF (infos à gauche, logo + nom école à droite) ──────
+type PdfHeaderLine = { text: string; bold?: boolean; size?: number; color?: string }
+
+function drawPdfHeader(
+    doc: PDFKit.PDFDocument,
+    ecole: Pick<Ecole, 'nom' | 'logo'> | null,
+    leftLines: PdfHeaderLine[]
+): number {
+    const startY      = 40
+    const pageLeft     = 40
+    const pageRight    = 555
+    const logoSize     = 50
+    const nameBoxWidth = 200
+    const nameBoxX     = pageRight - nameBoxWidth
+
+    let logoBottom = startY
+    if (ecole?.logo) {
+        try {
+            const logoPath = path.join(__dirname, '../../public', ecole.logo)
+            if (fs.existsSync(logoPath)) {
+                doc.image(logoPath, pageRight - logoSize, startY, { fit: [logoSize, logoSize] })
+                logoBottom = startY + logoSize + 4
+            }
+        } catch { /* logo illisible : on continue sans */ }
+    }
+
+    doc.font('Helvetica-Bold').fontSize(12).fillColor('#000')
+       .text(ecole?.nom || 'Mentora', nameBoxX, logoBottom, { width: nameBoxWidth, align: 'right' })
+    const rightBottom = doc.y
+
+    let leftY = startY
+    leftLines.forEach(line => {
+        doc.font(line.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(line.size || 10).fillColor(line.color || '#000')
+           .text(line.text, pageLeft, leftY, { width: 300 })
+        leftY = doc.y + 2
+    })
+
+    const bottom = Math.max(leftY, rightBottom) + 8
+    doc.moveTo(pageLeft, bottom).lineTo(pageRight, bottom).strokeColor('#ccc').lineWidth(0.75).stroke()
+    doc.y = bottom + 14
+    doc.x = pageLeft
+    return doc.y
+}
+
 // ─── Helper : tableau PDF avec bordures et espacement ──────────────────────
 type PdfTableColumn = { label: string; x: number; width: number; align?: 'left' | 'center' | 'right' }
 
@@ -1179,17 +1223,15 @@ export const adminExportResultsPdf = async (req: AuthRequest, res: Response, nex
         const doc = new PDFDocument({ margin: 40, size: 'A4' })
         doc.pipe(res)
 
-        doc.fontSize(16).font('Helvetica-Bold').text(ecole?.nom || 'Mentora', { align: 'left' })
-        doc.fontSize(10).font('Helvetica').fillColor('#555').text('Résultats de session', { align: 'left' })
-        doc.moveDown(1)
-
-        doc.fillColor('#000').fontSize(14).font('Helvetica-Bold').text(session.titre)
-        doc.fontSize(10).font('Helvetica').fillColor('#333')
-        doc.text(`Classe : ${session.classe?.nom || '-'}    Filière : ${session.filiere?.nom || '-'}`)
-        doc.text(`Professeur : ${session.professeur?.prenom || ''} ${session.professeur?.nom || ''}`)
-        doc.text(`Date : ${new Date(session.date_debut).toLocaleDateString('fr-FR')}`)
-        doc.text(`Moyenne de la classe : ${moyenne.toFixed(2)} / 20`)
-        doc.moveDown(1)
+        drawPdfHeader(doc, ecole, [
+            { text: 'Résultats de session', size: 9, color: '#555' },
+            { text: session.titre, bold: true, size: 13 },
+            { text: `Classe : ${session.classe?.nom || '-'}    Filière : ${session.filiere?.nom || '-'}`, size: 9, color: '#333' },
+            { text: `Professeur : ${session.professeur?.prenom || ''} ${session.professeur?.nom || ''}`, size: 9, color: '#333' },
+            { text: `Date : ${new Date(session.date_debut).toLocaleDateString('fr-FR')}`, size: 9, color: '#333' },
+            { text: `Moyenne de la classe : ${moyenne.toFixed(2)} / 20`, size: 9, color: '#333' },
+        ])
+        doc.moveDown(0.5)
 
         const columns: PdfTableColumn[] = [
             { label: '#',       x: 40,  width: 40,  align: 'center' },
@@ -1348,25 +1390,19 @@ export const adminExportUserHistoryPdf = async (req: AuthRequest, res: Response,
     const doc = new PDFDocument({ margin: 40, size: 'A4' })
     doc.pipe(res)
 
-    // ─── En-tête ──────────────────────────────────────────────────────────
-    doc.fontSize(16).font('Helvetica-Bold').fillColor('#000').text(ecole?.nom || 'Mentora')
-    doc.fontSize(10).font('Helvetica').fillColor('#555').text("Historique de l'utilisateur")
-    doc.moveDown(1)
-
-    // ─── Infos utilisateur ────────────────────────────────────────────────
-    doc.fillColor('#000').fontSize(14).font('Helvetica-Bold').text(`${user.prenom} ${user.nom}`)
-    doc.fontSize(10).font('Helvetica').fillColor('#333')
-    doc.text(`Rôle : ${user.role === UserRole.ETUDIANT ? 'Étudiant' : 'Professeur'}`)
-    doc.text(`Email : ${user.email}`)
-    doc.text(`Statut : ${user.isActive ? 'Actif' : 'Inactif'}   ·   Email vérifié : ${user.isVerified ? 'Oui' : 'Non'}`)
-    doc.text(`Inscrit le : ${new Date(user.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`)
-
-    if (user.role === UserRole.ETUDIANT) {
-      doc.text(`Filière : ${user.etudiantProfil?.filiere?.nom || '-'}   ·   Classe : ${user.etudiantProfil?.classe?.nom || '-'}`)
-    } else {
-      doc.text(`Filière : ${user.professeurProfil?.filiere?.nom || '-'}   ·   Statut : ${user.professeurProfil?.statut || '-'}`)
-    }
-    doc.moveDown(1)
+    // ─── En-tête (infos utilisateur à gauche, logo + nom école à droite) ───
+    drawPdfHeader(doc, ecole, [
+      { text: "Historique de l'utilisateur", size: 9, color: '#555' },
+      { text: `${user.prenom} ${user.nom}`, bold: true, size: 13 },
+      { text: `Rôle : ${user.role === UserRole.ETUDIANT ? 'Étudiant' : 'Professeur'}`, size: 9, color: '#333' },
+      { text: `Email : ${user.email}`, size: 9, color: '#333' },
+      { text: `Statut : ${user.isActive ? 'Actif' : 'Inactif'}   ·   Email vérifié : ${user.isVerified ? 'Oui' : 'Non'}`, size: 9, color: '#333' },
+      { text: `Inscrit le : ${new Date(user.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`, size: 9, color: '#333' },
+      user.role === UserRole.ETUDIANT
+        ? { text: `Filière : ${user.etudiantProfil?.filiere?.nom || '-'}   ·   Classe : ${user.etudiantProfil?.classe?.nom || '-'}`, size: 9, color: '#333' }
+        : { text: `Filière : ${user.professeurProfil?.filiere?.nom || '-'}   ·   Statut : ${user.professeurProfil?.statut || '-'}`, size: 9, color: '#333' },
+    ])
+    doc.moveDown(0.5)
 
     if (user.role === UserRole.ETUDIANT) {
       const participants = await participantRepo
