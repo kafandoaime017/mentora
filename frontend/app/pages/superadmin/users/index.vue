@@ -32,7 +32,7 @@
 
         <div v-else>
           <!-- Desktop table -->
-          <div class="hidden md:block bg-white rounded-xl shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] overflow-hidden">
+          <div class="hidden md:block bg-white rounded-sm shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] overflow-hidden">
             <table class="w-full">
               <thead class="bg-blacky">
                 <tr>
