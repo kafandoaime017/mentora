@@ -8,7 +8,7 @@ const router = Router();
 
 // Toutes les routes nécessitent authentification et rôle professeur
 router.use(authMiddleware);
-router.use(requireRole(['professeur', 'admin']));
+router.use(requireRole(['professeur']));
 
 // ==================== QCM ====================
 router.post('/qcm',authMiddleware, requireRole(['professeur']), checkLimiteSessions, createQCM)

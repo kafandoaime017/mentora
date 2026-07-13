@@ -76,7 +76,7 @@ onMounted(async () => {
       loading.value = false
 
       // Rediriger après 1.5s
-      const redirects = { etudiant: '/students', professeur: '/teachers', admin: '/admin' }
+      const redirects = { etudiant: '/students', professeur: '/teachers', directeur: '/directeurs', superadmin: '/superadmin' }
       setTimeout(() => {
         navigateTo(redirects[result.data.user?.role] || '/auth')
       }, 1500)

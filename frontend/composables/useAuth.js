@@ -33,9 +33,9 @@ export const useAuth = () => {
   const getDashboard = (role) => {
     if (role === 'etudiant')   return '/students'
     if (role === 'professeur') return '/teachers'
-    if (role === 'directeur')      return '/admin'
-    if (role === 'admin')      return '/superadmin'
-    return '/login'
+    if (role === 'directeur')  return '/directeurs'
+    if (role === 'superadmin') return '/superadmin'
+    return '/auth'
   }
 
   const getAuthHeader = () => {

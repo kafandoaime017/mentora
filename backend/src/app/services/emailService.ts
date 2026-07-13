@@ -159,7 +159,7 @@ export const envoyerInvitation = async (
         context: {
             prenom,
             nom,
-            role: role === 'etudiant' ? 'Étudiant(e)' : 'Enseignant(e)',
+            role: role === 'etudiant' ? 'Étudiant(e)' : role === 'professeur' ? 'Enseignant(e)' : 'Directeur/Directrice',
             filiere,
             classe,
             ecole,
@@ -333,7 +333,7 @@ export const envoyerEmailPlanActive = async (
     template: 'plan-active',
     context: {
       prenom, nomEcole, plan, isTrial,
-      dashboardUrl: `${process.env.FRONTEND_URL}/admin`
+      dashboardUrl: `${process.env.FRONTEND_URL}/directeurs`
     }
   })
 }

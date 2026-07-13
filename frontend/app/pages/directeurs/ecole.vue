@@ -41,7 +41,6 @@
                 <input
                   v-model="form.nom"
                   type="text"
-                  readOnly
                   placeholder="Ex: ESGI Paris"
                   class="w-full px-4 py-3 bg-input rounded-xl text-sm font-body focus:outline-none"
                 />
@@ -51,7 +50,6 @@
                 <input
                   v-model="form.ville"
                   type="text"
-                  readOnly
                   placeholder="Ex: Paris"
                   class="w-full px-4 py-3 bg-input rounded-xl text-sm font-body focus:outline-none"
                 />

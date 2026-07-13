@@ -7,7 +7,7 @@
           <p class="text-sm text-gray-400 mt-1">{{ directeurs.length }} directeur(s)</p>
         </div>
         <button @click="ouvrirModal"
-          class="flex items-center gap-2 px-5 py-2.5 bg-[#0f172a] text-white rounded-xl text-sm font-semibold hover:bg-[#1e293b] transition"
+          class="flex items-center gap-2 px-5 py-2.5 bg-blacky text-white rounded-xl text-sm font-semibold hover:bg-blacky/80 transition"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -17,7 +17,7 @@
       </div>
 
       <div v-if="loading" class="flex justify-center py-16">
-        <div class="animate-spin rounded-full h-8 w-8 border-2 border-[#0f172a] border-t-transparent"/>
+        <div class="animate-spin rounded-full h-8 w-8 border-2 border-blacky border-t-transparent"/>
       </div>
 
       <div v-else>
@@ -37,7 +37,7 @@
               <tr v-for="d in directeurs" :key="d.id" class="hover:bg-gray-50 transition">
                 <td class="px-5 py-4">
                   <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-xs font-bold text-purple-600 shrink-0">
+                    <div class="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center text-xs font-bold text-secondary shrink-0">
                       {{ d.prenom?.[0] }}{{ d.nom?.[0] }}
                     </div>
                     <p class="font-semibold text-gray-800 text-sm">{{ d.prenom }} {{ d.nom }}</p>
@@ -75,7 +75,7 @@
           <div v-for="d in directeurs" :key="d.id" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
             <div class="flex items-center justify-between mb-3">
               <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center text-xs font-bold text-purple-600">
+                <div class="w-9 h-9 rounded-full bg-secondary/10 flex items-center justify-center text-xs font-bold text-secondary">
                   {{ d.prenom?.[0] }}{{ d.nom?.[0] }}
                 </div>
                 <div>
@@ -143,7 +143,7 @@
             <div class="flex gap-3">
               <button @click="fermerModal" class="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-semibold">Annuler</button>
               <button @click="envoyerInvitation" :disabled="enregistrement"
-                class="flex-1 py-2.5 bg-[#0f172a] text-white rounded-xl text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+                class="flex-1 py-2.5 bg-blacky text-white rounded-xl text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <div v-if="enregistrement" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"/>
                 <span v-else>Envoyer</span>

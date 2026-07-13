@@ -4,7 +4,7 @@ export default defineEventHandler(async (event) => {
   const id    = event.context.params?.id
   if (!token) return { success: false, message: 'Non authentifié' }
   try {
-    return await $fetch(`${process.env.NUXT_PUBLIC_BACKEND_URL}/api/admin/users/${id}/toggle`, {
+    return await $fetch(`${process.env.NUXT_PUBLIC_BACKEND_URL}/api/admin/users/${id}/toggle-active`, {
       method: 'PATCH', headers: { Authorization: `Bearer ${token}` }
     })
   } catch (err) { return { success: false, message: err?.data?.message || 'Erreur' } }

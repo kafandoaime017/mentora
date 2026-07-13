@@ -11,7 +11,7 @@
         <div class="flex flex-wrap gap-2">
           <button v-for="f in filtres" :key="f.value" @click="filtreActif = f.value"
             class="px-4 py-2 rounded-xl text-sm font-semibold transition"
-            :class="filtreActif === f.value ? 'bg-[#0f172a] text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'"
+            :class="filtreActif === f.value ? 'bg-blacky text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'"
           >
             {{ f.label }} <span class="ml-1 opacity-60 text-xs">({{ getCount(f.value) }})</span>
           </button>
@@ -21,12 +21,12 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
           <input v-model="search" type="text" placeholder="Rechercher..."
-            class="w-full pl-11 pr-4 py-2.5 bg-white rounded-xl text-sm border border-gray-200 focus:outline-none focus:border-[#0f172a]"/>
+            class="w-full pl-11 pr-4 py-2.5 bg-white rounded-xl text-sm border border-gray-200 focus:outline-none focus:border-blacky"/>
         </div>
       </div>
 
       <div v-if="loading" class="flex justify-center py-16">
-        <div class="animate-spin rounded-full h-8 w-8 border-2 border-[#0f172a] border-t-transparent"/>
+        <div class="animate-spin rounded-full h-8 w-8 border-2 border-blacky border-t-transparent"/>
       </div>
 
       <div v-else>
@@ -129,9 +129,9 @@ const filtres = [
 ]
 
 const roleStyle = (role) => ({
-  directeur:  { bg: 'bg-purple-100', text: 'text-purple-700' },
-  professeur: { bg: 'bg-blue-100',   text: 'text-blue-700'   },
-  etudiant:   { bg: 'bg-green-100',  text: 'text-green-700'  }
+  directeur:  { bg: 'bg-secondary/10', text: 'text-secondary' },
+  professeur: { bg: 'bg-blacky/10',    text: 'text-blacky'    },
+  etudiant:   { bg: 'bg-primary/10',   text: 'text-primary'   }
 }[role] || { bg: 'bg-gray-100', text: 'text-gray-600' })
 
 const getCount = (role) => role === 'tous' ? users.value.length : users.value.filter(u => u.role === role).length

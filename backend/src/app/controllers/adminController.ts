@@ -554,6 +554,8 @@ export const registerViaInvitation = async (req: Request, res: Response, next: N
             email: invitation.email, motDePasse: hashedPassword,
             role: invitation.role as any,
             isVerified: false, isActive: true,
+            // Un directeur est rattaché directement à l'école (pas de filière/classe)
+            ecoleId: invitation.role === InvitationRole.DIRECTEUR ? invitation.ecoleId : null,
             verificationCode, verificationCodeExpires: verificationExpires
         })
         await userRepo.save(user)
@@ -564,19 +566,21 @@ export const registerViaInvitation = async (req: Request, res: Response, next: N
                 filiereId: invitation.filiereId, ecoleId: invitation.ecoleId
             })
             await etudiantRepo.save(profil)
-        } else {
+        } else if (invitation.role === InvitationRole.PROFESSEUR) {
             const profil = professeurRepo.create({
                 userId: user.id, filiereId: invitation.filiereId,
                 ecoleId: invitation.ecoleId, statut: 'active'
             })
             await professeurRepo.save(profil)
         }
+        // InvitationRole.DIRECTEUR : rien de plus à créer, ecoleId suffit sur le User
 
         invitation.used = true
         await invitationRepo.save(invitation)
 
-        const { envoyerCodeVerification } = require('../services/emailService')
-        await envoyerCodeVerification(invitation.email, verificationCode, invitation.prenom)
+        const { envoyerVerificationInvitation } = require('../services/emailService')
+        const verificationUrl = `${process.env.FRONTEND_URL}/auth/verify-invitation?code=${verificationCode}&email=${encodeURIComponent(invitation.email)}`
+        await envoyerVerificationInvitation(invitation.email, invitation.prenom, verificationUrl)
 
         res.json({
             success: true,

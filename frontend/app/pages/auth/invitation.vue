@@ -104,12 +104,12 @@
               <span class="text-xs text-gray-500">Rôle</span>
               <span
                 class="text-xs font-semibold px-2 py-0.5 rounded-full"
-                :class="invitation.role === 'etudiant' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'"
+                :class="invitation.role === 'etudiant' ? 'bg-primary/10 text-primary' : invitation.role === 'professeur' ? 'bg-secondary/10 text-secondary' : 'bg-blacky/10 text-blacky'"
               >
-                {{ invitation.role === 'etudiant' ? 'Étudiant' : 'Professeur' }}
+                {{ invitation.role === 'etudiant' ? 'Étudiant' : invitation.role === 'professeur' ? 'Professeur' : 'Directeur' }}
               </span>
             </div>
-            <div class="flex justify-between">
+            <div v-if="invitation.filiere" class="flex justify-between">
               <span class="text-xs text-gray-500">Filière</span>
               <span class="text-xs font-semibold text-gray-800">{{ invitation.filiere }}</span>
             </div>
@@ -206,7 +206,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 
 definePageMeta({ layout: false })
@@ -247,6 +247,41 @@ const loadInvitation = async () => {
   }
 }
 
+const dashboardParRole = {
+  etudiant:   '/students',
+  professeur: '/teachers',
+  directeur:  '/directeurs',
+  superadmin: '/superadmin'
+}
+
+const stopPolling = () => {
+  if (pollingInterval) {
+    clearInterval(pollingInterval)
+    pollingInterval = null
+  }
+}
+
+const startPolling = (email) => {
+  pollingInterval = setInterval(async () => {
+    try {
+      const result = await apiFetch(`/admin/invitations/check-verified?email=${encodeURIComponent(email)}`)
+      if (result.success && result.data?.isVerified) {
+        stopPolling()
+        const tokenCookie = useCookie('auth_token', { maxAge: 60 * 60 * 24 * 7 })
+        tokenCookie.value = result.data.token
+        localStorage.setItem('user', JSON.stringify(result.data.user))
+        emailVerified.value = true
+
+        setTimeout(() => {
+          navigateTo(dashboardParRole[result.data.user?.role] || '/auth')
+        }, 1200)
+      }
+    } catch {
+      // on ignore les erreurs de polling, on réessaie au prochain tick
+    }
+  }, 4000)
+}
+
 const registerViaInvitation = async () => {
   if (password.value.length < 8 || password.value !== passwordConfirm.value) return
   registering.value = true
@@ -256,11 +291,9 @@ const registerViaInvitation = async () => {
       body: { token: route.query.token, password: password.value }
     })
     if (result.success) {
-      // Rediriger vers la page de vérification email avec l'email en query
-      navigateTo({
-        path:  '/verify-email',
-        query: { email: invitation.value?.email }
-      })
+      pendingEmail.value = invitation.value?.email || result.data?.email || ''
+      success.value = true
+      startPolling(pendingEmail.value)
     } else {
       error.value = result.message || 'Erreur'
     }
@@ -272,4 +305,5 @@ const registerViaInvitation = async () => {
 }
 
 onMounted(() => loadInvitation())
+onUnmounted(() => stopPolling())
 </script>

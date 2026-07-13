@@ -290,7 +290,7 @@
     <nav class="md:hidden fixed bottom-0 left-0 right-0 z-50">
       <div class="w-full bg-white shadow-[0_-1px_2px_1px_rgba(0,0,0,0.10)]">
         <div class="grid grid-cols-5 h-16">
-          <nuxt-link to="/admin" class="flex flex-col items-center justify-center gap-0.5 transition-colors" :class="$route.path === '/admin' ? 'text-blacky' : 'text-gray-400'">
+          <nuxt-link to="/directeurs" class="flex flex-col items-center justify-center gap-0.5 transition-colors" :class="$route.path === '/directeurs' ? 'text-blacky' : 'text-gray-400'">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m4 12 8-8 8 8M6 10.5V19a1 1 0 001 1h3v-3a1 1 0 011-1h2a1 1 0 011 1v3h3a1 1 0 001-1v-8.5"/></svg>
             <span class="text-[10px] font-medium">Accueil</span>
           </nuxt-link>

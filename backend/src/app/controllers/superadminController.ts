@@ -7,8 +7,8 @@ import { Classe } from '../models/Classe'
 import { Session } from '../models/Session'
 import { EtudiantProfil } from '../models/EtudiantProfil'
 import { ProfesseurProfil } from '../models/ProfesseurProfil'
-import { Invitation } from '../models/Invitation'
-import crypto from 'crypto'
+import { Invitation, InvitationRole } from '../models/Invitation'
+import { v4 as uuidv4 } from 'uuid'
 import { envoyerInvitation } from '../services/emailService'
 
 interface AuthRequest extends Request { user?: User }
@@ -24,6 +24,7 @@ const ecoleRepo      = AppDataSource.getRepository(Ecole)
 const sessionRepo    = AppDataSource.getRepository(Session)
 const profilRepo     = AppDataSource.getRepository(EtudiantProfil)
 const profProfRepo   = AppDataSource.getRepository(ProfesseurProfil)
+const invitationRepo = AppDataSource.getRepository(Invitation)
 
 // ─── Stats globales ───────────────────────────────────────────────────────────
 export const getStats = async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -146,23 +147,38 @@ export const inviterDirecteur = async (req: AuthRequest, res: Response, next: Ne
       res.status(404).json({ success: false, message: 'École non trouvée' }); return
     }
 
-    const token     = crypto.randomBytes(32).toString('hex')
+    // Même mécanisme que les invitations prof/étudiant (table Invitation),
+    // pour que le lien envoyé par email pointe vers un token réellement vérifiable.
+    const existingInvit = await invitationRepo.findOne({ where: { email, used: false } })
     const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000)
 
-    const directeur = userRepo.create({
-      nom, prenom, email,
-      role:                    UserRole.DIRECTEUR,
-      isVerified:              false,
-      isActive:                true,
-      verificationCode:        token,
-      verificationCodeExpires: expiresAt
-    })
-    await userRepo.save(directeur)
+    let token: string
+    if (existingInvit) {
+      token                   = uuidv4()
+      existingInvit.token     = token
+      existingInvit.expiresAt = expiresAt
+      existingInvit.nom       = nom
+      existingInvit.prenom    = prenom
+      existingInvit.ecoleId   = ecoleId
+      await invitationRepo.save(existingInvit)
+    } else {
+      token = uuidv4()
+      const invitation = invitationRepo.create({
+        email, nom, prenom,
+        role:      InvitationRole.DIRECTEUR,
+        filiereId: null,
+        classeId:  null,
+        ecoleId,
+        token,
+        expiresAt
+      })
+      await invitationRepo.save(invitation)
+    }
 
     const invitationUrl = `${process.env.FRONTEND_URL}/auth/invitation?token=${token}`
-    await envoyerInvitation(email, prenom, nom, 'directeur', ecole.nom, null, ecole.nom, invitationUrl, expiresAt)
+    await envoyerInvitation(email, prenom, nom, 'directeur', '', null, ecole.nom, invitationUrl, expiresAt)
 
-    res.json({ success: true, message: 'Invitation envoyée au directeur' })
+    res.json({ success: true, message: 'Invitation envoyée au directeur', data: { token, expiresAt, invitationUrl } })
   } catch (err) { next(err) }
 }
 
