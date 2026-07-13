@@ -1083,6 +1083,69 @@ export const adminToggleResultatsVisibles = async (req: AuthRequest, res: Respon
 }
 
 // ==================== EXPORT PDF DES RÉSULTATS (directeur) ====================
+// ─── Helper : tableau PDF avec bordures et espacement ──────────────────────
+type PdfTableColumn = { label: string; x: number; width: number; align?: 'left' | 'center' | 'right' }
+
+function drawPdfTable(
+    doc: PDFKit.PDFDocument,
+    columns: PdfTableColumn[],
+    rows: string[][],
+    startY: number,
+    opts: { rowHeight?: number; pageTop?: number; pageBottom?: number } = {}
+): number {
+    const rowHeight    = opts.rowHeight ?? 24
+    const pageTop      = opts.pageTop ?? 40
+    const pageBottom   = opts.pageBottom ?? 760
+    const tableLeft    = columns[0].x
+    const tableRight   = columns[columns.length - 1].x + columns[columns.length - 1].width
+    const padX = 6
+    const padY = 8
+
+    const drawGridRow = (yTop: number) => {
+        doc.lineWidth(0.75).strokeColor('#bbb')
+        doc.rect(tableLeft, yTop, tableRight - tableLeft, rowHeight).stroke()
+        columns.forEach(col => {
+            if (col.x > tableLeft) {
+                doc.moveTo(col.x, yTop).lineTo(col.x, yTop + rowHeight).stroke()
+            }
+        })
+    }
+
+    const writeCells = (values: string[], yTop: number, bold = false) => {
+        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9).fillColor('#000')
+        columns.forEach((col, i) => {
+            doc.text(values[i] ?? '', col.x + padX, yTop + padY, {
+                width: col.width - padX * 2,
+                align: col.align || 'left'
+            })
+        })
+    }
+
+    const drawHeader = (yTop: number) => {
+        doc.rect(tableLeft, yTop, tableRight - tableLeft, rowHeight).fillColor('#f0f0f0').fill()
+        writeCells(columns.map(c => c.label), yTop, true)
+        drawGridRow(yTop)
+    }
+
+    let y = startY
+    drawHeader(y)
+    y += rowHeight
+
+    rows.forEach(row => {
+        if (y + rowHeight > pageBottom) {
+            doc.addPage()
+            y = pageTop
+            drawHeader(y)
+            y += rowHeight
+        }
+        writeCells(row, y)
+        drawGridRow(y)
+        y += rowHeight
+    })
+
+    return y
+}
+
 export const adminExportResultsPdf = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const session = await getEcoleScopedSession(req, res)
@@ -1128,35 +1191,26 @@ export const adminExportResultsPdf = async (req: AuthRequest, res: Response, nex
         doc.text(`Moyenne de la classe : ${moyenne.toFixed(2)} / 20`)
         doc.moveDown(1)
 
-        const colX = { rang: 40, nom: 80, email: 260, score: 420, note: 480 }
-        const drawRow = (y: number, rang: string, nom: string, email: string, score: string, note: string, bold = false) => {
-            doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9)
-            doc.text(rang, colX.rang, y, { width: 35 })
-            doc.text(nom, colX.nom, y, { width: 170 })
-            doc.text(email, colX.email, y, { width: 150 })
-            doc.text(score, colX.score, y, { width: 55 })
-            doc.text(note, colX.note, y, { width: 70 })
-        }
+        const columns: PdfTableColumn[] = [
+            { label: '#',       x: 40,  width: 40,  align: 'center' },
+            { label: 'Nom',     x: 80,  width: 180 },
+            { label: 'Email',   x: 260, width: 160 },
+            { label: 'Score',   x: 420, width: 60,  align: 'center' },
+            { label: 'Note/20', x: 480, width: 75,  align: 'center' },
+        ]
 
-        let y = doc.y
-        drawRow(y, '#', 'Nom', 'Email', 'Score', 'Note/20', true)
-        y += 16
-        doc.moveTo(40, y).lineTo(555, y).strokeColor('#ccc').stroke()
-        y += 6
-
-        participants.forEach((p, i) => {
-            if (y > 760) { doc.addPage(); y = 40 }
+        const rows = participants.map((p, i) => {
             const noteSur20 = totalPoints > 0 ? Math.round(((p.score || 0) / totalPoints) * 20 * 100) / 100 : 0
-            drawRow(
-                y,
+            return [
                 `${i + 1}`,
                 `${p.etudiant.prenom} ${p.etudiant.nom}`,
                 p.etudiant.email,
                 p.statut === ParticipantStatus.TERMINE ? `${p.score || 0}` : '-',
                 p.statut === ParticipantStatus.TERMINE ? `${noteSur20}/20` : p.statut
-            )
-            y += 16
+            ]
         })
+
+        drawPdfTable(doc, columns, rows, doc.y)
 
         doc.end()
     } catch (err) { next(err) }
@@ -1314,8 +1368,6 @@ export const adminExportUserHistoryPdf = async (req: AuthRequest, res: Response,
     }
     doc.moveDown(1)
 
-    const colX = { rang: 40, titre: 80, classe: 250, date: 350, statut: 440, note: 500 }
-
     if (user.role === UserRole.ETUDIANT) {
       const participants = await participantRepo
         .createQueryBuilder('p')
@@ -1349,38 +1401,30 @@ export const adminExportUserHistoryPdf = async (req: AuthRequest, res: Response,
       doc.font('Helvetica-Bold').fontSize(11).text('Historique des sessions')
       doc.moveDown(0.3)
 
-      const drawRow = (y: number, titre: string, classe: string, date: string, statut: string, note: string, bold = false) => {
-        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9)
-        doc.text(titre, colX.titre, y, { width: 165 })
-        doc.text(classe, colX.classe, y, { width: 95 })
-        doc.text(date, colX.date, y, { width: 85 })
-        doc.text(statut, colX.statut, y, { width: 55 })
-        doc.text(note, colX.note, y, { width: 60 })
-      }
+      const columns: PdfTableColumn[] = [
+        { label: 'Session',          x: 40,  width: 145 },
+        { label: 'Filière / Classe', x: 185, width: 130 },
+        { label: 'Date',             x: 315, width: 85,  align: 'center' },
+        { label: 'Statut',           x: 400, width: 70,  align: 'center' },
+        { label: 'Note',             x: 470, width: 85,  align: 'center' },
+      ]
 
-      let y = doc.y
-      drawRow(y, 'Session', 'Filière / Classe', 'Date', 'Statut', 'Note', true)
-      y += 16
-      doc.moveTo(40, y).lineTo(555, y).strokeColor('#ccc').stroke()
-      y += 6
-
-      participants.forEach(p => {
-        if (y > 760) { doc.addPage(); y = 40 }
+      const rows = participants.map(p => {
         const totalPoints = p.session.questions?.reduce((sum, q) => sum + q.points, 0) || 0
         const noteSur20 = totalPoints > 0 ? Math.round(((p.score || 0) / totalPoints) * 20 * 100) / 100 : null
         const statutLabel = p.statut === ParticipantStatus.TERMINE ? 'Terminé' : p.statut === ParticipantStatus.PRESENT ? 'En cours' : 'Inscrit'
-        drawRow(
-          y,
+        return [
           p.session.titre,
           `${p.session.filiere?.nom || '-'} / ${p.session.classe?.nom || '-'}`,
           new Date(p.session.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }),
           statutLabel,
           noteSur20 !== null ? `${noteSur20}/20` : '-'
-        )
-        y += 16
+        ]
       })
 
-      if (participants.length === 0) {
+      if (participants.length > 0) {
+        drawPdfTable(doc, columns, rows, doc.y)
+      } else {
         doc.font('Helvetica').fontSize(10).fillColor('#666').text('Aucune session pour le moment.')
       }
     } else {
@@ -1407,35 +1451,25 @@ export const adminExportUserHistoryPdf = async (req: AuthRequest, res: Response,
       doc.font('Helvetica-Bold').fontSize(11).text('Sessions créées')
       doc.moveDown(0.3)
 
-      const drawRow = (y: number, titre: string, classe: string, date: string, statut: string, participantsCol: string, bold = false) => {
-        doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9)
-        doc.text(titre, colX.titre, y, { width: 165 })
-        doc.text(classe, colX.classe, y, { width: 95 })
-        doc.text(date, colX.date, y, { width: 85 })
-        doc.text(statut, colX.statut, y, { width: 55 })
-        doc.text(participantsCol, colX.note, y, { width: 60 })
-      }
+      const columns: PdfTableColumn[] = [
+        { label: 'Session',          x: 40,  width: 145 },
+        { label: 'Filière / Classe', x: 185, width: 130 },
+        { label: 'Date',             x: 315, width: 85,  align: 'center' },
+        { label: 'Statut',           x: 400, width: 70,  align: 'center' },
+        { label: 'Participants',     x: 470, width: 85,  align: 'center' },
+      ]
 
-      let y = doc.y
-      drawRow(y, 'Session', 'Filière / Classe', 'Date', 'Statut', 'Participants', true)
-      y += 16
-      doc.moveTo(40, y).lineTo(555, y).strokeColor('#ccc').stroke()
-      y += 6
+      const rows = sessions.map((s, i) => [
+        s.titre,
+        `${s.filiere?.nom || '-'} / ${s.classe?.nom || '-'}`,
+        new Date(s.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }),
+        s.status,
+        `${nbParticipantsParSession[i]}`
+      ])
 
-      sessions.forEach((s, i) => {
-        if (y > 760) { doc.addPage(); y = 40 }
-        drawRow(
-          y,
-          s.titre,
-          `${s.filiere?.nom || '-'} / ${s.classe?.nom || '-'}`,
-          new Date(s.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }),
-          s.status,
-          `${nbParticipantsParSession[i]}`
-        )
-        y += 16
-      })
-
-      if (sessions.length === 0) {
+      if (sessions.length > 0) {
+        drawPdfTable(doc, columns, rows, doc.y)
+      } else {
         doc.font('Helvetica').fontSize(10).fillColor('#666').text('Aucune session créée pour le moment.')
       }
     }
