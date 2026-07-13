@@ -18,21 +18,21 @@
         <div v-else>
 
           <!-- Bannière plan -->
-          <div v-if="planInfo" class="mb-6 rounded-xl p-5 bg-blacky flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div v-if="planInfo" class="mb-6 rounded-lg p-5 bg-blacky flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
               <p class="text-white font-body font-bold text-sm uppercase tracking-wide">Plan {{ planInfo.plan }}</p>
               <p v-if="planInfo.is_trial" class="text-white/80 font-body text-sm mt-1">
                 Période d'essai : {{ planInfo.trial_days_left }} jour{{ planInfo.trial_days_left > 1 ? 's' : '' }} restant{{ planInfo.trial_days_left > 1 ? 's' : '' }}
               </p>
             </div>
-            <nuxt-link to="/directeurs/abonnement" class="shrink-0 bg-white text-blacky font-body font-semibold text-sm px-4 py-2 rounded-xl hover:bg-white/90 transition-colors">
+            <nuxt-link to="/directeurs/abonnement" class="shrink-0 bg-white text-blacky font-body font-semibold text-sm px-4 py-2 rounded-lg hover:bg-white/90 transition-colors">
               Gérer l'abonnement
             </nuxt-link>
           </div>
 
           <!-- KPI Cards -->
           <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
-            <div class="bg-primary rounded-xl p-5">
+            <div class="bg-primary rounded-lg p-5">
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-white font-body text-sm mb-1">Étudiants</p>
@@ -46,7 +46,7 @@
                 </div>
               </div>
             </div>
-            <div class="bg-danger rounded-xl p-5">
+            <div class="bg-danger rounded-lg p-5">
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-white font-body text-sm">Professeurs</p>
@@ -60,7 +60,7 @@
                 </div>
               </div>
             </div>
-            <div class="bg-blue-600 rounded-xl p-5">
+            <div class="bg-blue-600 rounded-lg p-5">
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-white font-body text-sm">Filières</p>
@@ -74,7 +74,7 @@
                 </div>
               </div>
             </div>
-            <div class="bg-purple-600 rounded-xl p-5">
+            <div class="bg-purple-600 rounded-lg p-5">
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-white font-body text-sm">Classes</p>
@@ -88,7 +88,7 @@
                 </div>
               </div>
             </div>
-            <div class="bg-secondary rounded-xl p-5">
+            <div class="bg-secondary rounded-lg p-5">
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-white font-body text-sm">Sessions QCM</p>
@@ -107,11 +107,11 @@
           <!-- Profs en attente / Invitations en attente -->
           <div v-if="profsPending.length || invitationsEnAttente.length" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
 
-            <div v-if="profsPending.length" class="bg-white rounded-xl shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] p-5">
+            <div v-if="profsPending.length" class="bg-white rounded-lg border border-gray-200 p-5">
               <h3 class="font-body font-bold text-[#1e3a2f] mb-3">Professeurs en attente de validation</h3>
               <div class="space-y-2">
                 <div v-for="p in profsPending" :key="p.id" class="flex items-center justify-between gap-2 p-2 rounded-lg bg-[#f5f0e8]">
-                  <span class="text-sm font-body text-gray-700 truncate">{{ p.nom }} {{ p.prenom }}</span>
+                  <span class="text-sm font-body text-black truncate">{{ p.nom }} {{ p.prenom }}</span>
                   <button
                     @click="activateProf(p.id)"
                     class="shrink-0 bg-primary text-white text-xs font-body font-semibold px-3 py-1.5 rounded-lg hover:bg-primary/80 transition-colors"
@@ -122,11 +122,11 @@
               </div>
             </div>
 
-            <div v-if="invitationsEnAttente.length" class="bg-white rounded-xl shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] p-5">
+            <div v-if="invitationsEnAttente.length" class="bg-white rounded-lg border border-gray-200 p-5">
               <h3 class="font-body font-bold text-[#1e3a2f] mb-3">Invitations en attente ({{ invitationsEnAttente.length }})</h3>
               <div class="space-y-2">
                 <div v-for="inv in invitationsEnAttente.slice(0, 4)" :key="inv.id" class="flex items-center justify-between gap-2 p-2 rounded-lg bg-[#f5f0e8]">
-                  <span class="text-sm font-body text-gray-700 truncate">{{ inv.nom }} {{ inv.prenom }} · {{ inv.email }}</span>
+                  <span class="text-sm font-body text-black truncate">{{ inv.nom }} {{ inv.prenom }} · {{ inv.email }}</span>
                   <span class="shrink-0 text-xs font-body font-semibold px-2 py-0.5 rounded-full bg-secondary/10 text-secondary">{{ inv.role }}</span>
                 </div>
               </div>
@@ -138,11 +138,11 @@
           </div>
 
           <!-- Dernières sessions -->
-          <div v-if="dernieresSessions.length" class="bg-white rounded-xl shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] p-5 mb-6">
+          <div v-if="dernieresSessions.length" class="bg-white rounded-lg border border-gray-200 p-5 mb-6">
             <h3 class="font-body font-bold text-[#1e3a2f] mb-3">Dernières sessions</h3>
             <div class="space-y-2">
               <div v-for="s in dernieresSessions" :key="s.id" class="flex items-center justify-between gap-2 p-2 rounded-lg bg-[#f5f0e8]">
-                <span class="text-sm font-body text-gray-700 truncate">{{ s.titre }}</span>
+                <span class="text-sm font-body text-black truncate">{{ s.titre }}</span>
                 <span class="shrink-0 text-xs font-body font-semibold px-2 py-0.5 rounded-full bg-blacky/10 text-blacky">{{ s.status }}</span>
               </div>
             </div>
@@ -161,7 +161,7 @@
 
               <!-- Étudiant -->
               <nuxt-link to="/directeurs/invitations"
-                class="flex items-center gap-2 p-4 bg-blacky hover:bg-blacky/80 rounded-xl transition-colors">
+                class="flex items-center gap-2 p-4 bg-blacky hover:bg-blacky/80 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-white shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
@@ -173,7 +173,7 @@
 
               <!-- Professeur -->
               <nuxt-link to="/directeurs/invitations"
-                class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-xl transition-colors">
+                class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-white shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M16 14a4 4 0 10-8 0m8 0v6m0 0H8m8 0H8" />
@@ -186,7 +186,7 @@
 
               <!-- Filière -->
               <nuxt-link to="/directeurs/structure"
-                class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-xl transition-colors">
+                class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-white shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18" />
                 </svg>
@@ -198,7 +198,7 @@
 
               <!-- Classe -->
               <nuxt-link to="/directeurs/structure"
-                class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-xl transition-colors">
+                class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-white shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -331,7 +331,4 @@ onMounted(() => {
   background-color: #9333ea;
 }
 
-.rounded-xl {
-  border-radius: 0.75rem;
-}
 </style>

@@ -3,8 +3,8 @@
     <SuperadminLayout>
       <div>
         <div class="mb-6">
-          <h1 class="text-2xl font-body font-extrabold text-gray-800">Abonnements</h1>
-          <p class="text-sm font-body text-gray-500 mt-1">Répartition des plans et suivi des renouvellements</p>
+          <h1 class="text-2xl font-body font-extrabold text-black">Abonnements</h1>
+          <p class="text-sm font-body text-black mt-1">Répartition des plans et suivi des renouvellements</p>
         </div>
 
         <div v-if="loading" class="bg-white shadow rounded-lg p-12 text-center">
@@ -14,17 +14,17 @@
         <div v-else>
           <!-- Répartition des plans -->
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div class="bg-gray-500 rounded-xl p-5">
+            <div class="bg-black rounded-lg p-5">
               <p class="text-xs font-body font-semibold text-white/70 uppercase">Gratuit</p>
               <p class="text-3xl font-body font-extrabold text-white mt-1">{{ repartition.gratuit }}</p>
               <p class="text-xs font-body text-white/60 mt-1">école(s)</p>
             </div>
-            <div class="bg-blacky rounded-xl p-5">
+            <div class="bg-blacky rounded-lg p-5">
               <p class="text-xs font-body font-semibold text-white/70 uppercase">Starter</p>
               <p class="text-3xl font-body font-extrabold text-white mt-1">{{ repartition.starter }}</p>
               <p class="text-xs font-body text-white/60 mt-1">école(s) · ~{{ repartition.starter * 39 }}€/mois</p>
             </div>
-            <div class="bg-secondary rounded-xl p-5">
+            <div class="bg-secondary rounded-lg p-5">
               <p class="text-xs font-body font-semibold text-white/70 uppercase">Pro</p>
               <p class="text-3xl font-body font-extrabold text-white mt-1">{{ repartition.pro }}</p>
               <p class="text-xs font-body text-white/60 mt-1">école(s) · ~{{ repartition.pro * 89 }}€/mois</p>
@@ -32,11 +32,11 @@
           </div>
 
           <!-- Estimation revenu récurrent -->
-          <div class="bg-white rounded-xl shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] p-5 mb-6 flex items-center justify-between">
+          <div class="bg-white rounded-lg border border-gray-200 p-5 mb-6 flex items-center justify-between">
             <div>
-              <p class="text-xs font-body font-semibold text-gray-400 uppercase">Revenu récurrent mensuel estimé</p>
-              <p class="text-2xl font-body font-extrabold text-gray-800 mt-1">{{ mrrEstime }}€ / mois</p>
-              <p class="text-[11px] font-body text-gray-400 mt-1">Basé sur les tarifs affichés en mensuel — hors remises annuelles et taxes</p>
+              <p class="text-xs font-body font-semibold text-black uppercase">Revenu récurrent mensuel estimé</p>
+              <p class="text-2xl font-body font-extrabold text-black mt-1">{{ mrrEstime }}€ / mois</p>
+              <p class="text-[11px] font-body text-black mt-1">Basé sur les tarifs affichés en mensuel — hors remises annuelles et taxes</p>
             </div>
             <svg class="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 10v2m0-2c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -44,16 +44,16 @@
           </div>
 
           <!-- Expirations proches -->
-          <div v-if="expirationsProches.length > 0" class="bg-white rounded-xl shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] p-5 mb-6">
-            <h3 class="font-body font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
+          <div v-if="expirationsProches.length > 0" class="bg-white rounded-lg border border-gray-200 p-5 mb-6">
+            <h3 class="font-body font-bold text-black text-sm mb-3 flex items-center gap-2">
               <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               Renouvellements dans les 7 jours
             </h3>
             <div class="space-y-2">
-              <div v-for="e in expirationsProches" :key="e.id" class="flex items-center justify-between bg-[#f5f0e8] rounded-xl px-4 py-2.5">
+              <div v-for="e in expirationsProches" :key="e.id" class="flex items-center justify-between bg-[#f5f0e8] rounded-lg px-4 py-2.5">
                 <div>
-                  <p class="text-sm font-body font-semibold text-gray-800">{{ e.nom }}</p>
-                  <p class="text-xs font-body text-gray-500">Plan {{ e.plan }}</p>
+                  <p class="text-sm font-body font-semibold text-black">{{ e.nom }}</p>
+                  <p class="text-xs font-body text-black">Plan {{ e.plan }}</p>
                 </div>
                 <span class="text-xs font-body font-bold text-yellow-700">{{ e.joursRestants }} jour(s)</span>
               </div>
@@ -61,7 +61,7 @@
           </div>
 
           <!-- Tableau des écoles -->
-          <div class="bg-white rounded-sm shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] overflow-hidden">
+          <div class="bg-white rounded-sm border border-gray-200 overflow-hidden">
             <table class="w-full">
               <thead class="bg-blacky">
                 <tr>
@@ -75,8 +75,8 @@
               <tbody class="divide-y divide-gray-100">
                 <tr v-for="e in ecoles" :key="e.id" class="hover:bg-gray-50 transition">
                   <td class="px-5 py-4">
-                    <p class="font-body font-semibold text-gray-800 text-sm">{{ e.nom }}</p>
-                    <p class="text-xs font-body text-gray-400">{{ e.ville || 'Ville non renseignée' }}</p>
+                    <p class="font-body font-semibold text-black text-sm">{{ e.nom }}</p>
+                    <p class="text-xs font-body text-black">{{ e.ville || 'Ville non renseignée' }}</p>
                   </td>
                   <td class="px-5 py-4 text-center">
                     <span class="px-2.5 py-1 rounded-full text-xs font-body font-semibold" :class="planStyle(e.plan)">{{ e.plan }}</span>
@@ -88,19 +88,19 @@
                     </span>
                   </td>
                   <td class="px-5 py-4 text-center text-xs font-body">
-                    <span v-if="!e.plan_expire_at" class="text-gray-400">—</span>
+                    <span v-if="!e.plan_expire_at" class="text-black">—</span>
                     <span v-else-if="e.expire" class="text-red-500 font-semibold">Expiré</span>
                     <span v-else-if="e.expireBientot" class="text-yellow-600 font-semibold">{{ e.joursRestants }} j restants</span>
-                    <span v-else class="text-gray-500">{{ new Date(e.plan_expire_at).toLocaleDateString('fr-FR') }}</span>
+                    <span v-else class="text-black">{{ new Date(e.plan_expire_at).toLocaleDateString('fr-FR') }}</span>
                   </td>
                   <td class="px-5 py-4 text-center">
                     <span v-if="e.aAbonnementStripe" class="text-green-600 text-xs font-body font-semibold">Actif</span>
-                    <span v-else class="text-gray-300 text-xs font-body">—</span>
+                    <span v-else class="text-black text-xs font-body">—</span>
                   </td>
                 </tr>
               </tbody>
             </table>
-            <div v-if="ecoles.length === 0" class="p-16 text-center text-gray-400 font-body text-sm">Aucune école</div>
+            <div v-if="ecoles.length === 0" class="p-16 text-center text-black font-body text-sm">Aucune école</div>
           </div>
         </div>
       </div>
@@ -123,10 +123,10 @@ const expirationsProches  = ref([])
 const mrrEstime = computed(() => repartition.value.starter * 39 + repartition.value.pro * 89)
 
 const planStyle = (plan) => ({
-  gratuit: 'bg-gray-200 text-gray-600',
+  gratuit: 'bg-gray-200 text-black',
   starter: 'bg-blacky/10 text-blacky',
   pro:     'bg-secondary/10 text-secondary'
-}[plan] || 'bg-gray-200 text-gray-600')
+}[plan] || 'bg-gray-200 text-black')
 
 onMounted(async () => {
   loading.value = true

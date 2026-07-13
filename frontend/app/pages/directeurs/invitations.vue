@@ -4,10 +4,10 @@
       <div class="max-w-8xl mx-auto">
 
         <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <h1 class="text-2xl font-extrabold text-gray-800 font-body">Invitations</h1>
+          <h1 class="text-2xl font-extrabold text-black font-body">Invitations</h1>
           <div class="flex items-center gap-2">
             <!-- Import CSV -->
-            <!-- <label class="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-xl text-sm font-body font-semibold hover:bg-gray-50 transition-colors cursor-pointer">
+            <!-- <label class="flex items-center gap-2 bg-white border border-gray-300 text-black px-4 py-2 rounded-lg text-sm font-body font-semibold hover:bg-gray-50 transition-colors cursor-pointer">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
               </svg>
@@ -17,7 +17,7 @@
             <!-- Nouvelle invitation -->
             <button
               @click="showForm = true"
-              class="flex items-center gap-2 bg-[#024864] font-body text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blacky/80 transition-colors"
+              class="flex items-center gap-2 bg-[#024864] font-body text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blacky/80 transition-colors"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -33,7 +33,7 @@
             v-for="f in ['tous', 'etudiant', 'professeur', 'en_attente', 'expirée', 'utilisée']" :key="f"
             @click="filtre = f"
             class="px-3 font-body py-1.5 rounded-sm text-sm font-semibold transition-colors"
-            :class="filtre === f ? 'bg-[#024864] text-white' : 'bg-white text-gray-900 hover:bg-gray-100'"
+            :class="filtre === f ? 'bg-[#024864] text-white' : 'bg-white text-black hover:bg-gray-100'"
           >
             {{ f === 'tous' ? 'Toutes'
              : f === 'en_attente' ? 'En attente'
@@ -44,12 +44,12 @@
         </div>
 
         <!-- Liste -->
-        <div class="bg-white rounded-sm shadow-[1px_1px_3px_1px_rgba(0,0,0,0.08)] overflow-hidden">
+        <div class="bg-white rounded-sm border border-gray-200 overflow-hidden">
           <div v-if="loading" class="p-12 text-center">
             <div class="animate-spin rounded-full h-6 w-6 border-2 border-[#3730a3] border-t-transparent mx-auto"/>
           </div>
 
-          <div v-else-if="filteredInvitations.length === 0" class="p-12 text-center text-gray-800 text-md font-body">
+          <div v-else-if="filteredInvitations.length === 0" class="p-12 text-center text-black text-md font-body">
             Aucune invitation
           </div>
 
@@ -68,8 +68,8 @@
 
                 <!-- Personne -->
                 <td class="px-4 py-3 border border-gray-200">
-                  <p class="text-sm font-body font-semibold text-gray-800">{{ inv.prenom }} {{ inv.nom }}</p>
-                  <!-- <p class="text-xs font-body text-gray-400">{{ inv.email }}</p> -->
+                  <p class="text-sm font-body font-semibold text-black">{{ inv.prenom }} {{ inv.nom }}</p>
+                  <!-- <p class="text-xs font-body text-black">{{ inv.email }}</p> -->
                 </td>
 
                 <!-- Rôle -->
@@ -84,8 +84,8 @@
 
                 <!-- Classe / Filière -->
                 <td class="px-4 py-3 hidden md:table-cell border border-gray-200">
-                  <p class="text-sm font-bold font-body text-gray-900">{{ inv.filiere }}</p>
-                  <p v-if="inv.classe" class="text-xs font-body italic text-gray-500">{{ inv.classe }}</p>
+                  <p class="text-sm font-bold font-body text-black">{{ inv.filiere }}</p>
+                  <p v-if="inv.classe" class="text-xs font-body italic text-black">{{ inv.classe }}</p>
                 </td>
 
                 <!-- Statut -->
@@ -110,7 +110,7 @@
                     <button
                       v-if="!inv.used && !inv.expired"
                       @click="copyLink(inv)"
-                      class="inline-flex items-center gap-1 text-xs font-body font-semibold px-2.5 py-1.5 rounded-lg bg-gray-300 text-gray-900 hover:bg-gray-200 transition-colors"
+                      class="inline-flex items-center gap-1 text-xs font-body font-semibold px-2.5 py-1.5 rounded-lg bg-gray-300 text-black hover:bg-gray-200 transition-colors"
                       title="Copier le lien"
                     >
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -169,52 +169,52 @@
 
       <!-- Modal nouvelle invitation -->
       <div v-if="showForm" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" @click.self="showForm = false">
-        <div class="bg-white rounded-xl w-full max-w-lg p-6">
-          <h3 class="font-extrabold text-gray-900 text-center text-xl font-body mb-4">Créer une nouvelle invitation</h3>
+        <div class="bg-white rounded-lg w-full max-w-lg p-6">
+          <h3 class="font-extrabold text-black text-center text-xl font-body mb-4">Créer une nouvelle invitation</h3>
           <div class="space-y-3">
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block font-body text-xs font-semibold text-gray-600 mb-1">Prénom *</label>
-                <input v-model="form.prenom" type="text" placeholder="Jean" class="w-full px-3 py-2.5 bg-input rounded-xl text-sm font-body focus:outline-none"/>
+                <label class="block font-body text-xs font-semibold text-black mb-1">Prénom *</label>
+                <input v-model="form.prenom" type="text" placeholder="Jean" class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
               </div>
               <div>
-                <label class="block font-body text-xs font-semibold text-gray-600 mb-1">Nom *</label>
-                <input v-model="form.nom" type="text" placeholder="Dupont" class="w-full px-3 py-2.5 bg-input rounded-xl text-sm font-body focus:outline-none"/>
+                <label class="block font-body text-xs font-semibold text-black mb-1">Nom *</label>
+                <input v-model="form.nom" type="text" placeholder="Dupont" class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
               </div>
             </div>
             <div>
-              <label class="block font-body text-xs font-semibold text-gray-600 mb-1">Email *</label>
-              <input v-model="form.email" type="email" placeholder="jean.dupont@email.com" class="w-full px-3 py-2.5 bg-input rounded-xl text-sm font-body focus:outline-none"/>
+              <label class="block font-body text-xs font-semibold text-black mb-1">Email *</label>
+              <input v-model="form.email" type="email" placeholder="jean.dupont@email.com" class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
             </div>
             <div>
-              <label class="block font-body text-xs font-semibold text-gray-600 mb-1">Rôle *</label>
-              <select v-model="form.role" class="w-full px-3 py-2.5 bg-input rounded-xl text-sm font-body focus:outline-none">
+              <label class="block font-body text-xs font-semibold text-black mb-1">Rôle *</label>
+              <select v-model="form.role" class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none">
                 <option value="">Sélectionner</option>
                 <option value="etudiant">Étudiant</option>
                 <option value="professeur">Professeur</option>
               </select>
             </div>
             <div>
-              <label class="block font-body text-xs font-semibold text-gray-600 mb-1">Filière *</label>
-              <select v-model="form.filiereId" @change="form.classeId = ''" class="w-full px-3 py-2.5 bg-input rounded-xl text-sm font-body focus:outline-none">
+              <label class="block font-body text-xs font-semibold text-black mb-1">Filière *</label>
+              <select v-model="form.filiereId" @change="form.classeId = ''" class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none">
                 <option value="">Sélectionner</option>
                 <option v-for="f in filieres" :key="f.id" :value="f.id">{{ f.nom }}</option>
               </select>
             </div>
             <div v-if="form.role === 'etudiant'">
-              <label class="block font-body text-xs font-semibold text-gray-600 mb-1">Classe *</label>
-              <select v-model="form.classeId" class="w-full px-3 py-2.5 bg-input rounded-xl text-sm font-body focus:outline-none">
+              <label class="block font-body text-xs font-semibold text-black mb-1">Classe *</label>
+              <select v-model="form.classeId" class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none">
                 <option value="">Sélectionner</option>
                 <option v-for="c in classesFiltrees" :key="c.id" :value="c.id">{{ c.nom }}</option>
               </select>
             </div>
           </div>
           <div class="flex gap-3 mt-5">
-            <button @click="showForm = false" class="flex-1 font-body py-2.5 bg-gray-200 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-semibold">Annuler</button>
+            <button @click="showForm = false" class="flex-1 font-body py-2.5 bg-gray-200 hover:bg-gray-200 text-black rounded-lg text-sm font-semibold">Annuler</button>
             <button
               @click="sendInvitation"
               :disabled="sendingInvitation"
-              class="flex-1 font-body py-2.5 bg-[#024864] hover:bg-blacky/80 text-white rounded-xl text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+              class="flex-1 font-body py-2.5 bg-[#024864] hover:bg-blacky/80 text-white rounded-lg text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <div v-if="sendingInvitation" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"/>
               {{ sendingInvitation ? 'Envoi...' : "Envoyer l'invitation" }}
@@ -225,16 +225,16 @@
 
       <!-- Modal import CSV -->
       <div v-if="showImportModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="showImportModal = false">
-        <div class="bg-white rounded-xl w-full max-w-3xl p-6 max-h-[85vh] flex flex-col">
+        <div class="bg-white rounded-lg w-full max-w-3xl p-6 max-h-[85vh] flex flex-col">
           <div class="flex items-center justify-between mb-1">
-            <h3 class="font-extrabold text-gray-900 text-xl font-body">Importer des invitations</h3>
-            <button @click="showImportModal = false" class="text-gray-400 hover:text-gray-600">
+            <h3 class="font-extrabold text-black text-xl font-body">Importer des invitations</h3>
+            <button @click="showImportModal = false" class="text-black hover:text-black">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
               </svg>
             </button>
           </div>
-          <p class="text-xs text-gray-400 mb-4">
+          <p class="text-xs text-black mb-4">
             <span class="text-green-600 font-semibold">{{ importRows.filter(r => !r.error).length }} valide(s)</span>
             <span v-if="importRows.filter(r => r.error).length > 0" class="text-red-500 font-semibold ml-2">{{ importRows.filter(r => r.error).length }} erreur(s)</span>
           </p>
@@ -248,29 +248,29 @@
             <table class="w-full text-xs">
               <thead class="bg-gray-50 sticky top-0 border-b border-gray-200">
                 <tr>
-                  <th class="px-3 py-2 text-left font-semibold text-gray-500">#</th>
-                  <th class="px-3 py-2 text-left font-semibold text-gray-500">Prénom</th>
-                  <th class="px-3 py-2 text-left font-semibold text-gray-500">Nom</th>
-                  <th class="px-3 py-2 text-left font-semibold text-gray-500">Email</th>
-                  <th class="px-3 py-2 text-left font-semibold text-gray-500">Rôle</th>
-                  <th class="px-3 py-2 text-left font-semibold text-gray-500">Filière</th>
-                  <th class="px-3 py-2 text-left font-semibold text-gray-500">Classe</th>
-                  <th class="px-3 py-2 text-center font-semibold text-gray-500">Statut</th>
+                  <th class="px-3 py-2 text-left font-semibold text-black">#</th>
+                  <th class="px-3 py-2 text-left font-semibold text-black">Prénom</th>
+                  <th class="px-3 py-2 text-left font-semibold text-black">Nom</th>
+                  <th class="px-3 py-2 text-left font-semibold text-black">Email</th>
+                  <th class="px-3 py-2 text-left font-semibold text-black">Rôle</th>
+                  <th class="px-3 py-2 text-left font-semibold text-black">Filière</th>
+                  <th class="px-3 py-2 text-left font-semibold text-black">Classe</th>
+                  <th class="px-3 py-2 text-center font-semibold text-black">Statut</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
                 <tr v-for="(row, idx) in importRows" :key="idx" :class="row.error ? 'bg-red-50' : 'hover:bg-gray-50'">
-                  <td class="px-3 py-2 text-gray-400">{{ idx + 1 }}</td>
-                  <td class="px-3 py-2 text-gray-700">{{ row.prenom }}</td>
-                  <td class="px-3 py-2 text-gray-700">{{ row.nom }}</td>
-                  <td class="px-3 py-2 text-gray-700">{{ row.email }}</td>
+                  <td class="px-3 py-2 text-black">{{ idx + 1 }}</td>
+                  <td class="px-3 py-2 text-black">{{ row.prenom }}</td>
+                  <td class="px-3 py-2 text-black">{{ row.nom }}</td>
+                  <td class="px-3 py-2 text-black">{{ row.email }}</td>
                   <td class="px-3 py-2">
                     <span class="px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
                       :class="row.role === 'etudiant' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'"
                     >{{ row.role }}</span>
                   </td>
-                  <td class="px-3 py-2 text-gray-700">{{ row.filiere }}</td>
-                  <td class="px-3 py-2 text-gray-500">{{ row.classe || '—' }}</td>
+                  <td class="px-3 py-2 text-black">{{ row.filiere }}</td>
+                  <td class="px-3 py-2 text-black">{{ row.classe || '—' }}</td>
                   <td class="px-3 py-2 text-center">
                     <span v-if="row.error" class="text-red-500 text-[10px] font-semibold" :title="row.error">❌ {{ row.error }}</span>
                     <span v-else class="text-green-600 text-[10px] font-semibold">✓ OK</span>
@@ -280,16 +280,16 @@
             </table>
           </div>
           <div class="bg-gray-50 rounded-lg px-4 py-3 mb-4 shrink-0">
-            <p class="text-xs font-semibold text-gray-600 mb-1">Format attendu :</p>
-            <code class="text-[10px] text-gray-500 block">prenom, nom, email, role (etudiant/professeur), filiere (nom exact), classe (vide si prof)</code>
+            <p class="text-xs font-semibold text-black mb-1">Format attendu :</p>
+            <code class="text-[10px] text-black block">prenom, nom, email, role (etudiant/professeur), filiere (nom exact), classe (vide si prof)</code>
             <button @click="downloadTemplate" class="mt-2 text-xs text-[#3730a3] hover:underline">↓ Télécharger le modèle CSV</button>
           </div>
           <div class="flex gap-3 shrink-0">
-            <button @click="showImportModal = false" class="flex-1 py-2.5 bg-gray-200 hover:bg-gray-200 text-gray-900 rounded-xl text-sm font-body font-semibold">Annuler</button>
+            <button @click="showImportModal = false" class="flex-1 py-2.5 bg-gray-200 hover:bg-gray-200 text-black rounded-lg text-sm font-body font-semibold">Annuler</button>
             <button
               @click="sendBulkInvitations"
               :disabled="sendingBulk || importRows.filter(r => !r.error).length === 0"
-              class="flex-1 py-2.5 bg-[#024864] hover:bg-[#024864] text-white rounded-xl text-sm font-body font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+              class="flex-1 py-2.5 bg-[#024864] hover:bg-[#024864] text-white rounded-lg text-sm font-body font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <div v-if="sendingBulk" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"/>
               {{ sendingBulk ? 'Envoi...' : `Envoyer ${importRows.filter(r => !r.error).length} invitation(s)` }}

@@ -4,7 +4,7 @@
       <div>
         <div class="mb-6">
           <h1 class="text-2xl font-body font-extrabold text-[#1e3a2f]">Tableau de bord</h1>
-          <p class="text-sm text-gray-500 font-body mt-1">Vue globale de la plateforme Mentora</p>
+          <p class="text-sm text-black font-body mt-1">Vue globale de la plateforme Mentora</p>
         </div>
 
         <div v-if="loading" class="bg-white shadow rounded-lg p-12 text-center">
@@ -14,7 +14,7 @@
         <div v-else>
           <!-- KPI Cards -->
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-            <div v-for="stat in statCards" :key="stat.label" class="rounded-xl p-5" :class="stat.bg">
+            <div v-for="stat in statCards" :key="stat.label" class="rounded-lg p-5" :class="stat.bg">
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-white font-body text-sm mb-1">{{ stat.label }}</p>
@@ -30,34 +30,34 @@
           </div>
 
           <!-- Accès rapides -->
-          <div class="bg-white rounded-xl shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] p-5 mb-6">
+          <div class="bg-white rounded-lg border border-gray-200 p-5 mb-6">
             <h3 class="text-sm font-body font-bold text-[#1e3a2f] mb-4">Accès rapides</h3>
             <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <nuxt-link to="/superadmin/ecoles" class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-xl transition-colors">
+              <nuxt-link to="/superadmin/ecoles" class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-white shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
                 <span class="text-sm font-bold text-white font-body">Créer une école</span>
               </nuxt-link>
-              <nuxt-link to="/superadmin/directeurs" class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-xl transition-colors">
+              <nuxt-link to="/superadmin/directeurs" class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-white shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
                 </svg>
                 <span class="text-sm font-bold text-white font-body">Inviter directeur</span>
               </nuxt-link>
-              <nuxt-link to="/superadmin/ecoles" class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-xl transition-colors">
+              <nuxt-link to="/superadmin/ecoles" class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-white shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5"/>
                 </svg>
                 <span class="text-sm font-bold text-white font-body">Gérer les écoles</span>
               </nuxt-link>
-              <nuxt-link to="/superadmin/users" class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-xl transition-colors">
+              <nuxt-link to="/superadmin/users" class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-white shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
                 </svg>
                 <span class="text-sm font-bold text-white font-body">Tous les users</span>
               </nuxt-link>
-              <nuxt-link to="/superadmin/abonnements" class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-xl transition-colors">
+              <nuxt-link to="/superadmin/abonnements" class="flex items-center gap-2 p-3 bg-blacky hover:bg-blacky/80 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-white shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
                 </svg>
@@ -67,12 +67,12 @@
           </div>
 
           <!-- Derniers directeurs -->
-          <div class="bg-white rounded-xl shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] overflow-hidden">
+          <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
             <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 class="text-sm font-body font-bold text-[#1e3a2f]">Derniers directeurs</h3>
               <nuxt-link to="/superadmin/directeurs" class="text-xs font-body text-blacky font-semibold hover:underline">Voir tout →</nuxt-link>
             </div>
-            <div v-if="derniersDirecteurs.length === 0" class="p-10 text-center text-gray-400 font-body text-sm">
+            <div v-if="derniersDirecteurs.length === 0" class="p-10 text-center text-black font-body text-sm">
               Aucun directeur enregistré
             </div>
             <div v-else class="divide-y divide-gray-50">
@@ -82,8 +82,8 @@
                     {{ d.prenom?.[0] }}{{ d.nom?.[0] }}
                   </div>
                   <div>
-                    <p class="text-sm font-body font-semibold text-gray-800">{{ d.prenom }} {{ d.nom }}</p>
-                    <p class="text-xs font-body text-gray-400">{{ d.email }}</p>
+                    <p class="text-sm font-body font-semibold text-black">{{ d.prenom }} {{ d.nom }}</p>
+                    <p class="text-xs font-body text-black">{{ d.email }}</p>
                   </div>
                 </div>
                 <span class="px-2.5 py-1 rounded-full text-xs font-body font-semibold"

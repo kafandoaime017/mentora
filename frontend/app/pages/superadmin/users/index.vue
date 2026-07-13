@@ -4,8 +4,8 @@
       <div>
         <div class="mb-6 flex items-center justify-between">
           <div>
-            <h1 class="text-2xl font-body font-extrabold text-gray-800">Utilisateurs</h1>
-            <p class="text-sm font-body text-gray-500 mt-1">{{ users.length }} utilisateur(s)</p>
+            <h1 class="text-2xl font-body font-extrabold text-black">Utilisateurs</h1>
+            <p class="text-sm font-body text-black mt-1">{{ users.length }} utilisateur(s)</p>
           </div>
           <button @click="ouvrirModalInvitation" class="px-4 py-2.5 rounded-lg bg-[#024864] text-white text-sm font-body font-semibold hover:bg-blacky/90 transition flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -18,13 +18,13 @@
           <div class="flex flex-wrap gap-1">
             <button v-for="f in filtres" :key="f.value" @click="filtreActif = f.value"
               class="px-3 py-1.5 rounded-sm text-sm font-body font-semibold transition-colors"
-              :class="filtreActif === f.value ? 'bg-[#024864] text-white' : 'bg-white text-gray-500 hover:bg-gray-100'"
+              :class="filtreActif === f.value ? 'bg-[#024864] text-white' : 'bg-white text-black hover:bg-gray-100'"
             >
               {{ f.label }} <span class="ml-1 opacity-60 text-xs">({{ getCount(f.value) }})</span>
             </button>
           </div>
           <div class="relative flex-1 min-w-0">
-            <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
             </svg>
             <input v-model="search" type="text" placeholder="Rechercher..."
@@ -38,7 +38,7 @@
 
         <div v-else>
           <!-- Desktop table -->
-          <div class="hidden md:block bg-white rounded-sm shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] overflow-hidden">
+          <div class="hidden md:block bg-white rounded-sm border border-gray-200 overflow-hidden">
             <table class="w-full">
               <thead class="bg-blacky">
                 <tr>
@@ -58,10 +58,10 @@
                         :class="roleStyle(u.role).bg + ' ' + roleStyle(u.role).text">
                         {{ u.prenom?.[0] }}{{ u.nom?.[0] }}
                       </div>
-                      <p class="font-body font-semibold text-gray-800 text-sm">{{ u.prenom }} {{ u.nom }}</p>
+                      <p class="font-body font-semibold text-black text-sm">{{ u.prenom }} {{ u.nom }}</p>
                     </div>
                   </td>
-                  <td class="px-5 py-4 text-sm font-body text-gray-500">{{ u.email }}</td>
+                  <td class="px-5 py-4 text-sm font-body text-black">{{ u.email }}</td>
                   <td class="px-5 py-4 text-center">
                     <span class="px-2.5 py-1 rounded-full text-xs font-body font-semibold"
                       :class="roleStyle(u.role).bg + ' ' + roleStyle(u.role).text">
@@ -74,7 +74,7 @@
                       {{ u.isActive ? 'Actif' : 'Inactif' }}
                     </span>
                   </td>
-                  <td class="px-5 py-4 text-center text-xs font-body text-gray-400">
+                  <td class="px-5 py-4 text-center text-xs font-body text-black">
                     {{ new Date(u.createdAt).toLocaleDateString('fr-FR') }}
                   </td>
                   <td class="px-5 py-4">
@@ -89,12 +89,12 @@
                 </tr>
               </tbody>
             </table>
-            <div v-if="usersFiltres.length === 0" class="p-16 text-center text-gray-400 font-body text-sm">Aucun utilisateur trouvé</div>
+            <div v-if="usersFiltres.length === 0" class="p-16 text-center text-black font-body text-sm">Aucun utilisateur trouvé</div>
           </div>
 
           <!-- Mobile cards -->
           <div class="md:hidden space-y-3">
-            <div v-for="u in usersFiltres" :key="u.id" class="bg-white rounded-xl shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] p-4">
+            <div v-for="u in usersFiltres" :key="u.id" class="bg-white rounded-lg border border-gray-200 p-4">
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-3">
                   <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
@@ -102,8 +102,8 @@
                     {{ u.prenom?.[0] }}{{ u.nom?.[0] }}
                   </div>
                   <div>
-                    <p class="font-body font-semibold text-gray-800 text-sm">{{ u.prenom }} {{ u.nom }}</p>
-                    <p class="text-xs font-body text-gray-400">{{ u.email }}</p>
+                    <p class="font-body font-semibold text-black text-sm">{{ u.prenom }} {{ u.nom }}</p>
+                    <p class="text-xs font-body text-black">{{ u.email }}</p>
                   </div>
                 </div>
                 <div class="flex flex-col items-end gap-1">
@@ -124,19 +124,19 @@
                 <button @click="confirmerSuppression(u)" class="flex-1 py-2 rounded-lg text-xs font-body font-semibold bg-red-500 text-white">Supprimer</button>
               </div>
             </div>
-            <div v-if="usersFiltres.length === 0" class="py-16 text-center text-gray-400 font-body text-sm">Aucun utilisateur trouvé</div>
+            <div v-if="usersFiltres.length === 0" class="py-16 text-center text-black font-body text-sm">Aucun utilisateur trouvé</div>
           </div>
         </div>
 
         <!-- Modal suppression -->
         <div v-if="modalSuppressionVisible" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" @click.self="modalSuppressionVisible = false">
-          <div class="bg-white rounded-xl w-full max-w-sm p-6">
+          <div class="bg-white rounded-lg w-full max-w-sm p-6">
             <h3 class="font-extrabold text-gray-900 text-center text-xl font-body mb-2">Supprimer l'utilisateur</h3>
-            <p class="text-sm font-body text-gray-500 text-center mb-6">Êtes-vous sûr de vouloir supprimer <strong>{{ userASupprimer?.prenom }} {{ userASupprimer?.nom }}</strong> ? Cette action est irréversible.</p>
+            <p class="text-sm font-body text-black text-center mb-6">Êtes-vous sûr de vouloir supprimer <strong>{{ userASupprimer?.prenom }} {{ userASupprimer?.nom }}</strong> ? Cette action est irréversible.</p>
             <div class="flex gap-3">
-              <button @click="modalSuppressionVisible = false" class="flex-1 font-body py-2.5 bg-gray-200 text-gray-600 rounded-xl text-sm font-semibold">Annuler</button>
+              <button @click="modalSuppressionVisible = false" class="flex-1 font-body py-2.5 bg-gray-200 text-gray-600 rounded-lg text-sm font-semibold">Annuler</button>
               <button @click="supprimerUser" :disabled="enregistrement"
-                class="flex-1 font-body py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold hover:bg-red-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                class="flex-1 font-body py-2.5 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <div v-if="enregistrement" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"/>
                 <span v-else>Supprimer</span>
@@ -147,13 +147,13 @@
 
         <!-- Modal invitation utilisateur -->
         <div v-if="modalInvitationVisible" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" @click.self="fermerModalInvitation">
-          <div class="bg-white rounded-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+          <div class="bg-white rounded-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h3 class="font-extrabold text-gray-900 text-center text-xl font-body mb-5">Inviter un utilisateur</h3>
 
             <form @submit.prevent="envoyerInvitationUtilisateur" class="space-y-3">
               <!-- Rôle -->
               <div>
-                <label class="block text-xs font-body font-semibold text-gray-500 mb-1.5">Rôle</label>
+                <label class="block text-xs font-body font-semibold text-black mb-1.5">Rôle</label>
                 <div class="grid grid-cols-3 gap-2">
                   <button type="button" v-for="r in rolesInvitables" :key="r.value" @click="invitationForm.role = r.value; onRoleChange()"
                     class="py-2 rounded-lg text-xs font-body font-semibold transition"
@@ -164,22 +164,22 @@
 
               <div class="grid grid-cols-2 gap-3">
                 <div>
-                  <label class="block text-xs font-body font-semibold text-gray-500 mb-1.5">Prénom</label>
+                  <label class="block text-xs font-body font-semibold text-black mb-1.5">Prénom</label>
                   <input v-model="invitationForm.prenom" type="text" required class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
                 </div>
                 <div>
-                  <label class="block text-xs font-body font-semibold text-gray-500 mb-1.5">Nom</label>
+                  <label class="block text-xs font-body font-semibold text-black mb-1.5">Nom</label>
                   <input v-model="invitationForm.nom" type="text" required class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
                 </div>
               </div>
 
               <div>
-                <label class="block text-xs font-body font-semibold text-gray-500 mb-1.5">Email</label>
+                <label class="block text-xs font-body font-semibold text-black mb-1.5">Email</label>
                 <input v-model="invitationForm.email" type="email" required class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
               </div>
 
               <div>
-                <label class="block text-xs font-body font-semibold text-gray-500 mb-1.5">École</label>
+                <label class="block text-xs font-body font-semibold text-black mb-1.5">École</label>
                 <select v-model.number="invitationForm.ecoleId" @change="onEcoleChange" required class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none">
                   <option :value="null" disabled>Sélectionner une école</option>
                   <option v-for="e in ecoles" :key="e.id" :value="e.id">{{ e.nom }}</option>
@@ -187,7 +187,7 @@
               </div>
 
               <div v-if="invitationForm.role !== 'directeur'">
-                <label class="block text-xs font-body font-semibold text-gray-500 mb-1.5">Filière</label>
+                <label class="block text-xs font-body font-semibold text-black mb-1.5">Filière</label>
                 <select v-model.number="invitationForm.filiereId" @change="onFiliereChange" required class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none" :disabled="!invitationForm.ecoleId">
                   <option :value="null" disabled>Sélectionner une filière</option>
                   <option v-for="f in filieresDisponibles" :key="f.id" :value="f.id">{{ f.nom }}</option>
@@ -196,7 +196,7 @@
               </div>
 
               <div v-if="invitationForm.role === 'etudiant'">
-                <label class="block text-xs font-body font-semibold text-gray-500 mb-1.5">Classe</label>
+                <label class="block text-xs font-body font-semibold text-black mb-1.5">Classe</label>
                 <select v-model.number="invitationForm.classeId" required class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none" :disabled="!invitationForm.filiereId">
                   <option :value="null" disabled>Sélectionner une classe</option>
                   <option v-for="c in classesDisponibles" :key="c.id" :value="c.id">{{ c.nom }}</option>
@@ -205,9 +205,9 @@
               </div>
 
               <div class="flex gap-3 pt-2">
-                <button type="button" @click="fermerModalInvitation" class="flex-1 font-body py-2.5 bg-gray-200 text-gray-600 rounded-xl text-sm font-semibold">Annuler</button>
+                <button type="button" @click="fermerModalInvitation" class="flex-1 font-body py-2.5 bg-gray-200 text-gray-600 rounded-lg text-sm font-semibold">Annuler</button>
                 <button type="submit" :disabled="envoiInvitation"
-                  class="flex-1 font-body py-2.5 bg-[#024864] text-white rounded-xl text-sm font-semibold hover:bg-blacky/90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                  class="flex-1 font-body py-2.5 bg-[#024864] text-white rounded-lg text-sm font-semibold hover:bg-blacky/90 transition disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <div v-if="envoiInvitation" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"/>
                   <span v-else>Envoyer l'invitation</span>

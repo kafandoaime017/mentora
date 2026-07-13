@@ -5,22 +5,22 @@
 
         <!-- En-tête -->
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <h1 class="text-2xl font-body font-extrabold text-gray-800">Filières & Classes</h1>
+          <h1 class="text-2xl font-body font-extrabold text-black">Filières & Classes</h1>
           <div class="flex items-center gap-3">
             <div class="relative">
-              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
               </svg>
               <input
                 v-model="searchQuery"
                 type="text"
                 placeholder="Rechercher..."
-                class="w-56 pl-9 pr-4 py-2 rounded-xl  bg-gray-300/80 placeholder:text-gray-500 placeholder:font-bold text-sm font-body focus:outline-none focus:border-blacky"
+                class="w-56 pl-9 pr-4 py-2 rounded-lg  bg-gray-300/80 placeholder:text-black placeholder:font-bold text-sm font-body focus:outline-none focus:border-blacky"
               />
             </div>
             <button
               @click="showAddFiliere = true"
-              class="flex items-center gap-2 bg-blacky text-white px-4 py-2 rounded-xl text-sm font-body font-semibold hover:bg-[#024864] transition-colors"
+              class="flex items-center gap-2 bg-blacky text-white px-4 py-2 rounded-lg text-sm font-body font-semibold hover:bg-[#024864] transition-colors"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -36,7 +36,7 @@
         </div>
 
         <!-- Vide -->
-        <div v-else-if="filteredFilieres.length === 0" class="bg-white rounded-xl p-12 text-center text-gray-400">
+        <div v-else-if="filteredFilieres.length === 0" class="bg-white rounded-lg p-12 text-center text-black">
           <svg class="w-14 h-14 mx-auto mb-4 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
           </svg>
@@ -118,7 +118,7 @@
 
                     <!-- Aucune classe -->
                     <div v-if="!filiere.classes || filiere.classes.length === 0" class="ml-8 mb-1">
-                      <p class="text-xs font-body text-gray-400 italic">Aucune classe</p>
+                      <p class="text-xs font-body text-black italic">Aucune classe</p>
                     </div>
 
                     <!-- Classes -->
@@ -177,13 +177,13 @@
               <div v-if="filteredFilieres.length > visibleCount" class="flex justify-center mt-6 pl-8">
                 <button
                   @click="showMore"
-                  class="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm font-body font-semibold hover:bg-gray-50 hover:border-blacky/30 hover:text-blacky transition-all shadow-sm"
+                  class="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-black rounded-lg text-sm font-body font-semibold hover:bg-gray-50 hover:border-blacky/30 hover:text-blacky transition-all shadow-sm"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                   </svg>
                   Afficher plus
-                  <span class="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">
+                  <span class="bg-gray-100 text-black text-xs px-2 py-0.5 rounded-full">
                     {{ filteredFilieres.length - visibleCount }} restante(s)
                   </span>
                 </button>
@@ -193,7 +193,7 @@
               <div v-if="visibleCount > INITIAL_COUNT && filteredFilieres.length > INITIAL_COUNT" class="flex justify-center mt-2 pl-8">
                 <button
                   @click="visibleCount = INITIAL_COUNT"
-                  class="text-xs font-body text-gray-400 hover:text-gray-600 transition-colors"
+                  class="text-xs font-body text-black hover:text-black transition-colors"
                 >
                   Réduire
                 </button>
@@ -207,41 +207,41 @@
 
       <!-- Modal ajouter filière -->
       <div v-if="showAddFiliere" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="showAddFiliere = false">
-        <div class="bg-white rounded-xl w-full max-w-md p-6">
-          <h3 class="font-body font-bold text-gray-800 mb-4 text-lg">Nouvelle filière</h3>
+        <div class="bg-white rounded-lg w-full max-w-md p-6">
+          <h3 class="font-body font-bold text-black mb-4 text-lg">Nouvelle filière</h3>
           <input
             v-model="newFiliereName"
             type="text"
             placeholder="Ex: Informatique"
-            class="w-full px-4 py-3 bg-input rounded-xl font-body text-sm focus:outline-none mb-4"
+            class="w-full px-4 py-3 bg-input rounded-lg font-body text-sm focus:outline-none mb-4"
             @keyup.enter="addFiliere"
             autofocus
           />
           <div class="flex gap-3">
-            <button @click="showAddFiliere = false" class="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-body font-semibold">Annuler</button>
-            <button @click="addFiliere" :disabled="!newFiliereName.trim()" class="flex-1 py-2.5 bg-blacky text-white rounded-xl text-sm font-body font-semibold disabled:opacity-50">Créer</button>
+            <button @click="showAddFiliere = false" class="flex-1 py-2.5 bg-gray-100 text-black rounded-lg text-sm font-body font-semibold">Annuler</button>
+            <button @click="addFiliere" :disabled="!newFiliereName.trim()" class="flex-1 py-2.5 bg-blacky text-white rounded-lg text-sm font-body font-semibold disabled:opacity-50">Créer</button>
           </div>
         </div>
       </div>
 
       <!-- Modal ajouter classe -->
       <div v-if="showAddClasse" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="showAddClasse = false">
-        <div class="bg-white rounded-xl w-full max-w-md p-6">
-          <h3 class="font-body font-bold text-gray-800 mb-1 text-lg">Nouvelle classe</h3>
-          <p class="text-xs text-gray-400 font-body mb-4">
+        <div class="bg-white rounded-lg w-full max-w-md p-6">
+          <h3 class="font-body font-bold text-black mb-1 text-lg">Nouvelle classe</h3>
+          <p class="text-xs text-black font-body mb-4">
             Filière : <span class="font-semibold text-secondary">{{ selectedFiliere?.nom }}</span>
           </p>
           <input
             v-model="newClassName"
             type="text"
             placeholder="Ex: 1ère année"
-            class="w-full px-4 py-3 bg-input rounded-xl font-body text-sm focus:outline-none mb-4"
+            class="w-full px-4 py-3 bg-input rounded-lg font-body text-sm focus:outline-none mb-4"
             @keyup.enter="addClasse"
             autofocus
           />
           <div class="flex gap-3">
-            <button @click="showAddClasse = false" class="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-body font-semibold">Annuler</button>
-            <button @click="addClasse" :disabled="!newClassName.trim()" class="flex-1 py-2.5 bg-blacky text-white rounded-xl text-sm font-body font-semibold disabled:opacity-50">Créer</button>
+            <button @click="showAddClasse = false" class="flex-1 py-2.5 bg-gray-100 text-black rounded-lg text-sm font-body font-semibold">Annuler</button>
+            <button @click="addClasse" :disabled="!newClassName.trim()" class="flex-1 py-2.5 bg-blacky text-white rounded-lg text-sm font-body font-semibold disabled:opacity-50">Créer</button>
           </div>
         </div>
       </div>

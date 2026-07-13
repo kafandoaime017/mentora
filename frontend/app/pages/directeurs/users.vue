@@ -5,7 +5,7 @@
 
         <div class="flex items-center justify-between mb-6">
           <h1 class="text-2xl font-body font-extrabold text-gray-800">Utilisateurs</h1>
-          <span class="text-sm font-body text-gray-900">{{ users.length }} utilisateur{{ users.length > 1 ? 's' : ''
+          <span class="text-sm font-body text-black">{{ users.length }} utilisateur{{ users.length > 1 ? 's' : ''
             }}</span>
         </div>
 
@@ -14,34 +14,34 @@
           <div class="flex gap-1">
             <button v-for="r in ['tous', 'etudiant', 'professeur']" :key="r" @click="roleFiltre = r"
               class="px-3 py-1.5 rounded-sm text-sm font-body font-semibold transition-colors"
-              :class="roleFiltre === r ? 'bg-[#024864] text-white' : 'bg-white text-gray-500 hover:bg-gray-100'">
+              :class="roleFiltre === r ? 'bg-[#024864] text-white' : 'bg-white text-black hover:bg-gray-100'">
               {{ r === 'tous' ? 'Tous' : r === 'etudiant' ? 'Étudiants' : 'Professeurs' }}
             </button>
           </div>
           <div class="relative flex-1 min-w-[200px]">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="w-4 h-4 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
             <input v-model="search" type="text" placeholder="Rechercher un utilisateur..."
-              class="w-full pl-9 pr-4 py-2 bg-gray-300/80 placeholder:text-gray-500 placeholder:font-bold rounded-lg text-sm font-body focus:outline-none focus:border-[#3730a3] transition-colors" />
+              class="w-full pl-9 pr-4 py-2 bg-gray-300/80 placeholder:text-black placeholder:font-bold rounded-lg text-sm font-body focus:outline-none focus:border-[#3730a3] transition-colors" />
           </div>
         </div>
 
         <!-- Tableau -->
-        <div class="bg-white rounded-sm shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] overflow-hidden">
+        <div class="bg-white rounded-sm border border-gray-200 overflow-hidden">
           <div v-if="loading" class="p-12 text-center">
             <div class="animate-spin rounded-full h-6 w-6 border-2 border-[#3730a3] border-t-transparent mx-auto" />
           </div>
 
           <div v-else-if="users.length === 0" class="p-12 text-center">
-            <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-12 h-12 mx-auto mb-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <p class="text-gray-900 text-sm font-body">Aucun utilisateur trouvé</p>
+            <p class="text-black text-sm font-body">Aucun utilisateur trouvé</p>
           </div>
 
           <table v-else class="w-full border-collapse">
@@ -71,33 +71,33 @@
 
       <!-- Nom -->
       <td class="px-4 py-3">
-        <p class="text-sm font-body font-semibold text-gray-700">{{ user.nom || '—' }}</p>
+        <p class="text-sm font-body font-semibold text-black">{{ user.nom || '—' }}</p>
       </td>
 
       <!-- Prénom -->
       <td class="px-4 py-3">
-        <p class="text-sm font-body font-semibold text-gray-700">{{ user.prenom || '—' }}</p>
+        <p class="text-sm font-body font-semibold text-black">{{ user.prenom || '—' }}</p>
       </td>
 
       <!-- Filière -->
       <td class="px-4 py-3">
-        <p class="text-sm font-body text-gray-700">{{ user.profil?.filiere || '—' }}</p>
+        <p class="text-sm font-body text-black">{{ user.profil?.filiere || '—' }}</p>
       </td>
 
       <!-- Classe / Spécialité -->
       <td class="px-4 py-3">
         <div v-if="user.role === 'etudiant'">
-          <span class="text-xs bg-gray-100 px-3 py-1 rounded-full font-medium font-body text-gray-700">
+          <span class="text-xs bg-gray-100 px-3 py-1 rounded-full font-medium font-body text-black">
             {{ user.profil?.classe || '—' }}
           </span>
         </div>
         <div v-else-if="user.role === 'professeur'">
-          <span class="text-xs bg-gray-100 px-3 py-1 rounded-full font-medium font-body text-gray-700">
+          <span class="text-xs bg-gray-100 px-3 py-1 rounded-full font-medium font-body text-black">
             {{ user.profil?.specialite || '—' }}
           </span>
         </div>
         <div v-else>
-          <span class="text-xs text-gray-400">—</span>
+          <span class="text-xs text-black">—</span>
         </div>
       </td>
 
