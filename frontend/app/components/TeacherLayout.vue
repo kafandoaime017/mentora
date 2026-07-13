@@ -10,6 +10,11 @@
         <img src="/images/logo-color.png" alt="Mentora" class="h-20 transition-all duration-300" />
       </div>
 
+      <div v-if="ecoleLogoUrl" class="flex items-center gap-2 w-full px-2 mb-4" :class="{ 'justify-center': sidebarCollapsed }">
+        <img :src="ecoleLogoUrl" alt="" class="w-8 h-8 rounded-lg object-cover border border-gray-200 shrink-0"/>
+        <span v-if="!sidebarCollapsed" class="text-xs font-semibold text-black truncate">{{ ecoleNom }}</span>
+      </div>
+
       <button
         @click="sidebarCollapsed = !sidebarCollapsed"
         class="self-end w-7 h-7 rounded-lg bg-primary text-white hover:bg-primary/80 flex items-center justify-center cursor-pointer mb-5 flex-shrink-0 transition-colors duration-200"
@@ -63,12 +68,14 @@
       <!-- ═══ HEADER ═══ -->
       <header class="bg-secondary font-body px-4 h-16 flex items-center justify-between flex-shrink-0 sticky top-0 z-30 shadow-sm">
 
-        <div class="md:hidden">
+        <div class="md:hidden flex items-center gap-2">
           <img src="/images/logo-color.png" alt="Mentora" class="h-10 brightness-0 invert" />
+          <img v-if="ecoleLogoUrl" :src="ecoleLogoUrl" alt="" class="w-8 h-8 rounded-lg object-cover border border-white/30"/>
         </div>
 
-        <div class="hidden md:block">
-          <p class="text-white font-semibold text-sm opacity-80">Espace enseignant</p>
+        <div class="hidden md:flex items-center gap-2">
+          <img v-if="ecoleLogoUrl" :src="ecoleLogoUrl" alt="" class="w-7 h-7 rounded-lg object-cover border border-white/30"/>
+          <p class="text-white font-semibold text-sm opacity-80">{{ ecoleNom || 'Espace enseignant' }}</p>
         </div>
 
         <div class="flex items-center gap-2">
@@ -289,12 +296,14 @@ import { useAuth } from '../../composables/useAuth'
 import { useToast } from '../../composables/useToast'
 import { useWebSocket } from '../../composables/useWebSocket'
 import { useNotifications } from '../../composables/useNotifications'
+import { useEcoleLogo } from '../../composables/useEcoleLogo'
 
 const route  = useRoute()
 const router = useRouter()
 const { getUser, logout, getProfile } = useAuth()
 const { connect, disconnect } = useWebSocket()
 const toast = useToast()
+const { ecoleNom, logoUrl: ecoleLogoUrl, chargerEcoleLogo } = useEcoleLogo()
 
 const sidebarCollapsed = ref(false)
 const dropdownOpen     = ref(false)
@@ -369,6 +378,7 @@ onMounted(async () => {
   await load() // ← en premier
   authChecked.value = true
   await loadUserData()
+  chargerEcoleLogo()
 
   if (currentUser.value?.id) {
     connect(currentUser.value.id, 'professeur')

@@ -10,6 +10,8 @@ import { ProfesseurProfil } from '../models/ProfesseurProfil'
 import { Invitation, InvitationRole } from '../models/Invitation'
 import { v4 as uuidv4 } from 'uuid'
 import { envoyerInvitation } from '../services/emailService'
+import path from 'path'
+import fs from 'fs'
 
 interface AuthRequest extends Request { user?: User }
 
@@ -130,10 +132,10 @@ export const getEcoleById = async (req: AuthRequest, res: Response, next: NextFu
 
 export const createEcole = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { nom, ville, logo } = req.body
+    const { nom, ville, logo, adresse, telephone } = req.body
     if (!nom) { res.status(400).json({ success: false, message: 'Nom requis' }); return }
 
-    const ecole = ecoleRepo.create({ nom, ville, logo })
+    const ecole = ecoleRepo.create({ nom, ville, logo, adresse, telephone })
     await ecoleRepo.save(ecole)
     res.json({ success: true, message: 'École créée', data: ecole })
   } catch (err) { next(err) }
@@ -145,14 +147,43 @@ export const updateEcole = async (req: AuthRequest, res: Response, next: NextFun
     const ecole = await ecoleRepo.findOne({ where: { id } })
     if (!ecole) { res.status(404).json({ success: false, message: 'École non trouvée' }); return }
 
-    const { nom, ville, logo, isActive } = req.body
-    if (nom      !== undefined) ecole.nom      = nom
-    if (ville    !== undefined) ecole.ville    = ville
-    if (logo     !== undefined) ecole.logo     = logo
-    if (isActive !== undefined) ecole.isActive = isActive
+    const { nom, ville, logo, adresse, telephone, isActive } = req.body
+    if (nom       !== undefined) ecole.nom       = nom
+    if (ville     !== undefined) ecole.ville     = ville
+    if (logo      !== undefined) ecole.logo      = logo
+    if (adresse   !== undefined) ecole.adresse   = adresse
+    if (telephone !== undefined) ecole.telephone = telephone
+    if (isActive  !== undefined) ecole.isActive  = isActive
 
     await ecoleRepo.save(ecole)
     res.json({ success: true, message: 'École mise à jour', data: ecole })
+  } catch (err) { next(err) }
+}
+
+// Upload du logo d'une école — fichier envoyé séparément (multipart) après
+// création/modification des champs texte, comme pour l'avatar utilisateur.
+export const uploadEcoleLogo = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id    = parseId(req.params.id)
+    const ecole = await ecoleRepo.findOne({ where: { id } })
+    if (!ecole) { res.status(404).json({ success: false, message: 'École non trouvée' }); return }
+
+    const file = (req as any).file
+    if (!file) { res.status(400).json({ success: false, message: 'Aucun fichier uploadé' }); return }
+
+    const originalExt = path.extname(file.originalname)
+    const filename     = `ecole-${id}-${Date.now()}${originalExt}`
+    const uploadDir    = path.join(__dirname, '../../public/uploads/ecoles')
+    const outputPath   = path.join(uploadDir, filename)
+
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true })
+
+    fs.renameSync(file.path, outputPath)
+
+    ecole.logo = `/uploads/ecoles/${filename}`
+    await ecoleRepo.save(ecole)
+
+    res.json({ success: true, message: 'Logo mis à jour', data: ecole })
   } catch (err) { next(err) }
 }
 

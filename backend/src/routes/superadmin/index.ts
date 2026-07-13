@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { authMiddleware, requireRole } from '../../app/middleware/auth'
 import * as ctrl from '../../app/controllers/superadminController'
+import { uploadEcoleLogo } from '../../app/middleware/upload'
 
 const router = Router()
 const isSuperadmin = [authMiddleware, requireRole(['superadmin'])]
@@ -10,6 +11,7 @@ router.get('/ecoles',                   ...isSuperadmin, ctrl.getEcoles)
 router.get('/ecoles/:id',               ...isSuperadmin, ctrl.getEcoleById)
 router.post('/ecoles',                  ...isSuperadmin, ctrl.createEcole)
 router.put('/ecoles/:id',               ...isSuperadmin, ctrl.updateEcole)
+router.post('/ecoles/:id/logo',         ...isSuperadmin, uploadEcoleLogo.single('logo'), ctrl.uploadEcoleLogo)
 router.patch('/ecoles/:id/plan',        ...isSuperadmin, ctrl.updateEcolePlan)
 router.delete('/ecoles/:id',            ...isSuperadmin, ctrl.deleteEcole)
 

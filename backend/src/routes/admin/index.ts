@@ -15,9 +15,17 @@ import {
     getAllSessions,
     verifyInvitationEmail,
     checkEmailVerified,
-    getUserById
+    getUserById,
+    uploadEcoleLogo,
+    adminUpdateSession,
+    adminStartSession,
+    adminEndSession,
+    adminGetNotes,
+    adminToggleResultatsVisibles,
+    adminExportResultsPdf
 } from '../../app/controllers/adminController'
 import { checkLimiteEtudiants, checkLimiteProfesseurs } from '../../app/middleware/checkPlan'
+import { uploadEcoleLogo as uploadEcoleLogoMiddleware } from '../../app/middleware/upload'
 
 const router = Router()
 
@@ -29,6 +37,7 @@ router.get('/dashboard', ...isAdmin, getDashboard)
 // École
 router.get('/ecole',    ...isAdmin, getEcole)
 router.put('/ecole',    ...isAdmin, updateEcole)
+router.post('/ecole/logo', ...isAdmin, uploadEcoleLogoMiddleware.single('logo'), uploadEcoleLogo)
 
 // Filières
 router.get('/filieres',        ...isAdmin, getFilieres)
@@ -75,7 +84,15 @@ router.patch('/invitations/:id/revoke', ...isAdmin, revokeInvitation)
 // Sessions
 router.get('/sessions',        ...isAdmin, getAllSessions)
 router.get('/sessions/:id',    ...isAdmin, getAdminSessionDetails)
+router.put('/sessions/:id',    ...isAdmin, adminUpdateSession)
 router.delete('/sessions/:id', ...isAdmin, adminDeleteSession)
+
+router.post('/sessions/:id/start', ...isAdmin, adminStartSession)
+router.post('/sessions/:id/end',   ...isAdmin, adminEndSession)
+
+router.get('/sessions/:id/notes',              ...isAdmin, adminGetNotes)
+router.patch('/sessions/:id/toggle-resultats', ...isAdmin, adminToggleResultatsVisibles)
+router.get('/sessions/:id/export/pdf',         ...isAdmin, adminExportResultsPdf)
 
 router.get('/invitations/verify-email', verifyInvitationEmail)
 router.get('/invitations/check-verified', checkEmailVerified)

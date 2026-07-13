@@ -30,6 +30,16 @@ export const useSuperadmin = () => {
     } catch (err) { return { success: false, message: err?.data?.message || 'Erreur' } }
   }
 
+  const uploadEcoleLogo = async (id, file) => {
+    try {
+      const formData = new FormData()
+      formData.append('logo', file)
+      return await $fetch(`/api/superadmin/ecoles/${id}/logo`, {
+        method: 'POST', headers: getAuthHeader(), body: formData
+      })
+    } catch (err) { return { success: false, message: err?.data?.message || 'Erreur' } }
+  }
+
   const deleteEcole = async (id) => {
     try {
       return await $fetch(`/api/superadmin/ecoles/${id}`, {
@@ -168,7 +178,7 @@ export const useSuperadmin = () => {
 
   return {
     getStats,
-    getEcoles, getEcoleById, createEcole, updateEcole, updateEcolePlan, deleteEcole,
+    getEcoles, getEcoleById, createEcole, updateEcole, uploadEcoleLogo, updateEcolePlan, deleteEcole,
     getDirecteurs, inviterDirecteur, toggleDirecteur, deleteDirecteur,
     resendVerificationDirecteur, resendInvitation, revokeInvitation,
     getAllUsers, toggleUserActif, deleteUser, inviterUtilisateur,

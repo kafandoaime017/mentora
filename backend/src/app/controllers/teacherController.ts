@@ -55,7 +55,7 @@ const parseId = (id: string | string[] | undefined): number => {
     return isNaN(parsed) ? 0 : parsed;
 };
 
-const autoCloseSession = async (sessionId: number): Promise<void> => {
+export const autoCloseSession = async (sessionId: number): Promise<void> => {
     const session = await sessionRepo.findOne({
         where: { id: sessionId },
         relations: ['classe', 'filiere']

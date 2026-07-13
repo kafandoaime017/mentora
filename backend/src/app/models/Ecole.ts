@@ -18,6 +18,12 @@ export class Ecole {
   @Column({ type: 'varchar', length: 500, nullable: true })
   logo!: string | null;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  adresse!: string | null;
+
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  telephone!: string | null;
+
   @Column({ type: 'boolean', default: true })
   isActive!: boolean;
 

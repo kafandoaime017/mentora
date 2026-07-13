@@ -29,8 +29,9 @@
             <div class="px-5 pt-5 pb-4 border-b border-gray-100">
               <div class="flex items-start justify-between mb-3">
                 <div class="flex items-center gap-3 min-w-0">
-                  <div class="w-11 h-11 bg-blacky/10 rounded-lg flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5 text-blacky" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div class="w-11 h-11 bg-blacky/10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+                    <img v-if="ecole.logo" :src="logoUrl(ecole.logo)" alt="" class="w-full h-full object-cover"/>
+                    <svg v-else class="w-5 h-5 text-blacky" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                     </svg>
                   </div>
@@ -115,9 +116,24 @@
 
         <!-- Modal créer/modifier -->
         <div v-if="modalVisible" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" @click.self="fermerModal">
-          <div class="bg-white rounded-lg w-full max-w-md p-6">
+          <div class="bg-white rounded-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h3 class="font-extrabold text-black text-center text-xl font-body mb-4">{{ modeEdition ? 'Modifier l\'école' : 'Nouvelle école' }}</h3>
             <div class="space-y-3">
+
+              <!-- Logo -->
+              <div class="flex flex-col items-center mb-2">
+                <div class="w-16 h-16 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden mb-2">
+                  <img v-if="logoPreview" :src="logoPreview" alt="" class="w-full h-full object-cover"/>
+                  <svg v-else class="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <button type="button" @click="logoInput?.click()" class="text-xs font-body font-semibold text-blacky hover:underline">
+                  {{ logoPreview ? "Changer le logo" : "Ajouter un logo" }}
+                </button>
+                <input ref="logoInput" type="file" accept="image/jpeg,image/png,image/jpg,image/webp" class="hidden" @change="onLogoChange"/>
+              </div>
+
               <div>
                 <label class="block font-body text-xs font-semibold text-black mb-1">Nom *</label>
                 <input v-model="form.nom" type="text" placeholder="Ex: HEC Paris"
@@ -127,6 +143,21 @@
                 <label class="block font-body text-xs font-semibold text-black mb-1">Ville</label>
                 <input v-model="form.ville" type="text" placeholder="Ex: Paris"
                   class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
+              </div>
+              <div>
+                <label class="block font-body text-xs font-semibold text-black mb-1">Adresse</label>
+                <input v-model="form.adresse" type="text" placeholder="Ex: 12 rue des Écoles"
+                  class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
+              </div>
+              <div>
+                <label class="block font-body text-xs font-semibold text-black mb-1">Téléphone</label>
+                <div class="flex gap-2">
+                  <select v-model="form.indicatif" class="px-2 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none shrink-0 w-28">
+                    <option v-for="c in countries" :key="c.iso" :value="c.dial">{{ c.flag }} {{ c.dial }}</option>
+                  </select>
+                  <input v-model="form.numero" type="tel" placeholder="6 12 34 56 78"
+                    class="flex-1 min-w-0 px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
+                </div>
               </div>
               <div v-if="erreur" class="bg-red-50 text-red-600 text-xs font-body rounded-lg px-4 py-2">{{ erreur }}</div>
             </div>
@@ -168,10 +199,12 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useSuperadmin } from '~~/composables/useSuperadmin'
 import { useToast } from '~~/composables/useToast'
+import { countries, defaultCountry } from '~~/app/utils/countries'
 definePageMeta({ layout: false })
 
 const toast = useToast()
-const { getEcoles, createEcole, updateEcole, deleteEcole } = useSuperadmin()
+const { getEcoles, createEcole, updateEcole, uploadEcoleLogo, deleteEcole } = useSuperadmin()
+const config = useRuntimeConfig()
 
 const loading                 = ref(true)
 const ecoles                  = ref([])
@@ -183,7 +216,26 @@ const erreur                  = ref('')
 const ecoleEnEdition          = ref(null)
 const ecoleASupprimer         = ref(null)
 const menuOuvert              = ref(null)
-const form                    = reactive({ nom: '', ville: '' })
+const logoInput                = ref(null)
+const logoFile                 = ref(null)
+const logoPreview              = ref('')
+const form                    = reactive({ nom: '', ville: '', adresse: '', indicatif: defaultCountry.dial, numero: '' })
+
+const logoUrl = (path) => path?.startsWith('http') ? path : `${config.public.apiBase.replace(/\/api$/, '')}${path}`
+
+const onLogoChange = (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+  logoFile.value = file
+  logoPreview.value = URL.createObjectURL(file)
+}
+
+// Sépare une valeur "telephone" stockée (ex: "+225 0102030405") en indicatif + numéro
+const parseTelephone = (telephone) => {
+  if (!telephone) return { indicatif: defaultCountry.dial, numero: '' }
+  const [indicatif, ...rest] = telephone.trim().split(' ')
+  return { indicatif: indicatif || defaultCountry.dial, numero: rest.join(' ') }
+}
 
 const planStyle = (plan) => ({
   gratuit: 'bg-gray-200 text-black',
@@ -200,19 +252,60 @@ const usagePct = (val, max) => {
 
 const fermerMenu = () => { menuOuvert.value = null }
 
-const ouvrirModalCreer = () => { modeEdition.value = false; form.nom = ''; form.ville = ''; erreur.value = ''; modalVisible.value = true }
-const ouvrirModalModifier = (ecole) => { fermerMenu(); modeEdition.value = true; ecoleEnEdition.value = ecole; form.nom = ecole.nom; form.ville = ecole.ville || ''; erreur.value = ''; modalVisible.value = true }
+const resetLogo = () => { logoFile.value = null; logoPreview.value = '' }
+
+const ouvrirModalCreer = () => {
+  modeEdition.value = false
+  form.nom = ''; form.ville = ''; form.adresse = ''; form.indicatif = defaultCountry.dial; form.numero = ''
+  resetLogo()
+  erreur.value = ''
+  modalVisible.value = true
+}
+const ouvrirModalModifier = (ecole) => {
+  fermerMenu()
+  modeEdition.value = true
+  ecoleEnEdition.value = ecole
+  form.nom = ecole.nom
+  form.ville = ecole.ville || ''
+  form.adresse = ecole.adresse || ''
+  const { indicatif, numero } = parseTelephone(ecole.telephone)
+  form.indicatif = indicatif
+  form.numero = numero
+  resetLogo()
+  if (ecole.logo) logoPreview.value = logoUrl(ecole.logo)
+  erreur.value = ''
+  modalVisible.value = true
+}
 const fermerModal = () => { modalVisible.value = false }
 
 const sauvegarder = async () => {
   if (!form.nom.trim()) { erreur.value = 'Le nom est requis'; return }
   enregistrement.value = true
   erreur.value = ''
+
+  const payload = {
+    nom: form.nom,
+    ville: form.ville,
+    adresse: form.adresse,
+    telephone: form.numero.trim() ? `${form.indicatif} ${form.numero.trim()}` : ''
+  }
+
   const result = modeEdition.value
-    ? await updateEcole(ecoleEnEdition.value.id, { nom: form.nom, ville: form.ville })
-    : await createEcole({ nom: form.nom, ville: form.ville })
-  if (result.success) { toast.success(modeEdition.value ? 'École modifiée' : 'École créée'); fermerModal(); await chargerEcoles() }
-  else erreur.value = result.message || 'Erreur'
+    ? await updateEcole(ecoleEnEdition.value.id, payload)
+    : await createEcole(payload)
+
+  if (result.success) {
+    const ecoleId = modeEdition.value ? ecoleEnEdition.value.id : result.data.id
+    if (logoFile.value) {
+      const logoResult = await uploadEcoleLogo(ecoleId, logoFile.value)
+      if (!logoResult.success) toast.error(logoResult.message || "Erreur lors de l'envoi du logo")
+    }
+    toast.success(modeEdition.value ? 'École modifiée' : 'École créée')
+    fermerModal()
+    await chargerEcoles()
+  } else {
+    erreur.value = result.message || 'Erreur'
+  }
   enregistrement.value = false
 }
 

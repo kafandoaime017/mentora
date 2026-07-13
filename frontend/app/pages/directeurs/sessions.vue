@@ -151,15 +151,15 @@
                 <!-- Actions -->
                 <td class="px-4 py-3 border border-gray-200">
                   <div class="flex items-center justify-center gap-1.5">
-                    <button
-                      @click="openDetail(s)"
+                    <NuxtLink
+                      :to="`/directeurs/sessions/${s.id}`"
                       class="inline-flex items-center gap-1 text-xs font-body font-semibold px-2.5 py-1.5 rounded-lg bg-blacky/80 text-white hover:bg-blacky transition-colors"
                     >
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                       </svg>
                       Détails
-                    </button>
+                    </NuxtLink>
                     <button
                       @click="deleteSession(s)"
                       class="inline-flex items-center gap-1 text-xs font-body font-semibold px-2.5 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
@@ -178,198 +178,6 @@
         </div>
       </div>
 
-    <!-- Modal détails session -->
-    <div v-if="showDetail && selectedSession" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="showDetail = false">
-      <div class="bg-white rounded-sm w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-200">
-
-        <!-- Header -->
-        <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between">
-          <div class="flex-1 min-w-0">
-            <h3 class="font-body font-bold text-black text-base truncate">{{ selectedSession.session?.titre }}</h3>
-            <div class="flex items-center gap-2 mt-1 flex-wrap">
-              <span class="text-sm font-body text-black">{{ selectedSession.session?.filiere }}</span>
-              <span v-if="selectedSession.session?.classe" class="text-black">·</span>
-              <span v-if="selectedSession.session?.classe" class="text-xs font-body text-black">{{ selectedSession.session?.classe }}</span>
-              <span class="text-black">·</span>
-              <span class="text-xs font-body text-black">{{ selectedSession.session?.professeur }}</span>
-              <span class="text-black">·</span>
-              <code class="text-xs font-mono text-black bg-gray-100 px-1.5 py-0.5 rounded">{{ selectedSession.session?.code }}</code>
-            </div>
-          </div>
-          <div class="flex items-center gap-3 ml-4 shrink-0">
-            <span
-              class="text-xs font-body px-2.5 py-1 rounded-full font-semibold"
-              :class="{
-                'bg-yellow-100 text-yellow-700': selectedSession.session?.status === 'pending',
-                'bg-green-100 text-green-700':   selectedSession.session?.status === 'active',
-                'bg-gray-100 text-black':     selectedSession.session?.status === 'completed',
-                'bg-blue-100 text-blue-700':     selectedSession.session?.status === 'draft',
-              }"
-            >
-              {{ statusLabel(selectedSession.session?.status) }}
-            </span>
-            <button @click="showDetail = false" class="text-black hover:text-black transition-colors">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="overflow-y-auto flex-1">
-
-          <!-- Stats -->
-          <div class="grid grid-cols-4 divide-x divide-gray-200 border-b border-gray-200">
-            <div class="px-4 py-3 bg-secondary text-center">
-              <p class="text-xl font-body font-bold text-white">{{ selectedSession.stats?.nb_questions }}</p>
-              <p class="text-sm font-body text-white mt-0.5">Questions</p>
-            </div>
-            <div class="px-4 py-3 bg-blacky text-center">
-              <p class="text-xl font-body font-bold text-white">{{ selectedSession.stats?.nb_participants }}</p>
-              <p class="text-sm font-body text-white mt-0.5">Participants</p>
-            </div>
-            <div class="px-4 py-3 bg-secondary text-center">
-              <p class="text-xl font-body font-bold text-white">{{ selectedSession.stats?.nb_termines }}</p>
-              <p class="text-sm font-body text-white mt-0.5">Terminés</p>
-            </div>
-            <div class="px-4 py-3 bg-blacky text-center">
-              <p class="text-xl font-body font-bold text-white">
-                {{ selectedSession.stats?.moyenne_sur_20 }}<span class="text-xs font-normal text-black">/20</span>
-              </p>
-              <p class="text-sm font-body text-white mt-0.5">Moyenne</p>
-            </div>
-          </div>
-
-          <!-- Infos -->
-          <div class="px-5 py-4 border-b border-gray-100">
-            <p class="text-xs font-body font-semibold text-black uppercase tracking-wider mb-3">Détails</p>
-            <div class="grid grid-cols-2 gap-2">
-              <div class="flex items-center justify-between py-1">
-                <span class="text-sm font-bold font-body text-black">Durée</span>
-                <span class="text-xs font-bold font-body text-black">{{ selectedSession.session?.duree }} min</span>
-              </div>
-              <div class="flex items-center justify-between py-1">
-                <span class="text-xs font-bold font-body text-black">Total points</span>
-                <span class="text-xs font-bold font-body text-black">{{ selectedSession.stats?.total_points }} pts</span>
-              </div>
-              <div class="flex items-center justify-between py-1">
-                <span class="text-xs font-bold font-body text-black">Début</span>
-                <span class="text-xs font-bold font-body text-black">
-                  {{ selectedSession.session?.date_debut
-                    ? new Date(selectedSession.session.date_debut).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-                    : '—' }}
-                </span>
-              </div>
-              <div class="flex items-center justify-between py-1">
-                <span class="text-xs font-bold font-body text-black">Fin</span>
-                <span class="text-xs font-bold font-body text-black">
-                  {{ selectedSession.session?.date_fin
-                    ? new Date(selectedSession.session.date_fin).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-                    : '—' }}
-                </span>
-              </div>
-              <div class="flex items-center justify-between py-1">
-                <span class="text-xs font-bold font-body text-black">Taux complétion</span>
-                <span class="text-xs font-bold font-body text-black">
-                  {{ selectedSession.stats?.nb_participants > 0
-                    ? Math.round((selectedSession.stats.nb_termines / selectedSession.stats.nb_participants) * 100)
-                    : 0 }}%
-                </span>
-              </div>
-              <div class="flex items-center justify-between py-1">
-                <span class="text-xs font-bold font-body text-black">Résultats visibles</span>
-                <span class="text-xs font-bold font-body" :class="selectedSession.session?.resultats_visibles ? 'text-green-600' : 'text-black'">
-                  {{ selectedSession.session?.resultats_visibles ? 'Oui' : 'Non' }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Participants -->
-          <div class="px-3 py-4">
-            <p class="text-xs font-body font-semibold text-black uppercase tracking-wider mb-3">
-              Participants
-              <span class="ml-1 normal-case font-normal">({{ selectedSession.participants?.length || 0 }})</span>
-            </p>
-
-            <div v-if="!selectedSession.participants?.length" class="py-8 text-center">
-              <p class="text-sm font-body text-black">Aucun participant pour cette session</p>
-            </div>
-
-            <table v-else class="w-full ">
-              <thead class="bg-primary ">
-                <tr class="border border-gray-100">
-                  <th class="pb-2 text-left text-xs font-body font-semibold text-white">Étudiant</th>
-                  <th class="pb-2 text-center text-xs font-body font-semibold text-white">Note</th>
-                  <th class="pb-2 text-center text-xs font-body font-semibold text-white hidden sm:table-cell">Score</th>
-                  <th class="pb-2 text-center text-xs font-body font-semibold text-white">Statut</th>
-                  <th class="pb-2 text-right text-xs font-body font-semibold text-white hidden md:table-cell">Terminé le</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="p in selectedSession.participants" :key="p.id"
-                  class="border border-gray-100 hover:bg-gray-50/50 transition-colors"
-                >
-                  <td class="py-2.5 border border-gray-200">
-                    <p class="font-body font-medium text-black text-sm">{{ p.etudiant.prenom }} {{ p.etudiant.nom }}</p>
-                    <!-- <p class="font-body text-xs text-black">{{ p.etudiant.email }}</p> -->
-                  </td>
-                  <td class="py-2.5 text-center border border-gray-200">
-                    <span
-                      class="font-body font-bold text-sm"
-                      :class="{
-                        'text-blacky': p.note_sur_20 >= 14,
-                        'text-amber-500': p.note_sur_20 >= 10 && p.note_sur_20 < 14,
-                        'text-red-500':   p.note_sur_20 < 10,
-                        'text-black':  p.note_sur_20 === null
-                      }"
-                    >
-                      {{ p.note_sur_20 !== null ? p.note_sur_20 + '/20' : '—' }}
-                    </span>
-                  </td>
-                  <td class="py-2.5 text-center hidden sm:table-cell border border-gray-200">
-                    <span class="text-xs font-body text-black">{{ p.score !== null ? p.score + ' pts' : '—' }}</span>
-                  </td>
-                  <td class="py-2.5 text-center border border-gray-200">
-                    <span
-                      class="text-xs font-body px-2 py-0.5 rounded-full font-medium"
-                      :class="{
-                        'bg-green-500 text-white': p.statut === 'termine',
-                        'bg-blue-500 text-white':   p.statut === 'present',
-                        'bg-gray-500 text-white':  p.statut === 'inscrit',
-                      }"
-                    >
-                      {{ p.statut === 'termine' ? 'Terminé' : p.statut === 'present' ? 'En cours' : 'Inscrit' }}
-                    </span>
-                  </td>
-                  <td class="py-2.5 text-right hidden md:table-cell border border-gray-200">
-                    <span class="text-xs font-body text-black">
-                      {{ p.date_completed
-                        ? new Date(p.date_completed).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-                        : '—' }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
-          <p class="text-xs font-body text-black">Créée par {{ selectedSession.session?.professeur }}</p>
-          <button
-            @click="showDetail = false"
-            class="text-xs font-body px-4 py-1.5 bg-gray-100 text-black rounded-lg hover:bg-gray-200 transition-colors"
-          >
-            Fermer
-          </button>
-        </div>
-
-      </div>
-    </div>
-
     </AdminLayout>
   </div>
 </template>
@@ -383,9 +191,6 @@ const loading = ref(true)
 const sessions = ref([])
 const filieres = ref([])
 const classes  = ref([])
-const showDetail      = ref(false)
-const selectedSession = ref(null)
-const loadingDetail   = ref(false)
 
 const filters = ref({ status: '', filiereId: '', classeId: '', search: '' })
 
@@ -439,21 +244,6 @@ const loadData = async () => {
     if (clsRes.success)  classes.value  = clsRes.data
   } finally {
     loading.value = false
-  }
-}
-
-const openDetail = async (session) => {
-  loadingDetail.value   = true
-  showDetail.value      = true
-  selectedSession.value = null
-  try {
-    const result = await apiFetch(`/admin/sessions/${session.id}`)
-    if (result.success) selectedSession.value = result.data
-  } catch {
-    toast.error('Erreur lors du chargement')
-    showDetail.value = false
-  } finally {
-    loadingDetail.value = false
   }
 }
 

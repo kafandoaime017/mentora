@@ -8,6 +8,11 @@
         <img src="/images/logo-color.png" alt="Mentora" class="h-20 transition-all duration-300" />
       </div>
 
+      <div v-if="ecoleLogoUrl" class="flex items-center gap-2 w-full px-2 mb-3" :class="{ 'justify-center': sidebarCollapsed }">
+        <img :src="ecoleLogoUrl" alt="" class="w-8 h-8 rounded-lg object-cover border border-gray-200 shrink-0"/>
+        <span v-if="!sidebarCollapsed" class="text-xs font-semibold text-black truncate">{{ ecoleNom }}</span>
+      </div>
+
       <button
         @click="toggleSidebar"
         class="self-end w-7 h-7 rounded-lg bg-blacky text-white hover:bg-admin/80 flex items-center justify-center cursor-pointer mb-4 flex-shrink-0 transition-colors duration-200"
@@ -209,11 +214,13 @@
     >
       <!-- ... (le reste du template reste identique) ... -->
       <header class="bg-blacky font-body px-4 h-16 flex items-center justify-between flex-shrink-0 sticky top-0 z-30 shadow-sm">
-        <div class="md:hidden">
+        <div class="md:hidden flex items-center gap-2">
           <img src="/images/logo-color.png" alt="Mentora" class="h-10 brightness-0 invert" />
+          <img v-if="ecoleLogoUrl" :src="ecoleLogoUrl" alt="" class="w-8 h-8 rounded-lg object-cover border border-white/30"/>
         </div>
-        <div class="hidden md:block">
-          <p class="text-white font-semibold text-sm opacity-80">Administration</p>
+        <div class="hidden md:flex items-center gap-2">
+          <img v-if="ecoleLogoUrl" :src="ecoleLogoUrl" alt="" class="w-7 h-7 rounded-lg object-cover border border-white/30"/>
+          <p class="text-white font-semibold text-sm opacity-80">{{ ecoleNom || 'Administration' }}</p>
         </div>
 
         <div class="flex items-center gap-2">
@@ -389,11 +396,13 @@ import { ref, computed, onMounted, onUnmounted, onBeforeMount, h, watch } from '
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../../composables/useAuth'
 import { useNotifications } from '../../composables/useNotifications'
+import { useEcoleLogo } from '../../composables/useEcoleLogo'
 import { useCookie } from '#app'
 
 const route  = useRoute()
 const router = useRouter()
 const { getUser, logout, getProfile } = useAuth()
+const { ecoleNom, logoUrl: ecoleLogoUrl, chargerEcoleLogo } = useEcoleLogo()
 
 // Utilisation des cookies pour sauvegarder l'état
 const sidebarStateCookie = useCookie('sidebar_collapsed', {
@@ -547,6 +556,7 @@ onMounted(async () => {
   await load()
   authChecked.value = true
   await loadUserData()
+  chargerEcoleLogo()
   document.addEventListener('click', handleClickOutside)
 })
 
