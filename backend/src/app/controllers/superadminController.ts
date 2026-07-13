@@ -25,6 +25,8 @@ const sessionRepo    = AppDataSource.getRepository(Session)
 const profilRepo     = AppDataSource.getRepository(EtudiantProfil)
 const profProfRepo   = AppDataSource.getRepository(ProfesseurProfil)
 const invitationRepo = AppDataSource.getRepository(Invitation)
+const filiereRepo    = AppDataSource.getRepository(Filiere)
+const classeRepo     = AppDataSource.getRepository(Classe)
 
 // Limites par plan — dupliquées ici (source de vérité : stripeController) car superadmin
 // doit pouvoir afficher/juger l'usage d'une école sans dépendre d'un appel Stripe.
@@ -332,6 +334,94 @@ export const inviterDirecteur = async (req: AuthRequest, res: Response, next: Ne
   } catch (err) { next(err) }
 }
 
+// Invitation générique — permet au superadmin de créer/inviter un utilisateur de
+// n'importe quel rôle (étudiant, professeur, directeur) dans n'importe quelle école,
+// contrairement aux flux "directeur" qui sont scopés à leur propre req.user.ecoleId.
+export const inviterUtilisateur = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { email, nom, prenom, role, ecoleId, filiereId, classeId } = req.body
+
+    if (!email || !nom || !prenom || !role || !ecoleId) {
+      res.status(400).json({ success: false, message: 'Tous les champs sont requis' }); return
+    }
+    if (![InvitationRole.DIRECTEUR, InvitationRole.PROFESSEUR, InvitationRole.ETUDIANT].includes(role)) {
+      res.status(400).json({ success: false, message: 'Rôle invalide' }); return
+    }
+    if (role === InvitationRole.PROFESSEUR && !filiereId) {
+      res.status(400).json({ success: false, message: 'La filière est requise pour un professeur' }); return
+    }
+    if (role === InvitationRole.ETUDIANT && (!filiereId || !classeId)) {
+      res.status(400).json({ success: false, message: 'La filière et la classe sont requises pour un étudiant' }); return
+    }
+
+    const existant = await userRepo.findOne({ where: { email } })
+    if (existant) { res.status(409).json({ success: false, message: 'Un compte avec cet email existe déjà' }); return }
+
+    const ecole = await ecoleRepo.findOne({ where: { id: ecoleId } })
+    if (!ecole) { res.status(404).json({ success: false, message: 'École non trouvée' }); return }
+
+    if (filiereId) {
+      const filiere = await filiereRepo.findOne({ where: { id: filiereId, ecoleId } })
+      if (!filiere) { res.status(404).json({ success: false, message: 'Filière introuvable pour cette école' }); return }
+    }
+    if (classeId) {
+      const classe = await classeRepo.findOne({ where: { id: classeId, filiereId } })
+      if (!classe) { res.status(404).json({ success: false, message: 'Classe introuvable pour cette filière' }); return }
+    }
+
+    // Vérification des limites du plan de l'école
+    const limites = LIMITES[ecole.plan] || LIMITES.gratuit
+    if (role === InvitationRole.ETUDIANT && limites.maxEtudiants !== -1) {
+      const count = await profilRepo.count({ where: { ecoleId } })
+      if (count >= limites.maxEtudiants) {
+        res.status(403).json({ success: false, message: `Limite du plan ${ecole.plan} atteinte (${limites.maxEtudiants} étudiants max)` }); return
+      }
+    }
+    if (role === InvitationRole.PROFESSEUR && limites.maxProfs !== -1) {
+      const count = await profProfRepo.count({ where: { ecoleId } })
+      if (count >= limites.maxProfs) {
+        res.status(403).json({ success: false, message: `Limite du plan ${ecole.plan} atteinte (${limites.maxProfs} professeurs max)` }); return
+      }
+    }
+
+    const existingInvit = await invitationRepo.findOne({ where: { email, used: false } })
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000)
+
+    let token: string
+    if (existingInvit) {
+      token                   = uuidv4()
+      existingInvit.token     = token
+      existingInvit.expiresAt = expiresAt
+      existingInvit.nom       = nom
+      existingInvit.prenom    = prenom
+      existingInvit.role      = role
+      existingInvit.ecoleId   = ecoleId
+      existingInvit.filiereId = filiereId || null
+      existingInvit.classeId  = classeId || null
+      await invitationRepo.save(existingInvit)
+    } else {
+      token = uuidv4()
+      const invitation = invitationRepo.create({
+        email, nom, prenom, role,
+        filiereId: filiereId || null,
+        classeId:  classeId || null,
+        ecoleId,
+        token,
+        expiresAt
+      })
+      await invitationRepo.save(invitation)
+    }
+
+    const filiereNom = filiereId ? (await filiereRepo.findOne({ where: { id: filiereId } }))?.nom || '' : ''
+    const classeNom  = classeId  ? (await classeRepo.findOne({ where: { id: classeId } }))?.nom || null : null
+
+    const invitationUrl = `${process.env.FRONTEND_URL}/auth/invitation?token=${token}`
+    await envoyerInvitation(email, prenom, nom, role, filiereNom, classeNom, ecole.nom, invitationUrl, expiresAt)
+
+    res.json({ success: true, message: 'Invitation envoyée', data: { token, expiresAt, invitationUrl } })
+  } catch (err) { next(err) }
+}
+
 export const toggleDirecteurActif = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const id   = parseId(req.params.id)
@@ -432,5 +522,137 @@ export const deleteUserSuperadmin = async (req: AuthRequest, res: Response, next
 
     await userRepo.delete(id)
     res.json({ success: true, message: 'Utilisateur supprimé' })
+  } catch (err) { next(err) }
+}
+
+// ─── Administration — gestion des comptes superadmin ─────────────────────────
+// Règle de sécurité stricte : un superadmin ne peut jamais désactiver, révoquer
+// ou supprimer SON PROPRE compte via ces endpoints (uniquement les autres).
+
+export const getSuperadmins = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const superadmins = await userRepo.find({
+      where: { role: UserRole.SUPERADMIN },
+      select: ['id', 'nom', 'prenom', 'email', 'isActive', 'isVerified', 'createdAt'],
+      order: { createdAt: 'ASC' }
+    })
+
+    const invitationsBrutes = await invitationRepo.find({
+      where: { role: InvitationRole.SUPERADMIN, used: false },
+      order: { createdAt: 'DESC' }
+    })
+    const maintenant = new Date()
+    const invitations = invitationsBrutes.map(inv => ({
+      id: inv.id, nom: inv.nom, prenom: inv.prenom, email: inv.email,
+      expiresAt: inv.expiresAt,
+      expiree: new Date(inv.expiresAt) < maintenant
+    }))
+
+    res.json({ success: true, data: { superadmins, invitations, moi: req.user!.id } })
+  } catch (err) { next(err) }
+}
+
+export const inviterSuperadmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { email, nom, prenom } = req.body
+    if (!email || !nom || !prenom) {
+      res.status(400).json({ success: false, message: 'Tous les champs sont requis' }); return
+    }
+
+    const existant = await userRepo.findOne({ where: { email } })
+    if (existant) { res.status(409).json({ success: false, message: 'Un compte avec cet email existe déjà' }); return }
+
+    const existingInvit = await invitationRepo.findOne({ where: { email, used: false } })
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000)
+
+    let token: string
+    if (existingInvit) {
+      token                   = uuidv4()
+      existingInvit.token     = token
+      existingInvit.expiresAt = expiresAt
+      existingInvit.nom       = nom
+      existingInvit.prenom    = prenom
+      existingInvit.role      = InvitationRole.SUPERADMIN
+      existingInvit.ecoleId   = null
+      existingInvit.filiereId = null
+      existingInvit.classeId  = null
+      await invitationRepo.save(existingInvit)
+    } else {
+      token = uuidv4()
+      const invitation = invitationRepo.create({
+        email, nom, prenom,
+        role: InvitationRole.SUPERADMIN,
+        filiereId: null, classeId: null, ecoleId: null,
+        token, expiresAt
+      })
+      await invitationRepo.save(invitation)
+    }
+
+    const invitationUrl = `${process.env.FRONTEND_URL}/auth/invitation?token=${token}`
+    await envoyerInvitation(email, prenom, nom, 'superadmin', '', null, 'Mentora', invitationUrl, expiresAt)
+
+    res.json({ success: true, message: 'Invitation envoyée', data: { token, expiresAt, invitationUrl } })
+  } catch (err) { next(err) }
+}
+
+export const resendSuperadminInvitation = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = parseId(req.params.id)
+    const invitation = await invitationRepo.findOne({ where: { id, role: InvitationRole.SUPERADMIN } })
+    if (!invitation) { res.status(404).json({ success: false, message: 'Invitation non trouvée' }); return }
+    if (invitation.used) { res.status(400).json({ success: false, message: 'Invitation déjà utilisée' }); return }
+
+    invitation.token     = uuidv4()
+    invitation.expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000)
+    await invitationRepo.save(invitation)
+
+    const invitationUrl = `${process.env.FRONTEND_URL}/auth/invitation?token=${invitation.token}`
+    await envoyerInvitation(invitation.email, invitation.prenom, invitation.nom, 'superadmin', '', null, 'Mentora', invitationUrl, invitation.expiresAt)
+
+    res.json({ success: true, message: 'Invitation renvoyée' })
+  } catch (err) { next(err) }
+}
+
+export const revokeSuperadminInvitation = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = parseId(req.params.id)
+    const invitation = await invitationRepo.findOne({ where: { id, role: InvitationRole.SUPERADMIN } })
+    if (!invitation) { res.status(404).json({ success: false, message: 'Invitation non trouvée' }); return }
+    if (invitation.used) { res.status(400).json({ success: false, message: 'Invitation déjà utilisée' }); return }
+
+    await invitationRepo.delete(id)
+    res.json({ success: true, message: 'Invitation annulée' })
+  } catch (err) { next(err) }
+}
+
+export const toggleSuperadminActif = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = parseId(req.params.id)
+    if (id === req.user!.id) {
+      res.status(403).json({ success: false, message: 'Vous ne pouvez pas modifier votre propre compte' }); return
+    }
+
+    const user = await userRepo.findOne({ where: { id, role: UserRole.SUPERADMIN } })
+    if (!user) { res.status(404).json({ success: false, message: 'Superadmin non trouvé' }); return }
+
+    user.isActive = !user.isActive
+    await userRepo.save(user)
+
+    res.json({ success: true, message: user.isActive ? 'Compte activé' : 'Compte désactivé', data: { isActive: user.isActive } })
+  } catch (err) { next(err) }
+}
+
+export const deleteSuperadmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = parseId(req.params.id)
+    if (id === req.user!.id) {
+      res.status(403).json({ success: false, message: 'Vous ne pouvez pas supprimer votre propre compte' }); return
+    }
+
+    const user = await userRepo.findOne({ where: { id, role: UserRole.SUPERADMIN } })
+    if (!user) { res.status(404).json({ success: false, message: 'Superadmin non trouvé' }); return }
+
+    await userRepo.delete(id)
+    res.json({ success: true, message: 'Superadmin supprimé' })
   } catch (err) { next(err) }
 }

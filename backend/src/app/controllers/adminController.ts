@@ -580,7 +580,7 @@ export const registerViaInvitation = async (req: Request, res: Response, next: N
         invitation.used = true
         await invitationRepo.save(invitation)
 
-        // Notifier les superadmins qu'un nouveau directeur vient de rejoindre
+        // Notifier les superadmins qu'un nouveau directeur (ou superadmin) vient de rejoindre
         if (invitation.role === InvitationRole.DIRECTEUR) {
             const ecoleNom = invitation.ecole?.nom || (await ecoleRepo.findOne({ where: { id: invitation.ecoleId! } }))?.nom || 'une école'
             const superadmins = await userRepo.find({ where: { role: UserRole.SUPERADMIN } })
@@ -590,6 +590,17 @@ export const registerViaInvitation = async (req: Request, res: Response, next: N
                     message: `${invitation.prenom} ${invitation.nom} a rejoint en tant que directeur de ${ecoleNom}.`,
                     type: NotificationType.NEW_SESSION,
                     link: '/superadmin/directeurs'
+                })
+            }
+        } else if (invitation.role === InvitationRole.SUPERADMIN) {
+            const superadmins = await userRepo.find({ where: { role: UserRole.SUPERADMIN } })
+            for (const sa of superadmins) {
+                if (sa.id === user.id) continue
+                await createNotification(sa.id, {
+                    titre: 'Nouveau superadmin',
+                    message: `${invitation.prenom} ${invitation.nom} a rejoint l'équipe en tant que superadministrateur.`,
+                    type: NotificationType.NEW_SESSION,
+                    link: '/superadmin/administration'
                 })
             }
         }

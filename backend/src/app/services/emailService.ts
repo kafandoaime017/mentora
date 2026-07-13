@@ -159,7 +159,7 @@ export const envoyerInvitation = async (
         context: {
             prenom,
             nom,
-            role: role === 'etudiant' ? 'Étudiant(e)' : role === 'professeur' ? 'Enseignant(e)' : 'Directeur/Directrice',
+            role: role === 'etudiant' ? 'Étudiant(e)' : role === 'professeur' ? 'Enseignant(e)' : role === 'superadmin' ? 'Superadministrateur/trice' : 'Directeur/Directrice',
             filiere,
             classe,
             ecole,

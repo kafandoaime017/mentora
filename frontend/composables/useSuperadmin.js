@@ -115,9 +115,55 @@ export const useSuperadmin = () => {
     } catch (err) { return { success: false, message: err?.data?.message || 'Erreur' } }
   }
 
+  const inviterUtilisateur = async (data) => {
+    try {
+      return await $fetch('/api/superadmin/users/inviter', {
+        method: 'POST', headers: getAuthHeader(), body: data
+      })
+    } catch (err) { return { success: false, message: err?.data?.message || 'Erreur' } }
+  }
+
   const getAbonnements = async () => {
     try { return await $fetch('/api/superadmin/abonnements', { headers: getAuthHeader() }) }
     catch (err) { return { success: false, data: null, message: err?.data?.message || 'Erreur' } }
+  }
+
+  // ─── Administration (gestion des comptes superadmin) ───────────────────────
+  const getSuperadmins = async () => {
+    try { return await $fetch('/api/superadmin/administration/superadmins', { headers: getAuthHeader() }) }
+    catch (err) { return { success: false, data: { superadmins: [], invitations: [] }, message: err?.data?.message || 'Erreur' } }
+  }
+
+  const inviterSuperadmin = async (data) => {
+    try {
+      return await $fetch('/api/superadmin/administration/superadmins/inviter', {
+        method: 'POST', headers: getAuthHeader(), body: data
+      })
+    } catch (err) { return { success: false, message: err?.data?.message || 'Erreur' } }
+  }
+
+  const toggleSuperadminActif = async (id) => {
+    try {
+      return await $fetch(`/api/superadmin/administration/superadmins/${id}/toggle`, { method: 'PATCH', headers: getAuthHeader() })
+    } catch (err) { return { success: false, message: err?.data?.message || 'Erreur' } }
+  }
+
+  const deleteSuperadmin = async (id) => {
+    try {
+      return await $fetch(`/api/superadmin/administration/superadmins/${id}`, { method: 'DELETE', headers: getAuthHeader() })
+    } catch (err) { return { success: false, message: err?.data?.message || 'Erreur' } }
+  }
+
+  const resendSuperadminInvitation = async (id) => {
+    try {
+      return await $fetch(`/api/superadmin/administration/invitations/${id}/renvoyer`, { method: 'POST', headers: getAuthHeader() })
+    } catch (err) { return { success: false, message: err?.data?.message || 'Erreur' } }
+  }
+
+  const revokeSuperadminInvitation = async (id) => {
+    try {
+      return await $fetch(`/api/superadmin/administration/invitations/${id}`, { method: 'DELETE', headers: getAuthHeader() })
+    } catch (err) { return { success: false, message: err?.data?.message || 'Erreur' } }
   }
 
   return {
@@ -125,7 +171,9 @@ export const useSuperadmin = () => {
     getEcoles, getEcoleById, createEcole, updateEcole, updateEcolePlan, deleteEcole,
     getDirecteurs, inviterDirecteur, toggleDirecteur, deleteDirecteur,
     resendVerificationDirecteur, resendInvitation, revokeInvitation,
-    getAllUsers, toggleUserActif, deleteUser,
-    getAbonnements
+    getAllUsers, toggleUserActif, deleteUser, inviterUtilisateur,
+    getAbonnements,
+    getSuperadmins, inviterSuperadmin, toggleSuperadminActif, deleteSuperadmin,
+    resendSuperadminInvitation, revokeSuperadminInvitation
   }
 }

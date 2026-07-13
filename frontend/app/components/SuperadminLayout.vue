@@ -37,8 +37,8 @@
             <div v-show="!sidebarCollapsed ? !collapsedSections.main : true" class="space-y-0.5">
               <nuxt-link
                 v-for="item in mainNavItems" :key="item.key" :to="item.to"
-                class="flex items-center font-body gap-2 bg-gray-100 px-2 py-0.5 rounded-md text-muted hover:bg-blacky/80 hover:text-white transition-all duration-200 w-full"
-                :class="{ 'bg-[#024864] text-white': $route.path === item.to, 'justify-center': sidebarCollapsed }"
+                class="flex items-center font-body gap-2 px-2 py-0.5 rounded-md hover:bg-blacky/80 hover:text-white transition-all duration-200 w-full"
+                :class="[$route.path === item.to ? 'bg-[#024864] text-white' : 'bg-gray-100 text-gray-500', { 'justify-center': sidebarCollapsed }]"
                 :title="item.label"
               >
                 <span class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -68,8 +68,8 @@
             <div v-show="!sidebarCollapsed ? !collapsedSections.gestion : true" class="space-y-0.5">
               <nuxt-link
                 v-for="item in gestionNavItems" :key="item.key" :to="item.to"
-                class="flex items-center font-body gap-2 bg-gray-100 px-2 py-0.5 rounded-md text-muted hover:bg-blacky/80 hover:text-white transition-all duration-200 w-full"
-                :class="{ 'bg-[#024864] text-white': $route.path === item.to || $route.path.startsWith(item.to + '/'), 'justify-center': sidebarCollapsed }"
+                class="flex items-center font-body gap-2 px-2 py-0.5 rounded-md hover:bg-blacky/80 hover:text-white transition-all duration-200 w-full"
+                :class="[($route.path === item.to || $route.path.startsWith(item.to + '/')) ? 'bg-[#024864] text-white' : 'bg-gray-100 text-gray-500', { 'justify-center': sidebarCollapsed }]"
                 :title="item.label"
               >
                 <span class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -99,7 +99,7 @@
             <div v-show="!sidebarCollapsed ? !collapsedSections.systeme : true" class="space-y-0.5">
               <a
                 v-for="item in monitoringLinks" :key="item.key" :href="item.href" target="_blank" rel="noopener"
-                class="flex items-center font-body gap-2 bg-gray-100 px-2 py-0.5 rounded-md text-muted hover:bg-blacky/80 hover:text-white transition-all duration-200 w-full"
+                class="flex items-center font-body gap-2 bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md hover:bg-blacky/80 hover:text-white transition-all duration-200 w-full"
                 :class="{ 'justify-center': sidebarCollapsed }"
                 :title="item.label"
               >
@@ -323,6 +323,11 @@
               <span class="text-[10px] font-medium">Abonnements</span>
             </nuxt-link>
 
+            <nuxt-link to="/superadmin/administration" @click="mobileMenuOpen = false" class="flex flex-col items-center justify-center gap-1 py-2 rounded-xl hover:bg-gray-50 transition-colors" :class="$route.path.startsWith('/superadmin/administration') ? 'text-blacky' : 'text-gray-500'">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.5 12l1.8 1.8L14.5 10"/></svg>
+              <span class="text-[10px] font-medium">Admin.</span>
+            </nuxt-link>
+
             <a href="http://31.97.55.208:8001" target="_blank" rel="noopener" @click="mobileMenuOpen = false" class="flex flex-col items-center justify-center gap-1 py-2 rounded-xl hover:bg-gray-50 transition-colors text-gray-500">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               <span class="text-[10px] font-medium">Erreurs</span>
@@ -501,6 +506,13 @@ const gestionNavItems = [
     key: 'abonnements', to: '/superadmin/abonnements', label: 'Abonnements',
     icon: () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }, [
       h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', d: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' })
+    ])
+  },
+  {
+    key: 'administration', to: '/superadmin/administration', label: 'Administration',
+    icon: () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }, [
+      h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', d: 'M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z' }),
+      h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', d: 'M9.5 12l1.8 1.8L14.5 10' })
     ])
   }
 ]

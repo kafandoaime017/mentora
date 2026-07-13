@@ -9,7 +9,8 @@ import { Ecole } from './Ecole'
 export enum InvitationRole {
     ETUDIANT   = 'etudiant',
     PROFESSEUR = 'professeur',
-    DIRECTEUR  = 'directeur'
+    DIRECTEUR  = 'directeur',
+    SUPERADMIN = 'superadmin'
 }
 
 @Entity('invitations')
@@ -48,12 +49,13 @@ export class Invitation {
     @JoinColumn({ name: 'filiereId' })
     filiere!: Filiere | null
 
-    @Column({ type: 'int', unsigned: true })
-    ecoleId!: number
+    // Absent pour un superadmin (aucune école rattachée)
+    @Column({ type: 'int', unsigned: true, nullable: true })
+    ecoleId!: number | null
 
-    @ManyToOne(() => Ecole, { onDelete: 'CASCADE' })
+    @ManyToOne(() => Ecole, { nullable: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'ecoleId' })
-    ecole!: Ecole
+    ecole!: Ecole | null
 
     @Column({ type: 'boolean', default: false })
     used!: boolean

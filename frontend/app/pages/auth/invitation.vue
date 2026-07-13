@@ -104,9 +104,9 @@
               <span class="text-xs text-gray-500">Rôle</span>
               <span
                 class="text-xs font-semibold px-2 py-0.5 rounded-full"
-                :class="invitation.role === 'etudiant' ? 'bg-primary/10 text-primary' : invitation.role === 'professeur' ? 'bg-secondary/10 text-secondary' : 'bg-blacky/10 text-blacky'"
+                :class="invitation.role === 'etudiant' ? 'bg-primary/10 text-primary' : invitation.role === 'professeur' ? 'bg-secondary/10 text-secondary' : invitation.role === 'superadmin' ? 'bg-danger/10 text-danger' : 'bg-blacky/10 text-blacky'"
               >
-                {{ invitation.role === 'etudiant' ? 'Étudiant' : invitation.role === 'professeur' ? 'Professeur' : 'Directeur' }}
+                {{ invitation.role === 'etudiant' ? 'Étudiant' : invitation.role === 'professeur' ? 'Professeur' : invitation.role === 'superadmin' ? 'Superadmin' : 'Directeur' }}
               </span>
             </div>
             <div v-if="invitation.filiere" class="flex justify-between">
@@ -117,7 +117,7 @@
               <span class="text-xs text-gray-500">Classe</span>
               <span class="text-xs font-semibold text-gray-800">{{ invitation.classe }}</span>
             </div>
-            <div class="flex justify-between">
+            <div v-if="invitation.ecole" class="flex justify-between">
               <span class="text-xs text-gray-500">École</span>
               <span class="text-xs font-semibold text-gray-800">{{ invitation.ecole }}</span>
             </div>

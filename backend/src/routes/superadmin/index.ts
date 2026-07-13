@@ -24,7 +24,17 @@ router.delete('/invitations/:id',               ...isSuperadmin, ctrl.revokeDire
 router.get('/users',                    ...isSuperadmin, ctrl.getAllUsers)
 router.patch('/users/:id/toggle',       ...isSuperadmin, ctrl.toggleUserActif)
 router.delete('/users/:id',             ...isSuperadmin, ctrl.deleteUserSuperadmin)
+router.post('/users/inviter',           ...isSuperadmin, ctrl.inviterUtilisateur)
 
 router.get('/abonnements',              ...isSuperadmin, ctrl.getAbonnements)
+
+// Administration — gestion des comptes superadmin (auto-protection : impossible
+// de se désactiver/révoquer/supprimer soi-même, appliqué dans le contrôleur)
+router.get('/administration/superadmins',                ...isSuperadmin, ctrl.getSuperadmins)
+router.post('/administration/superadmins/inviter',       ...isSuperadmin, ctrl.inviterSuperadmin)
+router.patch('/administration/superadmins/:id/toggle',   ...isSuperadmin, ctrl.toggleSuperadminActif)
+router.delete('/administration/superadmins/:id',         ...isSuperadmin, ctrl.deleteSuperadmin)
+router.post('/administration/invitations/:id/renvoyer',  ...isSuperadmin, ctrl.resendSuperadminInvitation)
+router.delete('/administration/invitations/:id',         ...isSuperadmin, ctrl.revokeSuperadminInvitation)
 
 export default router

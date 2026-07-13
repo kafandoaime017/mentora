@@ -2,9 +2,15 @@
   <div class="bg-layout font-body min-h-screen">
     <SuperadminLayout>
       <div>
-        <div class="mb-6">
-          <h1 class="text-2xl font-body font-extrabold text-gray-800">Utilisateurs</h1>
-          <p class="text-sm font-body text-gray-500 mt-1">{{ users.length }} utilisateur(s)</p>
+        <div class="mb-6 flex items-center justify-between">
+          <div>
+            <h1 class="text-2xl font-body font-extrabold text-gray-800">Utilisateurs</h1>
+            <p class="text-sm font-body text-gray-500 mt-1">{{ users.length }} utilisateur(s)</p>
+          </div>
+          <button @click="ouvrirModalInvitation" class="px-4 py-2.5 rounded-lg bg-[#024864] text-white text-sm font-body font-semibold hover:bg-blacky/90 transition flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Inviter un utilisateur
+          </button>
         </div>
 
         <!-- Filtres + Recherche -->
@@ -138,6 +144,78 @@
             </div>
           </div>
         </div>
+
+        <!-- Modal invitation utilisateur -->
+        <div v-if="modalInvitationVisible" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" @click.self="fermerModalInvitation">
+          <div class="bg-white rounded-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="font-extrabold text-gray-900 text-center text-xl font-body mb-5">Inviter un utilisateur</h3>
+
+            <form @submit.prevent="envoyerInvitationUtilisateur" class="space-y-3">
+              <!-- Rôle -->
+              <div>
+                <label class="block text-xs font-body font-semibold text-gray-500 mb-1.5">Rôle</label>
+                <div class="grid grid-cols-3 gap-2">
+                  <button type="button" v-for="r in rolesInvitables" :key="r.value" @click="invitationForm.role = r.value; onRoleChange()"
+                    class="py-2 rounded-lg text-xs font-body font-semibold transition"
+                    :class="invitationForm.role === r.value ? 'bg-[#024864] text-white' : 'bg-input text-gray-600'"
+                  >{{ r.label }}</button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-body font-semibold text-gray-500 mb-1.5">Prénom</label>
+                  <input v-model="invitationForm.prenom" type="text" required class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
+                </div>
+                <div>
+                  <label class="block text-xs font-body font-semibold text-gray-500 mb-1.5">Nom</label>
+                  <input v-model="invitationForm.nom" type="text" required class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-body font-semibold text-gray-500 mb-1.5">Email</label>
+                <input v-model="invitationForm.email" type="email" required class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
+              </div>
+
+              <div>
+                <label class="block text-xs font-body font-semibold text-gray-500 mb-1.5">École</label>
+                <select v-model.number="invitationForm.ecoleId" @change="onEcoleChange" required class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none">
+                  <option :value="null" disabled>Sélectionner une école</option>
+                  <option v-for="e in ecoles" :key="e.id" :value="e.id">{{ e.nom }}</option>
+                </select>
+              </div>
+
+              <div v-if="invitationForm.role !== 'directeur'">
+                <label class="block text-xs font-body font-semibold text-gray-500 mb-1.5">Filière</label>
+                <select v-model.number="invitationForm.filiereId" @change="onFiliereChange" required class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none" :disabled="!invitationForm.ecoleId">
+                  <option :value="null" disabled>Sélectionner une filière</option>
+                  <option v-for="f in filieresDisponibles" :key="f.id" :value="f.id">{{ f.nom }}</option>
+                </select>
+                <p v-if="invitationForm.ecoleId && filieresDisponibles.length === 0" class="text-xs font-body text-yellow-600 mt-1">Cette école n'a aucune filière.</p>
+              </div>
+
+              <div v-if="invitationForm.role === 'etudiant'">
+                <label class="block text-xs font-body font-semibold text-gray-500 mb-1.5">Classe</label>
+                <select v-model.number="invitationForm.classeId" required class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none" :disabled="!invitationForm.filiereId">
+                  <option :value="null" disabled>Sélectionner une classe</option>
+                  <option v-for="c in classesDisponibles" :key="c.id" :value="c.id">{{ c.nom }}</option>
+                </select>
+                <p v-if="invitationForm.filiereId && classesDisponibles.length === 0" class="text-xs font-body text-yellow-600 mt-1">Cette filière n'a aucune classe.</p>
+              </div>
+
+              <div class="flex gap-3 pt-2">
+                <button type="button" @click="fermerModalInvitation" class="flex-1 font-body py-2.5 bg-gray-200 text-gray-600 rounded-xl text-sm font-semibold">Annuler</button>
+                <button type="submit" :disabled="envoiInvitation"
+                  class="flex-1 font-body py-2.5 bg-[#024864] text-white rounded-xl text-sm font-semibold hover:bg-blacky/90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <div v-if="envoiInvitation" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"/>
+                  <span v-else>Envoyer l'invitation</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     </SuperadminLayout>
   </div>
@@ -150,7 +228,7 @@ import { useToast } from '~~/composables/useToast'
 definePageMeta({ layout: false })
 
 const toast = useToast()
-const { getAllUsers, toggleUserActif, deleteUser } = useSuperadmin()
+const { getAllUsers, toggleUserActif, deleteUser, getEcoles, inviterUtilisateur } = useSuperadmin()
 
 const loading         = ref(true)
 const users           = ref([])
@@ -159,6 +237,63 @@ const search          = ref('')
 const modalSuppressionVisible = ref(false)
 const enregistrement  = ref(false)
 const userASupprimer  = ref(null)
+
+// ─── Invitation d'un nouvel utilisateur (tous rôles, toutes écoles) ─────────
+const ecoles                  = ref([])
+const modalInvitationVisible  = ref(false)
+const envoiInvitation         = ref(false)
+const rolesInvitables = [
+  { value: 'directeur',  label: 'Directeur' },
+  { value: 'professeur', label: 'Professeur' },
+  { value: 'etudiant',   label: 'Étudiant' }
+]
+const invitationFormDefaut = () => ({
+  role: 'directeur', prenom: '', nom: '', email: '',
+  ecoleId: null, filiereId: null, classeId: null
+})
+const invitationForm = ref(invitationFormDefaut())
+
+const ecoleSelectionnee = computed(() => ecoles.value.find(e => e.id === invitationForm.value.ecoleId) || null)
+const filieresDisponibles = computed(() => ecoleSelectionnee.value?.filieres || [])
+const classeSelectionnee = computed(() => filieresDisponibles.value.find(f => f.id === invitationForm.value.filiereId) || null)
+const classesDisponibles = computed(() => classeSelectionnee.value?.classes || [])
+
+const onRoleChange = () => {
+  invitationForm.value.filiereId = null
+  invitationForm.value.classeId  = null
+}
+const onEcoleChange = () => {
+  invitationForm.value.filiereId = null
+  invitationForm.value.classeId  = null
+}
+const onFiliereChange = () => {
+  invitationForm.value.classeId = null
+}
+
+const ouvrirModalInvitation = async () => {
+  invitationForm.value = invitationFormDefaut()
+  modalInvitationVisible.value = true
+  if (ecoles.value.length === 0) {
+    const result = await getEcoles()
+    if (result.success) ecoles.value = result.data
+  }
+}
+const fermerModalInvitation = () => { modalInvitationVisible.value = false }
+
+const envoyerInvitationUtilisateur = async () => {
+  envoiInvitation.value = true
+  const { role, prenom, nom, email, ecoleId, filiereId, classeId } = invitationForm.value
+  const payload = { role, prenom, nom, email, ecoleId }
+  if (role !== 'directeur') payload.filiereId = filiereId
+  if (role === 'etudiant')  payload.classeId  = classeId
+
+  const result = await inviterUtilisateur(payload)
+  if (result.success) {
+    toast.success(result.message || 'Invitation envoyée')
+    modalInvitationVisible.value = false
+  } else toast.error(result.message || 'Erreur')
+  envoiInvitation.value = false
+}
 
 const filtres = [
   { value: 'tous',       label: 'Tous' },

@@ -49,8 +49,8 @@
                 v-for="item in mainNavItems"
                 :key="item.key"
                 :to="item.to"
-                class="flex items-center font-body gap-2 bg-gray-100 px-2 py-0.5 rounded-md text-muted hover:bg-blacky/80 hover:text-white transition-all duration-200 w-full"
-                :class="{ 'bg-[#024864] ': $route.path === item.to, 'justify-center': sidebarCollapsed }"
+                class="flex items-center font-body gap-2 px-2 py-0.5 rounded-md hover:bg-blacky/80 hover:text-white transition-all duration-200 w-full"
+                :class="[$route.path === item.to ? 'bg-[#024864] text-white' : 'bg-gray-100 text-gray-500', { 'justify-center': sidebarCollapsed }]"
                 :title="item.label"
               >
                 <span class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -94,8 +94,8 @@
                 v-for="item in gestionNavItems"
                 :key="item.key"
                 :to="item.to"
-                class="flex items-center font-body gap-2 bg-gray-100 px-2 py-0.5 rounded-md text-muted hover:bg-blacky/80 hover:text-white transition-all duration-200 w-full"
-                :class="{ 'bg-[#024864] text-white': $route.path === item.to, 'justify-center': sidebarCollapsed }"
+                class="flex items-center font-body gap-2 px-2 py-0.5 rounded-md hover:bg-blacky/80 hover:text-white transition-all duration-200 w-full"
+                :class="[$route.path === item.to ? 'bg-[#024864] text-white' : 'bg-gray-100 text-gray-500', { 'justify-center': sidebarCollapsed }]"
                 :title="item.label"
               >
                 <span class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -139,8 +139,8 @@
                 v-for="item in personnelNavItems"
                 :key="item.key"
                 :to="item.to"
-                class="flex items-center font-body gap-2 bg-gray-100 px-2 py-0.5 rounded-md text-muted hover:bg-blacky/80 hover:text-white transition-all duration-200 w-full"
-                :class="{ 'bg-[#024864] text-white': $route.path === item.to, 'justify-center': sidebarCollapsed }"
+                class="flex items-center font-body gap-2 px-2 py-0.5 rounded-md hover:bg-blacky/80 hover:text-white transition-all duration-200 w-full"
+                :class="[$route.path === item.to ? 'bg-[#024864] text-white' : 'bg-gray-100 text-gray-500', { 'justify-center': sidebarCollapsed }]"
                 :title="item.label"
               >
                 <span class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0">
