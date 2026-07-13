@@ -131,7 +131,7 @@
         <!-- Modal invitation -->
         <div v-if="modalVisible" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" @click.self="fermerModal">
           <div class="bg-white rounded-lg w-full max-w-md p-6">
-            <h3 class="font-extrabold text-gray-900 text-center text-xl font-body mb-4">Inviter un superadmin</h3>
+            <h3 class="font-extrabold text-black text-center text-xl font-body mb-4">Inviter un superadmin</h3>
             <div class="space-y-3">
               <div class="grid grid-cols-2 gap-3">
                 <div>
@@ -167,7 +167,7 @@
         <!-- Modal suppression -->
         <div v-if="modalSuppressionVisible" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" @click.self="modalSuppressionVisible = false">
           <div class="bg-white rounded-lg w-full max-w-sm p-6">
-            <h3 class="font-extrabold text-gray-900 text-center text-xl font-body mb-2">Supprimer le superadmin</h3>
+            <h3 class="font-extrabold text-black text-center text-xl font-body mb-2">Supprimer le superadmin</h3>
             <p class="text-sm font-body text-black text-center mb-6">Êtes-vous sûr de vouloir supprimer <strong>{{ superadminASupprimer?.prenom }} {{ superadminASupprimer?.nom }}</strong> ? Cette action est irréversible.</p>
             <div class="flex gap-3">
               <button @click="modalSuppressionVisible = false" class="flex-1 font-body py-2.5 bg-gray-200 text-black rounded-lg text-sm font-semibold">Annuler</button>

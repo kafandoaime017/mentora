@@ -4,7 +4,7 @@
       <div class="max-w-7xl mx-auto">
 
         <div class="flex items-center justify-between mb-6">
-          <h1 class="text-2xl font-body font-extrabold text-gray-800">Utilisateurs</h1>
+          <h1 class="text-2xl font-body font-extrabold text-black">Utilisateurs</h1>
           <span class="text-sm font-body text-black">{{ users.length }} utilisateur{{ users.length > 1 ? 's' : ''
             }}</span>
         </div>

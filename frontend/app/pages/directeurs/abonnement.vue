@@ -4,12 +4,12 @@
 
       <!-- En-tête -->
       <div class="mb-8">
-        <h1 class="text-2xl font-body font-extrabold text-gray-800">Abonnement</h1>
-        <p class="text-sm text-gray-400 font-body mt-1">Gérez le plan de votre établissement</p>
+        <h1 class="text-2xl font-body font-extrabold text-black">Abonnement</h1>
+        <p class="text-sm text-black font-body mt-1">Gérez le plan de votre établissement</p>
       </div>
 
       <!-- Banners -->
-      <div v-if="success" class="mb-6 bg-green-50 border border-green-200 text-green-700 rounded-2xl px-5 py-4 text-sm font-body font-semibold flex items-center gap-3">
+      <div v-if="success" class="mb-6 bg-green-50 border border-green-200 text-green-700 rounded-lg px-5 py-4 text-sm font-body font-semibold flex items-center gap-3">
         <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center shrink-0">
           <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
@@ -18,7 +18,7 @@
         Paiement réussi ! Votre plan a été activé. Bienvenue sur Mentora {{ abonnement?.plan?.toUpperCase() }} 🎉
       </div>
 
-      <div v-if="canceled" class="mb-6 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-2xl px-5 py-4 text-sm font-body font-semibold flex items-center gap-3">
+      <div v-if="canceled" class="mb-6 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg px-5 py-4 text-sm font-body font-semibold flex items-center gap-3">
         <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center shrink-0">
           <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -35,13 +35,13 @@
       <div v-else class="space-y-6">
 
         <!-- Plan actuel card -->
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h3 class="font-body font-bold text-gray-800">Plan actuel</h3>
+            <h3 class="font-body font-bold text-black">Plan actuel</h3>
             <span
               class="px-3 py-1 rounded-full text-xs font-body font-extrabold uppercase tracking-wide"
               :class="{
-                'bg-gray-100 text-gray-500':         abonnement?.plan === 'gratuit',
+                'bg-gray-100 text-black':         abonnement?.plan === 'gratuit',
                 'bg-blue-100 text-blue-700':         abonnement?.plan === 'starter',
                 'bg-[#1e3a2f]/10 text-[#1e3a2f]':   abonnement?.plan === 'pro'
               }"
@@ -53,23 +53,23 @@
           <div class="p-6">
             <!-- Limites -->
             <div class="grid grid-cols-3 gap-4 mb-6">
-              <div class="bg-gray-50 rounded-xl p-4 text-center">
-                <p class="text-2xl font-body font-extrabold text-gray-800">
+              <div class="bg-gray-50 rounded-lg p-4 text-center">
+                <p class="text-2xl font-body font-extrabold text-black">
                   {{ abonnement?.limites?.maxEtudiants === -1 ? '∞' : abonnement?.limites?.maxEtudiants }}
                 </p>
-                <p class="text-xs font-body text-gray-400 mt-1">Étudiants</p>
+                <p class="text-xs font-body text-black mt-1">Étudiants</p>
               </div>
-              <div class="bg-gray-50 rounded-xl p-4 text-center">
-                <p class="text-2xl font-body font-extrabold text-gray-800">
+              <div class="bg-gray-50 rounded-lg p-4 text-center">
+                <p class="text-2xl font-body font-extrabold text-black">
                   {{ abonnement?.limites?.maxProfs === -1 ? '∞' : abonnement?.limites?.maxProfs }}
                 </p>
-                <p class="text-xs font-body text-gray-400 mt-1">Professeurs</p>
+                <p class="text-xs font-body text-black mt-1">Professeurs</p>
               </div>
-              <div class="bg-gray-50 rounded-xl p-4 text-center">
-                <p class="text-2xl font-body font-extrabold text-gray-800">
+              <div class="bg-gray-50 rounded-lg p-4 text-center">
+                <p class="text-2xl font-body font-extrabold text-black">
                   {{ abonnement?.limites?.maxSessions === -1 ? '∞' : abonnement?.limites?.maxSessions }}
                 </p>
-                <p class="text-xs font-body text-gray-400 mt-1">Sessions/mois</p>
+                <p class="text-xs font-body text-black mt-1">Sessions/mois</p>
               </div>
             </div>
 
@@ -85,7 +85,7 @@
               </span>
               <span
                 class="px-3 py-1 text-xs font-body font-semibold rounded-full flex items-center gap-1"
-                :class="abonnement?.limites?.ia ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'"
+                :class="abonnement?.limites?.ia ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-black'"
               >
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path v-if="abonnement?.limites?.ia" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
@@ -100,7 +100,7 @@
               v-if="abonnement?.has_stripe"
               @click="ouvrirPortail"
               :disabled="portalLoading"
-              class="w-full py-3 bg-gray-50 border border-gray-200 text-gray-600 rounded-xl text-sm font-body font-semibold hover:bg-gray-100 transition flex items-center justify-center gap-2"
+              class="w-full py-3 bg-gray-50 border border-gray-200 text-black rounded-lg text-sm font-body font-semibold hover:bg-gray-100 transition flex items-center justify-center gap-2"
             >
               <div v-if="portalLoading" class="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent"/>
               <template v-else>
@@ -115,7 +115,7 @@
 
         <!-- Toggle mensuel / annuel -->
         <div class="flex items-center justify-center gap-3">
-          <span class="text-sm font-body font-medium" :class="billing === 'monthly' ? 'text-gray-800' : 'text-gray-400'">Mensuel</span>
+          <span class="text-sm font-body font-medium" :class="billing === 'monthly' ? 'text-black' : 'text-black'">Mensuel</span>
           <button
             @click="billing = billing === 'monthly' ? 'yearly' : 'monthly'"
             class="relative inline-flex h-6 w-12 items-center rounded-full transition-colors duration-200"
@@ -126,7 +126,7 @@
               :style="billing === 'yearly' ? 'transform: translateX(28px)' : 'transform: translateX(4px)'"
             />
           </button>
-          <span class="text-sm font-body font-medium" :class="billing === 'yearly' ? 'text-gray-800' : 'text-gray-400'">
+          <span class="text-sm font-body font-medium" :class="billing === 'yearly' ? 'text-black' : 'text-black'">
             Annuel
             <span class="ml-1.5 px-2 py-0.5 bg-blacky/10 text-blacky text-xs font-body font-bold rounded-full">-17%</span>
           </span>
@@ -137,30 +137,30 @@
 
           <!-- Starter -->
           <div
-            class="bg-white rounded-2xl border shadow-sm overflow-hidden transition-all"
-            :class="abonnement?.plan === 'starter' ? 'border-blue-300 ring-2 ring-blue-100' : 'border-gray-100'"
+            class="bg-white rounded-lg border overflow-hidden transition-all"
+            :class="abonnement?.plan === 'starter' ? 'border-blue-300 ring-2 ring-blue-100' : 'border-gray-200'"
           >
             <div class="p-6">
               <div class="flex items-center justify-between mb-5">
                 <div>
                   <span class="text-xs font-body font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Starter</span>
-                  <h3 class="text-xl font-body font-extrabold text-gray-800 mt-2">
+                  <h3 class="text-xl font-body font-extrabold text-black mt-2">
                     {{ billing === 'monthly' ? '39€' : '32€' }}
-                    <span class="text-sm font-body font-normal text-gray-400">/mois</span>
+                    <span class="text-sm font-body font-normal text-black">/mois</span>
                   </h3>
                   <p v-if="billing === 'yearly'" class="text-xs font-body text-blacky font-semibold mt-0.5">390€/an — économisez 78€</p>
                 </div>
-                <span v-if="abonnement?.plan === 'starter'" class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-body font-bold rounded-xl">Actuel ✓</span>
+                <span v-if="abonnement?.plan === 'starter'" class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-body font-bold rounded-lg">Actuel ✓</span>
               </div>
 
               <ul class="space-y-2.5 mb-6">
-                <li v-for="feat in starterFeats" :key="feat" class="flex items-center gap-2 text-sm font-body text-gray-600">
+                <li v-for="feat in starterFeats" :key="feat" class="flex items-center gap-2 text-sm font-body text-black">
                   <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                   </svg>
                   {{ feat }}
                 </li>
-                <li class="flex items-center gap-2 text-sm font-body text-gray-300">
+                <li class="flex items-center gap-2 text-sm font-body text-black">
                   <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                   </svg>
@@ -172,12 +172,12 @@
                 v-if="abonnement?.plan !== 'starter'"
                 @click="passer('starter')"
                 :disabled="!!checkoutLoading"
-                class="w-full py-3 bg-blacky text-white rounded-xl text-sm font-body font-bold hover:bg-blacky/90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                class="w-full py-3 bg-blacky text-white rounded-lg text-sm font-body font-bold hover:bg-blacky/90 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <div v-if="checkoutLoading === 'starter'" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"/>
                 <span v-else>Passer au Starter</span>
               </button>
-              <div v-else class="w-full py-3 bg-blue-50 text-blue-600 rounded-xl text-sm font-body font-bold text-center">
+              <div v-else class="w-full py-3 bg-blue-50 text-blue-600 rounded-lg text-sm font-body font-bold text-center">
                 Plan actuel ✓
               </div>
             </div>
@@ -185,7 +185,7 @@
 
           <!-- Pro -->
           <div
-            class="bg-[#1e3a2f] rounded-2xl border shadow-sm overflow-hidden transition-all relative"
+            class="bg-[#1e3a2f] rounded-lg border overflow-hidden transition-all relative"
             :class="abonnement?.plan === 'pro' ? 'border-[#919e19] ring-2 ring-[#919e19]/30' : 'border-transparent'"
           >
             <!-- Badge recommandé -->
@@ -203,7 +203,7 @@
                   </h3>
                   <p v-if="billing === 'yearly'" class="text-xs font-body text-[#919e19] font-semibold mt-0.5">890€/an — économisez 178€</p>
                 </div>
-                <span v-if="abonnement?.plan === 'pro'" class="px-2 py-1 bg-[#919e19]/20 text-[#919e19] text-xs font-body font-bold rounded-xl">Actuel ✓</span>
+                <span v-if="abonnement?.plan === 'pro'" class="px-2 py-1 bg-[#919e19]/20 text-[#919e19] text-xs font-body font-bold rounded-lg">Actuel ✓</span>
               </div>
 
               <ul class="space-y-2.5 mb-6">
@@ -219,12 +219,12 @@
                 v-if="abonnement?.plan !== 'pro'"
                 @click="passer('pro')"
                 :disabled="!!checkoutLoading"
-                class="w-full py-3 bg-[#919e19] text-white rounded-xl text-sm font-body font-bold hover:bg-[#919e19]/90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                class="w-full py-3 bg-[#919e19] text-white rounded-lg text-sm font-body font-bold hover:bg-[#919e19]/90 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <div v-if="checkoutLoading === 'pro'" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"/>
                 <span v-else>Passer au Pro</span>
               </button>
-              <div v-else class="w-full py-3 bg-[#919e19]/20 text-[#919e19] rounded-xl text-sm font-body font-bold text-center">
+              <div v-else class="w-full py-3 bg-[#919e19]/20 text-[#919e19] rounded-lg text-sm font-body font-bold text-center">
                 Plan actuel ✓
               </div>
             </div>
@@ -232,9 +232,9 @@
         </div>
 
         <!-- Footer -->
-        <p class="text-center text-xs font-body text-gray-400">
+        <p class="text-center text-xs font-body text-black">
           30 jours d'essai gratuit · Annulation à tout moment · Paiement sécurisé par
-          <span class="font-semibold text-gray-500">Stripe</span>
+          <span class="font-semibold text-black">Stripe</span>
         </p>
 
       </div>

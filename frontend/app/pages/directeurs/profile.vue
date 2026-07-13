@@ -32,7 +32,7 @@
         </div>
 
         <!-- INFORMATIONS -->
-        <div class="bg-white shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)] border border-[#e2ddd4] rounded-lg overflow-hidden">
+        <div class="bg-white border border-[#e2ddd4] rounded-lg overflow-hidden">
 
           <!-- Nom -->
           <div class="border-b font-body border-gray-200">
@@ -135,7 +135,7 @@
 
         <!-- MODAL MODIFICATION NOM/PRÉNOM -->
         <div v-if="modalVisible" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="fermerModal">
-          <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+          <div class="bg-white rounded-lg border border-[#e2ddd4] max-w-md w-full">
             <div class="border-b border-[#e2ddd4] p-4">
               <h3 class="text-lg font-body font-bold text-[#1e3a2f]">
                 Modifier {{ champActuel === 'nom' ? 'le nom' : 'le prénom' }}
@@ -148,7 +148,7 @@
               <input
                 v-model="nouvelleValeur"
                 type="text"
-                class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:outline-none"
+                class="w-full font-body pl-4 pr-4 py-3 text-sm text-black placeholder-gray-600 bg-input rounded-lg focus:outline-none"
                 :placeholder="champActuel === 'nom' ? 'Entrez votre nouveau nom' : 'Entrez votre nouveau prénom'"
                 @keyup.enter="validerModification"
               />
@@ -170,11 +170,11 @@
 
         <!-- MODAL CHANGEMENT MOT DE PASSE -->
         <div v-if="modalMdpVisible" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="fermerModalMdp">
-          <div class="bg-white rounded-xl shadow-xl max-w-md w-full">
+          <div class="bg-white rounded-lg border border-[#e2ddd4] max-w-md w-full">
 
             <div class="border-b border-[#e2ddd4] p-4 flex items-center justify-between">
               <h3 class="text-base font-body font-bold text-[#1e3a2f]">Changer le mot de passe</h3>
-              <button @click="fermerModalMdp" class="text-gray-400 hover:text-gray-600">
+              <button @click="fermerModalMdp" class="text-black hover:text-black/70">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -190,13 +190,13 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                   </svg>
                 </div>
-                <p class="text-sm text-gray-500 font-body mb-1">Un code sera envoyé à</p>
-                <p class="font-bold text-gray-800 font-body mb-6">{{ userData.email }}</p>
-                <div v-if="mdpErreur" class="bg-red-50 text-red-600 text-xs font-body rounded-xl px-4 py-2 mb-3">{{ mdpErreur }}</div>
+                <p class="text-sm text-black font-body mb-1">Un code sera envoyé à</p>
+                <p class="font-bold text-black font-body mb-6">{{ userData.email }}</p>
+                <div v-if="mdpErreur" class="bg-red-50 text-red-600 text-xs font-body rounded-lg px-4 py-2 mb-3">{{ mdpErreur }}</div>
                 <button
                   @click="envoyerCode"
                   :disabled="mdpLoading"
-                  class="w-full py-2.5 bg-primary text-white rounded-xl font-body font-semibold hover:bg-primary/80 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                  class="w-full py-2.5 bg-primary text-white rounded-lg font-body font-semibold hover:bg-primary/80 transition disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <div v-if="mdpLoading" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"/>
                   <span v-else>Envoyer le code</span>
@@ -211,7 +211,7 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 font-body mb-1">Code à 6 chiffres</label>
+                  <label class="block text-sm font-medium text-black font-body mb-1">Code à 6 chiffres</label>
                   <input
                     v-model="mdpCode"
                     type="text"
@@ -219,21 +219,21 @@
                     maxlength="6"
                     placeholder="000000"
                     @input="mdpCode = mdpCode.replace(/\D/g, '').slice(0, 6)"
-                    class="w-full px-4 py-3 bg-input rounded-xl text-center text-2xl font-mono font-bold tracking-[0.4em] focus:outline-none"
+                    class="w-full px-4 py-3 bg-input rounded-lg text-center text-2xl font-mono font-bold tracking-[0.4em] focus:outline-none"
                     autofocus
                   />
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 font-body mb-1">Nouveau mot de passe</label>
+                  <label class="block text-sm font-medium text-black font-body mb-1">Nouveau mot de passe</label>
                   <div class="relative">
                     <input
                       v-model="mdpNouveau"
                       :type="showMdp ? 'text' : 'password'"
                       placeholder="Minimum 8 caractères"
-                      class="w-full px-4 py-3 pr-12 bg-input rounded-xl text-sm font-body focus:outline-none"
+                      class="w-full px-4 py-3 pr-12 bg-input rounded-lg text-sm font-body focus:outline-none"
                     />
-                    <button type="button" @click="showMdp = !showMdp" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400">
+                    <button type="button" @click="showMdp = !showMdp" class="absolute inset-y-0 right-0 pr-4 flex items-center text-black">
                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path v-if="!showMdp" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                         <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242"/>
@@ -243,12 +243,12 @@
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 font-body mb-1">Confirmer</label>
+                  <label class="block text-sm font-medium text-black font-body mb-1">Confirmer</label>
                   <input
                     v-model="mdpConfirmation"
                     :type="showMdp ? 'text' : 'password'"
                     placeholder="Répétez le mot de passe"
-                    class="w-full px-4 py-3 bg-input rounded-xl text-sm font-body focus:outline-none"
+                    class="w-full px-4 py-3 bg-input rounded-lg text-sm font-body focus:outline-none"
                     :class="{ 'border-2 border-red-300': mdpConfirmation && mdpNouveau !== mdpConfirmation }"
                   />
                   <p v-if="mdpConfirmation && mdpNouveau !== mdpConfirmation" class="text-xs text-red-500 mt-1 font-body">
@@ -256,19 +256,19 @@
                   </p>
                 </div>
 
-                <div v-if="mdpErreur" class="bg-red-50 text-red-600 text-xs font-body rounded-xl px-4 py-2">
+                <div v-if="mdpErreur" class="bg-red-50 text-red-600 text-xs font-body rounded-lg px-4 py-2">
                   {{ mdpErreur }}
                 </div>
 
                 <div class="flex gap-3 pt-1">
                   <button
                     @click="mdpStep = 1; mdpErreur = ''"
-                    class="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-body font-semibold hover:bg-gray-200 transition"
+                    class="flex-1 py-2.5 bg-gray-100 text-black rounded-lg text-sm font-body font-semibold hover:bg-gray-200 transition"
                   >Retour</button>
                   <button
                     @click="validerChangementMdp"
                     :disabled="mdpLoading || mdpCode.length !== 6 || mdpNouveau.length < 8 || mdpNouveau !== mdpConfirmation"
-                    class="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-body font-semibold hover:bg-primary/80 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                    class="flex-1 py-2.5 bg-primary text-white rounded-lg text-sm font-body font-semibold hover:bg-primary/80 transition disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     <div v-if="mdpLoading" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"/>
                     <span v-else>Modifier</span>

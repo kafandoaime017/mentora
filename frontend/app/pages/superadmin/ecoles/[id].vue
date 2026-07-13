@@ -144,7 +144,7 @@
       <!-- Modal changement de plan -->
       <div v-if="modalPlanVisible" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" @click.self="modalPlanVisible = false">
         <div class="bg-white rounded-lg w-full max-w-sm p-6">
-          <h3 class="font-extrabold text-gray-900 text-center text-xl font-body mb-4">Changer le plan de {{ ecole?.nom }}</h3>
+          <h3 class="font-extrabold text-black text-center text-xl font-body mb-4">Changer le plan de {{ ecole?.nom }}</h3>
           <div class="space-y-2 mb-4">
             <button v-for="p in ['gratuit', 'starter', 'pro']" :key="p" @click="planChoisi = p"
               class="w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-body font-semibold transition"

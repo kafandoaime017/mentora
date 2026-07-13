@@ -131,10 +131,10 @@
         <!-- Modal suppression -->
         <div v-if="modalSuppressionVisible" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" @click.self="modalSuppressionVisible = false">
           <div class="bg-white rounded-lg w-full max-w-sm p-6">
-            <h3 class="font-extrabold text-gray-900 text-center text-xl font-body mb-2">Supprimer l'utilisateur</h3>
+            <h3 class="font-extrabold text-black text-center text-xl font-body mb-2">Supprimer l'utilisateur</h3>
             <p class="text-sm font-body text-black text-center mb-6">Êtes-vous sûr de vouloir supprimer <strong>{{ userASupprimer?.prenom }} {{ userASupprimer?.nom }}</strong> ? Cette action est irréversible.</p>
             <div class="flex gap-3">
-              <button @click="modalSuppressionVisible = false" class="flex-1 font-body py-2.5 bg-gray-200 text-gray-600 rounded-lg text-sm font-semibold">Annuler</button>
+              <button @click="modalSuppressionVisible = false" class="flex-1 font-body py-2.5 bg-gray-200 text-black rounded-lg text-sm font-semibold">Annuler</button>
               <button @click="supprimerUser" :disabled="enregistrement"
                 class="flex-1 font-body py-2.5 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
@@ -148,7 +148,7 @@
         <!-- Modal invitation utilisateur -->
         <div v-if="modalInvitationVisible" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" @click.self="fermerModalInvitation">
           <div class="bg-white rounded-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <h3 class="font-extrabold text-gray-900 text-center text-xl font-body mb-5">Inviter un utilisateur</h3>
+            <h3 class="font-extrabold text-black text-center text-xl font-body mb-5">Inviter un utilisateur</h3>
 
             <form @submit.prevent="envoyerInvitationUtilisateur" class="space-y-3">
               <!-- Rôle -->
@@ -157,7 +157,7 @@
                 <div class="grid grid-cols-3 gap-2">
                   <button type="button" v-for="r in rolesInvitables" :key="r.value" @click="invitationForm.role = r.value; onRoleChange()"
                     class="py-2 rounded-lg text-xs font-body font-semibold transition"
-                    :class="invitationForm.role === r.value ? 'bg-[#024864] text-white' : 'bg-input text-gray-600'"
+                    :class="invitationForm.role === r.value ? 'bg-[#024864] text-white' : 'bg-input text-black'"
                   >{{ r.label }}</button>
                 </div>
               </div>
@@ -205,7 +205,7 @@
               </div>
 
               <div class="flex gap-3 pt-2">
-                <button type="button" @click="fermerModalInvitation" class="flex-1 font-body py-2.5 bg-gray-200 text-gray-600 rounded-lg text-sm font-semibold">Annuler</button>
+                <button type="button" @click="fermerModalInvitation" class="flex-1 font-body py-2.5 bg-gray-200 text-black rounded-lg text-sm font-semibold">Annuler</button>
                 <button type="submit" :disabled="envoiInvitation"
                   class="flex-1 font-body py-2.5 bg-[#024864] text-white rounded-lg text-sm font-semibold hover:bg-blacky/90 transition disabled:opacity-50 flex items-center justify-center gap-2"
                 >
