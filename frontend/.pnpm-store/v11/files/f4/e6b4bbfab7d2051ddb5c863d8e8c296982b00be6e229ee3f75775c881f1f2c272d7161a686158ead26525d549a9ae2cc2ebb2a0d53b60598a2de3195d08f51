@@ -1,0 +1,29 @@
+export function getDatabaseSpanData(config) {
+  try {
+    if (!config?.connector) {
+      return {
+        "db.namespace": "db.sqlite"
+      };
+    }
+    if (config.connector === "postgresql" || config.connector === "mysql2") {
+      return {
+        "server.address": config.options?.host,
+        "server.port": config.options?.port
+      };
+    }
+    if (config.connector === "pglite") {
+      return {
+        "db.namespace": config.options?.dataDir
+      };
+    }
+    if (["better-sqlite3", "bun", "sqlite", "sqlite3"].includes(config.connector)) {
+      return {
+        // DB is the default file name in nitro for sqlite-like connectors
+        "db.namespace": `${config.options?.name ?? "db"}.sqlite`
+      };
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}

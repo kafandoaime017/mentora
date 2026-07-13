@@ -1,0 +1,83 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+
+const path = require('node:path');
+const core = require('@sentry/core');
+const node = require('@sentry/node');
+const nodeCore = require('@sentry/node-core');
+const debugBuild = require('../common/debug-build.js');
+
+function init(options) {
+  const envFallback = !nodeCore.isCjs() && undefined ? core.DEV_ENVIRONMENT : core.DEFAULT_ENVIRONMENT;
+  const sentryOptions = {
+    environment: options.environment ?? process.env.SENTRY_ENVIRONMENT ?? envFallback,
+    defaultIntegrations: getNuxtDefaultIntegrations(options),
+    ...options
+  };
+  core.applySdkMetadata(sentryOptions, "nuxt", ["nuxt", "node"]);
+  const client = node.init(sentryOptions);
+  core.getGlobalScope().addEventProcessor(lowQualityTransactionsFilter(options));
+  core.getGlobalScope().addEventProcessor(clientSourceMapErrorFilter(options));
+  return client;
+}
+function lowQualityTransactionsFilter(options) {
+  return Object.assign(
+    ((event) => {
+      if (event.type !== "transaction" || !event.transaction || isCacheEvent(event)) {
+        return event;
+      }
+      const hasRouteParameters = /\/:[^(/\s]*(\([^)]*\))?[^/\s]*/.test(event.transaction);
+      if (hasRouteParameters) {
+        return event;
+      }
+      if (path.extname(event.transaction)) {
+        options.debug && debugBuild.DEBUG_BUILD && core.debug.log("NuxtLowQualityTransactionsFilter filtered transaction: ", event.transaction);
+        return null;
+      }
+      return event;
+    }),
+    { id: "NuxtLowQualityTransactionsFilter" }
+  );
+}
+function clientSourceMapErrorFilter(options) {
+  return Object.assign(
+    ((event) => {
+      const errorMsg = event.exception?.values?.[0]?.value;
+      if (errorMsg?.match(/^ENOENT: no such file or directory, open '.*\/_nuxt\/.*\.js\.map'/)) {
+        options.debug && debugBuild.DEBUG_BUILD && core.debug.log("NuxtClientSourceMapErrorFilter filtered error: ", errorMsg);
+        return null;
+      }
+      return event;
+    }),
+    { id: "NuxtClientSourceMapErrorFilter" }
+  );
+}
+function getNuxtDefaultIntegrations(options) {
+  return [
+    ...node.getDefaultIntegrations(options).filter((integration) => integration.name !== "Http"),
+    // The httpIntegration is added as defaultIntegration, so users can still overwrite it
+    node.httpIntegration({
+      instrumentation: {
+        responseHook: () => {
+          core.vercelWaitUntil(flushSafelyWithTimeout());
+        }
+      }
+    })
+  ];
+}
+async function flushSafelyWithTimeout() {
+  try {
+    debugBuild.DEBUG_BUILD && core.debug.log("Flushing events...");
+    await core.flush(2e3);
+    debugBuild.DEBUG_BUILD && core.debug.log("Done flushing events");
+  } catch (e) {
+    debugBuild.DEBUG_BUILD && core.debug.log("Error while flushing events:\n", e);
+  }
+}
+function isCacheEvent(e) {
+  return e.contexts?.trace?.origin === "auto.cache.nuxt";
+}
+
+exports.clientSourceMapErrorFilter = clientSourceMapErrorFilter;
+exports.init = init;
+exports.lowQualityTransactionsFilter = lowQualityTransactionsFilter;
+//# sourceMappingURL=sdk.js.map

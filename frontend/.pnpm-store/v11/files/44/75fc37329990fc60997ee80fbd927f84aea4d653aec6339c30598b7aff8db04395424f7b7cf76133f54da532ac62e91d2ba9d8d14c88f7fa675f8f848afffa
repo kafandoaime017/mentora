@@ -1,0 +1,19 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+
+const browser = require('@sentry/browser');
+const core = require('@sentry/core');
+
+function init(options) {
+  const envFallback = undefined ? core.DEV_ENVIRONMENT : core.DEFAULT_ENVIRONMENT;
+  const sentryOptions = {
+    /* BrowserTracing is added later with the Nuxt client plugin */
+    defaultIntegrations: [...browser.getDefaultIntegrations(options)],
+    environment: options.environment ?? process.env.SENTRY_ENVIRONMENT ?? envFallback,
+    ...options
+  };
+  core.applySdkMetadata(sentryOptions, "nuxt", ["nuxt", "vue"]);
+  return browser.init(sentryOptions);
+}
+
+exports.init = init;
+//# sourceMappingURL=sdk.js.map

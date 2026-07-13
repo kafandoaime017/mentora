@@ -4,6 +4,7 @@ import {
 } from 'typeorm';
 import { User } from './User';
 import { Ecole } from './Ecole';
+import { Filiere } from './Filiere';
 
 @Entity('professeur_profils')
 export class ProfesseurProfil {
@@ -31,4 +32,15 @@ export class ProfesseurProfil {
     @ManyToOne(() => Ecole, { nullable: true, onDelete: 'SET NULL' })
     @JoinColumn({ name: 'ecoleId' })
     ecole!: Ecole | null;
+
+
+    @Column({ type: 'enum', enum: ['pending', 'active'], default: 'pending' })
+    statut!: string;
+
+    @Column({ type: 'int', unsigned: true, nullable: true })
+    filiereId!: number | null;
+
+    @ManyToOne(() => Filiere, { nullable: true, onDelete: 'SET NULL' })
+    @JoinColumn({ name: 'filiereId' })
+    filiere!: Filiere | null;
 }

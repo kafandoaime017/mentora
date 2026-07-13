@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as authController from '../../app/controllers/authController';
 import { validerInscription, validerConnexion } from '../../app/middleware/validateAuth';
+import { authMiddleware } from '../../app/middleware/auth';
 
 const router = Router();
 
@@ -24,5 +25,10 @@ router.post('/renvoyer-code', authController.renvoyerCode);
 router.post('/mot-de-passe-oublie', authController.envoyerLienReset);
 router.post('/reinitialiser-mot-de-passe', authController.reinitialiserMotDePasse);
 router.get('/verifier-token-reset/:token', authController.verifierTokenReset);
+
+
+// ─── Routes protégées (profil connecté) ──────────────────────────────────────
+router.post('/envoyer-code-mdp',     authMiddleware, authController.envoyerCodeChangementMdp)
+router.post('/changer-mot-de-passe', authMiddleware, authController.changerMotDePasse)
 
 export default router;

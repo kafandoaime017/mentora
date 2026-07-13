@@ -1,0 +1,214 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8
+    container_name: mentora_db_swarm
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mentora_data_swarm:/var/lib/mysql
+    networks:
+      - mentora-net-swarm
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+  backend:
+    image: mentora-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    restart: always
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env.prod
+    environment:
+      - NODE_ENV=production
+    networks:
+      - mentora-net-swarm
+    depends_on:
+      - db
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  frontend:
+    image: mentora-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./frontend/.env.prod
+    networks:
+      - mentora-net-swarm
+    depends_on:
+      - backend
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  glitchtip-db:
+    image: postgres:17-alpine
+    container_name: glitchtip_db_swarm
+    restart: always
+    environment:
+      POSTGRES_USER: glitchtip
+      POSTGRES_PASSWORD: ${GLITCHTIP_DB_PASSWORD}
+      POSTGRES_DB: glitchtip
+    volumes:
+      - glitchtip_postgres_data_swarm:/var/lib/postgresql/data
+    networks:
+      - mentora-net-swarm
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+  glitchtip-valkey:
+    image: valkey/valkey:8-alpine
+    container_name: glitchtip_valkey_swarm
+    restart: always
+    command: valkey-server --appendonly yes
+    volumes:
+      - glitchtip_valkey_data_swarm:/data
+    networks:
+      - mentora-net-swarm
+
+  glitchtip-web:
+    image: glitchtip/glitchtip:latest
+    container_name: glitchtip_web_swarm
+    restart: always
+    environment:
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY}
+      GLITCHTIP_DOMAIN: https://errors.mentoraapp.online
+      DATABASE_URL: postgres://glitchtip:${GLITCHTIP_DB_PASSWORD}@glitchtip-db:5432/glitchtip
+      VALKEY_URL: redis://glitchtip-valkey:6379/0
+      DEFAULT_FROM_EMAIL: ${GLITCHTIP_EMAIL}
+      ENABLE_USER_REGISTRATION: "False"
+      ENABLE_ORGANIZATION_CREATION: "False"
+      GLITCHTIP_MAX_EVENT_LIFE_DAYS: 30
+    depends_on:
+      - glitchtip-db
+      - glitchtip-valkey
+    ports:
+      - "8000:8000"
+    networks:
+      - mentora-net-swarm
+    command: >
+      sh -c "./manage.py migrate && ./manage.py runserver 0.0.0.0:8000"
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+
+  glitchtip-worker:
+    image: glitchtip/glitchtip:latest
+    container_name: glitchtip_worker_swarm
+    restart: always
+    environment:
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY}
+      GLITCHTIP_DOMAIN: https://errors.mentoraapp.online
+      DATABASE_URL: postgres://glitchtip:${GLITCHTIP_DB_PASSWORD}@glitchtip-db:5432/glitchtip
+      VALKEY_URL: redis://glitchtip-valkey:6379/0
+      DEFAULT_FROM_EMAIL: ${GLITCHTIP_EMAIL}
+    depends_on:
+      - glitchtip-db
+      - glitchtip-valkey
+    networks:
+      - mentora-net-swarm
+    command: ./manage.py celery worker -l info
+    deploy:
+      replicas: 1
+
+  umami-db:
+    image: postgres:15-alpine
+    container_name: umami_db_swarm
+    restart: always
+    environment:
+      POSTGRES_USER: umami
+      POSTGRES_PASSWORD: ${UMAMI_DB_PASSWORD}
+      POSTGRES_DB: umami
+    volumes:
+      - umami_postgres_data_swarm:/var/lib/postgresql/data
+    networks:
+      - mentora-net-swarm
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    container_name: umami_swarm
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://umami:${UMAMI_DB_PASSWORD}@umami-db:5432/umami
+      DATABASE_TYPE: postgresql
+      HASH_SALT: ${UMAMI_HASH_SALT}
+      APP_SECRET: ${UMAMI_APP_SECRET}
+      ENABLE_CUSTOM_DOMAINS: "false"
+    depends_on:
+      - umami-db
+    ports:
+      - "3001:3000"
+    networks:
+      - mentora-net-swarm
+    volumes:
+      - umami_data_swarm:/app/.umami
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+
+networks:
+  mentora-net-swarm:
+    driver: overlay
+    attachable: true
+
+volumes:
+  mentora_data_swarm:
+    driver: local
+  glitchtip_postgres_data_swarm:
+    driver: local
+  glitchtip_valkey_data_swarm:
+    driver: local
+  umami_postgres_data_swarm:
+    driver: local
+  umami_data_swarm:
+    driver: local

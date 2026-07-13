@@ -1,0 +1,5 @@
+declare const _default: (nitroApp: import("nitro/types").NitroApp & {
+    hooks: NonNullable<import("nitro/types").NitroApp["hooks"]>;
+}) => void;
+export default _default;
+//# sourceMappingURL=update-route-name.server.d.ts.map

@@ -178,70 +178,204 @@
       </div>
     </section>
 
-    <!-- Pricing Section -->
-    <section class="bg-gray-50 py-20">
-      <div class="max-w-7xl mx-auto px-8 md:px-16">
-        <div class="text-center mb-12">
-          <h2 class="text-3xl md:text-4xl font-bold text-primary mb-4">
-            Tarifs
-          </h2>
-          <p class="text-gray-600 text-lg max-w-2xl mx-auto">
-            Choisissez la formule qui vous correspond
-          </p>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div class="bg-white rounded-2xl font-body p-8 shadow-lg hover:shadow-xl transition-shadow">
-            <h3 class="text-2xl font-bold text-primary mb-2">Étudiant</h3>
-            <p class="text-gray-500 mb-4">Parfait pour commencer</p>
-            <div class="text-4xl font-bold text-secondary mb-6">Gratuit</div>
-            <ul class="space-y-3 mb-8">
-              <li class="flex items-center gap-2 text-gray-600">✓ Accès aux QCM basiques</li>
-              <li class="flex items-center gap-2 text-gray-600">✓ Suivi des progrès</li>
-              <li class="flex items-center gap-2 text-gray-600">✓ Communauté limitée</li>
-            </ul>
-            <button class="w-full bg-secondary text-white font-bold py-3 rounded-lg hover:bg-secondary/90 transition-colors">
-              Commencer gratuitement
-            </button>
-          </div>
-          <div class="bg-secondary font-body  rounded-2xl p-8  text-white transform scale-105">
-            <h3 class="text-2xl font-extrabold text-primary mb-2">Premium</h3>
-            <p class="text-primary mb-4">Pour les ambitieux</p>
-            <div class="text-4xl font-bold text-primary mb-6">9.99€<span class="text-base text-gray-800">/mois</span></div>
-            <ul class="space-y-3 mb-8">
-              <li class="flex items-center gap-2 text-primary font-medium">✓ Accès illimité aux QCM</li>
-              <li class="flex items-center gap-2 text-primary font-medium">✓ Analyses approfondies</li>
-              <li class="flex items-center gap-2 text-primary font-medium">✓ Coaching personnalisé</li>
-              <li class="flex items-center gap-2 text-primary font-medium">✓ Communauté premium</li>
-            </ul>
-            <button class="w-full bg-cream text-primary font-bold py-3 rounded-lg hover:bg-cream/90 transition-colors">
-              Essayer Premium
-            </button>
-          </div>
-          <div class="bg-white rounded-2xl font-body p-8 shadow-lg hover:shadow-xl transition-shadow">
-            <h3 class="text-2xl font-bold  text-primary mb-2">Professeur</h3>
-            <p class="text-gray-500 mb-4">Pour les enseignants</p>
-            <div class="text-4xl font-bold text-secondary mb-6">29.99€<span class="text-base text-gray-500">/mois</span></div>
-            <ul class="space-y-3 mb-8">
-              <li class="flex items-center gap-2 text-gray-600">✓ Création de QCM illimités</li>
-              <li class="flex items-center gap-2 text-gray-600">✓ Suivi des élèves</li>
-              <li class="flex items-center gap-2 text-gray-600">✓ Statistiques avancées</li>
-              <li class="flex items-center gap-2 text-gray-600">✓ Support prioritaire</li>
-            </ul>
-            <button class="w-full bg-secondary text-white font-bold py-3 rounded-lg hover:bg-secondary/90 transition-colors">
-              Devenir professeur
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
+ <!-- Pricing Section -->
+<section class="bg-gray-50 py-20" id="tarifs">
+  <div class="max-w-7xl mx-auto px-8 md:px-16">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl md:text-4xl font-bold text-primary font-body mb-4">
+        Tarifs transparents
+      </h2>
+      <p class="text-gray-600 font-body text-lg max-w-2xl mx-auto">
+        Des plans adaptés à chaque établissement. Commencez gratuitement, évoluez selon vos besoins.
+      </p>
 
+      <!-- Toggle mensuel / annuel -->
+      <div class="flex items-center justify-center gap-3 mt-8">
+        <span class="text-sm font-body font-medium" :class="billing === 'monthly' ? 'text-primary' : 'text-gray-400'">Mensuel</span>
+        <button
+          @click="billing = billing === 'monthly' ? 'yearly' : 'monthly'"
+          class="relative inline-flex h-6 w-12 items-center rounded-full transition-colors duration-200"
+          :class="billing === 'yearly' ? 'bg-secondary' : 'bg-gray-300'"
+        >
+          <span
+            class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200"
+            :style="billing === 'yearly' ? 'transform: translateX(28px)' : 'transform: translateX(4px)'"
+          />
+        </button>
+        <span class="text-sm font-body font-medium" :class="billing === 'yearly' ? 'text-primary' : 'text-gray-400'">
+          Annuel
+          <span class="ml-1.5 px-2 py-0.5 bg-secondary/20 text-secondary text-xs rounded-full font-semibold">-17%</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+
+      <!-- Gratuit -->
+      <div class="bg-white rounded-2xl font-body p-8 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
+        <div class="mb-6">
+          <span class="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-semibold rounded-full">Gratuit</span>
+          <h3 class="text-2xl font-extrabold text-primary mt-3 mb-1">Free</h3>
+          <p class="text-gray-500 text-sm">Pour découvrir Mentora</p>
+        </div>
+        <div class="mb-6">
+          <span class="text-4xl font-extrabold text-primary">0€</span>
+          <span class="text-gray-400 text-sm ml-1">pour toujours</span>
+        </div>
+        <ul class="space-y-3 mb-8">
+          <li class="flex items-center gap-2 text-sm text-gray-600 font-body">
+            <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            Jusqu'à <strong>25 étudiants</strong>
+          </li>
+          <li class="flex items-center gap-2 text-sm text-gray-600 font-body">
+            <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            Jusqu'à <strong>5 professeurs</strong>
+          </li>
+          <li class="flex items-center gap-2 text-sm text-gray-600 font-body">
+            <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            <strong>100 sessions</strong>/mois
+          </li>
+          <li class="flex items-center gap-2 text-sm text-gray-600 font-body">
+            <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            QCM illimités
+          </li>
+          <li class="flex items-center gap-2 text-sm text-gray-300 font-body">
+            <svg class="w-4 h-4 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            Export CSV
+          </li>
+          <li class="flex items-center gap-2 text-sm text-gray-300 font-body">
+            <svg class="w-4 h-4 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            Génération IA
+          </li>
+        </ul>
+        <nuxt-link to="/auth"
+          class="block w-full text-center bg-gray-100 text-gray-700 font-body font-bold py-3 rounded-xl hover:bg-gray-200 transition-colors"
+        >
+          Commencer gratuitement
+        </nuxt-link>
+      </div>
+
+      <!-- Starter -->
+      <div class="bg-white rounded-2xl font-body p-8 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow">
+        <div class="mb-6">
+          <span class="px-3 py-1 bg-blue-100 text-blue-600 text-xs font-semibold rounded-full">Starter</span>
+          <h3 class="text-2xl font-extrabold text-primary mt-3 mb-1">Starter</h3>
+          <p class="text-gray-500 text-sm">Pour les petits établissements</p>
+        </div>
+        <div class="mb-6">
+          <span class="text-4xl font-extrabold text-primary">
+            {{ billing === 'monthly' ? '39€' : '32€' }}
+          </span>
+          <span class="text-gray-400 text-sm ml-1">/mois</span>
+          <p v-if="billing === 'yearly'" class="text-xs text-secondary font-semibold mt-1">390€/an — économisez 78€</p>
+        </div>
+        <ul class="space-y-3 mb-8">
+          <li class="flex items-center gap-2 text-sm text-gray-600 font-body">
+            <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            Jusqu'à <strong>100 étudiants</strong>
+          </li>
+          <li class="flex items-center gap-2 text-sm text-gray-600 font-body">
+            <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            Jusqu'à <strong>15 professeurs</strong>
+          </li>
+          <li class="flex items-center gap-2 text-sm text-gray-600 font-body">
+            <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            Sessions <strong>illimitées</strong>
+          </li>
+          <li class="flex items-center gap-2 text-sm text-gray-600 font-body">
+            <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            Export <strong>CSV</strong>
+          </li>
+          <li class="flex items-center gap-2 text-sm text-gray-600 font-body">
+            <svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            Support email
+          </li>
+          <li class="flex items-center gap-2 text-sm text-gray-300 font-body">
+            <svg class="w-4 h-4 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            Génération IA
+          </li>
+        </ul>
+        <nuxt-link to="/auth"
+          class="block w-full text-center bg-primary text-white font-body font-bold py-3 rounded-xl hover:bg-primary/90 transition-colors"
+        >
+          Essayer 30 jours gratuits
+        </nuxt-link>
+      </div>
+
+      <!-- Pro — mis en avant -->
+      <div class="bg-primary rounded-2xl font-body p-8 shadow-xl border-2 border-secondary relative transform md:scale-105">
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+          <span class="px-4 py-1 bg-secondary text-white text-xs font-extrabold rounded-full shadow-md">
+            LE PLUS POPULAIRE
+          </span>
+        </div>
+        <div class="mb-6">
+          <span class="px-3 py-1 bg-secondary/20 text-secondary text-xs font-semibold rounded-full">Pro</span>
+          <h3 class="text-2xl font-extrabold text-white mt-3 mb-1">Pro</h3>
+          <p class="text-white/60 text-sm">Pour les établissements ambitieux</p>
+        </div>
+        <div class="mb-6">
+          <span class="text-4xl font-extrabold text-white">
+            {{ billing === 'monthly' ? '89€' : '74€' }}
+          </span>
+          <span class="text-white/50 text-sm ml-1">/mois</span>
+          <p v-if="billing === 'yearly'" class="text-xs text-secondary font-semibold mt-1">890€/an — économisez 178€</p>
+        </div>
+        <ul class="space-y-3 mb-8">
+          <li class="flex items-center gap-2 text-sm text-white font-body">
+            <svg class="w-4 h-4 text-secondary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            Étudiants <strong>illimités</strong>
+          </li>
+          <li class="flex items-center gap-2 text-sm text-white font-body">
+            <svg class="w-4 h-4 text-secondary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            Professeurs <strong>illimités</strong>
+          </li>
+          <li class="flex items-center gap-2 text-sm text-white font-body">
+            <svg class="w-4 h-4 text-secondary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            Sessions <strong>illimitées</strong>
+          </li>
+          <li class="flex items-center gap-2 text-sm text-white font-body">
+            <svg class="w-4 h-4 text-secondary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            <strong>Génération IA</strong> de QCM
+          </li>
+          <li class="flex items-center gap-2 text-sm text-white font-body">
+            <svg class="w-4 h-4 text-secondary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            Stats <strong>avancées</strong>
+          </li>
+          <li class="flex items-center gap-2 text-sm text-white font-body">
+            <svg class="w-4 h-4 text-secondary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            Export CSV
+          </li>
+          <li class="flex items-center gap-2 text-sm text-white font-body">
+            <svg class="w-4 h-4 text-secondary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            Support <strong>prioritaire</strong>
+          </li>
+        </ul>
+        <nuxt-link to="/auth"
+          class="block w-full text-center bg-secondary text-white font-body font-bold py-3 rounded-xl hover:bg-secondary/90 transition-colors"
+        >
+          Essayer 30 jours gratuits
+        </nuxt-link>
+      </div>
+
+    </div>
+
+    <!-- FAQ courte -->
+    <div class="mt-12 text-center">
+      <p class="text-gray-500 text-sm font-body">
+        Pas de CB requise pour l'essai · Annulation à tout moment · Facture mensuelle
+      </p>
+    </div>
+
+  </div>
+</section>
 
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-
+const billing = ref('monthly')
 // Scroll state
 const isScrolled = ref(false)
 

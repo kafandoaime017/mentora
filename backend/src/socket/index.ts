@@ -4,7 +4,12 @@ import { Session } from '../app/models/Session';
 
 const sessionRepo = AppDataSource.getRepository(Session);
 
-// Interfaces pour les données des sockets
+// ── Référence globale à l'instance io ─────────────────────────────────────────
+let ioRef: Server | null = null;
+
+export const getSocketIO = (): Server | null => ioRef;
+
+// Interfaces
 interface AuthenticateData {
     userId: number;
     role: string;
@@ -26,11 +31,12 @@ interface SessionData {
     professeur: string | null;
 }
 
-// Stockage des connexions (optionnel pour fonctionnalités avancées)
 const userSockets = new Map<number, string>();
-const userRooms = new Map<number, Set<string>>();
+const userRooms   = new Map<number, Set<string>>();
 
 export const setupSocketIO = (io: Server) => {
+    ioRef = io; // ← exposer l'instance globalement
+
     console.log('🔌 Initialisation du serveur WebSocket...');
 
     io.on('connection', (socket: Socket) => {
@@ -39,80 +45,72 @@ export const setupSocketIO = (io: Server) => {
         // ==================== AUTHENTIFICATION ====================
         socket.on('authenticate', (data: AuthenticateData) => {
             const { userId, role } = data;
-            
-            // Stocker les infos dans le socket
+
             socket.data.userId = userId;
-            socket.data.role = role;
-            
-            // Mapper l'utilisateur à son socket
+            socket.data.role   = role;
             userSockets.set(userId, socket.id);
-            
+
             console.log(`✅ Utilisateur authentifié: ID=${userId}, Rôle=${role}, Socket=${socket.id}`);
-            
-            // L'étudiant rejoint sa salle personnelle
+
             if (role === 'etudiant') {
                 socket.join(`user_${userId}`);
                 socket.join(`student_${userId}`);
                 console.log(`📌 Étudiant ${userId} a rejoint sa salle personnelle`);
             }
-            
-            // Le professeur rejoint sa salle
+
             if (role === 'professeur') {
                 socket.join(`teacher_${userId}`);
                 console.log(`📌 Professeur ${userId} a rejoint sa salle`);
             }
-            
-            // Confirmer l'authentification
-            socket.emit('authenticated', { 
-                success: true, 
-                userId, 
-                role 
-            });
+
+            socket.emit('authenticated', { success: true, userId, role });
         });
 
         // ==================== REJOINDRE UNE CLASSE ====================
         socket.on('join-class', (data: JoinClassData) => {
             const { classeId, filiereId } = data;
             const roomName = `classe_${classeId}_filiere_${filiereId}`;
-            
+
             socket.join(roomName);
-            
-            // Stocker les salles rejointes pour l'utilisateur
+
             if (!userRooms.has(socket.data.userId)) {
                 userRooms.set(socket.data.userId, new Set());
             }
             userRooms.get(socket.data.userId)?.add(roomName);
-            
-            console.log(`📌 Socket ${socket.id} (User ${socket.data.userId}) a rejoint la salle: ${roomName}`);
-            
-            socket.emit('joined-class', { 
-                success: true, 
-                room: roomName,
-                classeId,
-                filiereId
-            });
+
+            console.log(`📌 Socket ${socket.id} (User ${socket.data.userId}) a rejoint: ${roomName}`);
+
+            socket.emit('joined-class', { success: true, room: roomName, classeId, filiereId });
         });
 
         // ==================== QUITTER UNE CLASSE ====================
         socket.on('leave-class', (data: JoinClassData) => {
             const { classeId, filiereId } = data;
             const roomName = `classe_${classeId}_filiere_${filiereId}`;
-            
+
             socket.leave(roomName);
-            
+
             if (userRooms.has(socket.data.userId)) {
                 userRooms.get(socket.data.userId)?.delete(roomName);
             }
-            
-            console.log(`📌 Socket ${socket.id} a quitté la salle: ${roomName}`);
-            
-            socket.emit('left-class', { 
-                success: true, 
-                room: roomName 
-            });
+
+            socket.emit('left-class', { success: true, room: roomName });
         });
 
-        // ==================== PING (garder la connexion active) ====================
+        // ==================== ROOM SESSION (professeur) ====================
+        socket.on('join-session-room', (sessionId: number) => {
+            const room = `session_${sessionId}`;
+            socket.join(room);
+            console.log(`📌 Socket ${socket.id} a rejoint la room ${room}`);
+            socket.emit('joined-session-room', { sessionId });
+        });
+
+        socket.on('leave-session-room', (sessionId: number) => {
+            socket.leave(`session_${sessionId}`);
+            console.log(`📌 Socket ${socket.id} a quitté session_${sessionId}`);
+        });
+
+        // ==================== PING ====================
         socket.on('ping', () => {
             socket.emit('pong');
         });
@@ -120,8 +118,6 @@ export const setupSocketIO = (io: Server) => {
         // ==================== DÉCONNEXION ====================
         socket.on('disconnect', () => {
             console.log(`🔌 Déconnexion: ${socket.id} - User: ${socket.data.userId}`);
-            
-            // Supprimer le mapping utilisateur
             if (socket.data.userId) {
                 userSockets.delete(socket.data.userId);
                 userRooms.delete(socket.data.userId);
@@ -134,14 +130,10 @@ export const setupSocketIO = (io: Server) => {
         });
     });
 
-    // ==================== FONCTIONS UTILITAIRES EXPORTÉES ====================
-    
-    /**
-     * Notifier les étudiants d'une classe/filière d'une nouvelle session
-     */
+    // ==================== FONCTIONS UTILITAIRES ====================
+
     const notifyNewSession = async (classeId: number, filiereId: number, session: any, professeurNom: string) => {
         const roomName = `classe_${classeId}_filiere_${filiereId}`;
-        
         const sessionData: SessionData = {
             id: session.id,
             titre: session.titre,
@@ -152,86 +144,62 @@ export const setupSocketIO = (io: Server) => {
             code: session.code,
             professeur: professeurNom
         };
-        
         io.to(roomName).emit('new-session', {
             session: sessionData,
-            message: `📚 Nouvelle session disponible: ${session.titre}`,
+            message: `Nouvelle session disponible: ${session.titre}`,
             timestamp: new Date()
         });
-        
-        console.log(`📢 Nouvelle session notifiée à la salle: ${roomName}`);
+        console.log(`📢 Nouvelle session notifiée à: ${roomName}`);
         return { success: true, room: roomName };
     };
 
-    /**
-     * Notifier un étudiant spécifique
-     */
     const notifyStudent = (studentId: number, event: string, data: any) => {
         io.to(`user_${studentId}`).emit(event, data);
-        console.log(`📢 Notification envoyée à l'étudiant ${studentId}: ${event}`);
     };
 
-    /**
-     * Notifier un professeur spécifique
-     */
     const notifyTeacher = (teacherId: number, event: string, data: any) => {
         io.to(`teacher_${teacherId}`).emit(event, data);
-        console.log(`📢 Notification envoyée au professeur ${teacherId}: ${event}`);
     };
 
-    /**
-     * Notifier tous les étudiants d'une classe
-     */
     const notifyClass = (classeId: number, filiereId: number, event: string, data: any) => {
         const roomName = `classe_${classeId}_filiere_${filiereId}`;
         io.to(roomName).emit(event, data);
-        console.log(`📢 Notification envoyée à la salle ${roomName}: ${event}`);
     };
 
-    /**
-     * Mettre à jour le statut d'une session pour tous les étudiants
-     */
     const updateSessionStatus = async (sessionId: number, status: string) => {
-        const session = await sessionRepo.findOne({ 
+        const session = await sessionRepo.findOne({
             where: { id: sessionId },
             relations: ['classe', 'filiere']
         });
-        
         if (session) {
             const roomName = `classe_${session.classe_id}_filiere_${session.filiere_id}`;
             io.to(roomName).emit('session-status-update', {
                 sessionId,
                 status,
-                message: status === 'active' 
-                    ? `▶️ La session "${session.titre}" a commencé !`
-                    : `🏁 La session "${session.titre}" est terminée.`
+                message: status === 'active'
+                    ? `La session "${session.titre}" a commencé !`
+                    : `La session "${session.titre}" est terminée.`
             });
         }
     };
 
-    /**
-     * Envoyer une notification de rappel avant le début d'une session
-     */
     const sendSessionReminder = async (sessionId: number, minutesBefore: number = 5) => {
-        const session = await sessionRepo.findOne({ 
+        const session = await sessionRepo.findOne({
             where: { id: sessionId },
             relations: ['classe', 'filiere']
         });
-        
         if (session && session.status === 'pending') {
             const roomName = `classe_${session.classe_id}_filiere_${session.filiere_id}`;
             io.to(roomName).emit('session-reminder', {
                 sessionId: session.id,
                 titre: session.titre,
                 minutesBefore,
-                message: `⏰ La session "${session.titre}" commence dans ${minutesBefore} minutes !`,
+                message: `La session "${session.titre}" commence dans ${minutesBefore} minutes !`,
                 date_debut: session.date_debut
             });
-            console.log(`📢 Rappel envoyé pour la session ${sessionId} (${minutesBefore} min)`);
         }
     };
 
-    // Retourner les fonctions utilitaires pour les utiliser ailleurs
     return {
         notifyNewSession,
         notifyStudent,

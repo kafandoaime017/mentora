@@ -6,7 +6,10 @@ import { ReponseEtudiant } from '../models/ReponseEtudiant';
 import { Question } from '../models/Question';
 import { User } from '../models/User';
 import { In } from 'typeorm';
+import { getSocketIO } from '../../socket';
 import { EtudiantProfil } from '../models/EtudiantProfil';
+import { createNotification } from './notificationController'
+import { NotificationType } from '../models/Notification'
 
 // Définir le type pour les requêtes authentifiées
 interface AuthRequest extends Request {
@@ -28,10 +31,10 @@ const parseId = (id: string | string[] | undefined): number => {
     return isNaN(parsed) ? 0 : parsed;
 };
 
-const arraysEqual = (a: number[], b: number[]): boolean => {
+const arraysEqual = (a: any[], b: any[]): boolean => {
     if (!a || !b) return false;
     if (a.length !== b.length) return false;
-    return a.every((val, idx) => val === b[idx]);
+    return a.every((val, idx) => Number(val) === Number(b[idx]));
 };
 
 const updateEtudiantScore = async (sessionId: number, etudiantId: number): Promise<void> => {
@@ -53,6 +56,8 @@ const updateEtudiantScore = async (sessionId: number, etudiantId: number): Promi
         { score: pointsObtenus }
     );
 };
+
+
 
 // ==================== RÉCUPÉRER UNE SESSION (ADAPTÉE AU STATUT) ====================
 
@@ -82,8 +87,8 @@ export const getSessionForStudent = async (req: AuthRequest, res: Response, next
             where: { userId: etudiantId }
         });
 
-        if (!etudiantProfil || 
-            (etudiantProfil.classeId !== session.classe_id) || 
+        if (!etudiantProfil ||
+            (etudiantProfil.classeId !== session.classe_id) ||
             (etudiantProfil.filiereId !== session.filiere_id)) {
             res.status(403).json({ success: false, message: 'Vous n\'avez pas accès à cette session' });
             return;
@@ -100,9 +105,9 @@ export const getSessionForStudent = async (req: AuthRequest, res: Response, next
         if (session.status === SessionStatus.ACTIVE && estTerminee) {
             // Mettre à jour le statut de la session
             await sessionRepo.update(session.id, { status: SessionStatus.COMPLETED });
-            
-            res.status(403).json({ 
-                success: false, 
+
+            res.status(403).json({
+                success: false,
                 message: ' Temps écoulé ! Cette session est maintenant terminée. Vous ne pouvez plus y participer.',
                 sessionStatus: 'completed',
                 code: 'SESSION_EXPIRED'
@@ -112,8 +117,8 @@ export const getSessionForStudent = async (req: AuthRequest, res: Response, next
 
         // Vérifier si la session est déjà terminée
         if (session.status === SessionStatus.COMPLETED) {
-            res.status(403).json({ 
-                success: false, 
+            res.status(403).json({
+                success: false,
                 message: ' Cette session est déjà terminée. Vous ne pouvez plus y participer.',
                 sessionStatus: 'completed',
                 code: 'SESSION_COMPLETED'
@@ -170,7 +175,7 @@ export const getSessionForStudent = async (req: AuthRequest, res: Response, next
                 const reponsesExistantes = await reponseRepo.find({
                     where: { session_id: sessionId, etudiant_id: etudiantId }
                 });
-                
+
                 const reponsesMap: Record<number, number[]> = {};
                 reponsesExistantes.forEach(r => {
                     reponsesMap[r.question_id] = r.reponse_ids;
@@ -194,9 +199,9 @@ export const getSessionForStudent = async (req: AuthRequest, res: Response, next
                 default:
                     statusMessage = '❌ Cette session n\'est pas disponible.';
             }
-            
-            res.status(403).json({ 
-                success: false, 
+
+            res.status(403).json({
+                success: false,
                 message: statusMessage,
                 sessionStatus: session.status
             });
@@ -300,9 +305,9 @@ export const verifySessionCode = async (req: AuthRequest, res: Response, next: N
         });
 
         if (!etudiantProfil) {
-            res.status(400).json({ 
-                success: false, 
-                message: 'Profil étudiant incomplet. Veuillez compléter votre profil.' 
+            res.status(400).json({
+                success: false,
+                message: 'Profil étudiant incomplet. Veuillez compléter votre profil.'
             });
             return;
         }
@@ -314,9 +319,9 @@ export const verifySessionCode = async (req: AuthRequest, res: Response, next: N
         });
 
         if (!session) {
-            res.status(404).json({ 
-                success: false, 
-                message: ' Code invalide. Aucune session trouvée avec ce code.' 
+            res.status(404).json({
+                success: false,
+                message: ' Code invalide. Aucune session trouvée avec ce code.'
             });
             return;
         }
@@ -345,8 +350,8 @@ export const verifySessionCode = async (req: AuthRequest, res: Response, next: N
                 default:
                     statusMessage = 'Cette session n\'est pas disponible.';
             }
-            res.status(403).json({ 
-                success: false, 
+            res.status(403).json({
+                success: false,
                 message: statusMessage,
                 sessionStatus: session.status
             });
@@ -359,8 +364,8 @@ export const verifySessionCode = async (req: AuthRequest, res: Response, next: N
             if (session.status === SessionStatus.ACTIVE) {
                 await sessionRepo.update(session.id, { status: SessionStatus.COMPLETED });
             }
-            res.status(403).json({ 
-                success: false, 
+            res.status(403).json({
+                success: false,
                 message: 'Temps écoulé ! Cette session est maintenant terminée. Vous ne pouvez plus la rejoindre.',
                 sessionStatus: 'completed'
             });
@@ -369,18 +374,18 @@ export const verifySessionCode = async (req: AuthRequest, res: Response, next: N
 
         // 5. Vérifier la filière
         if (etudiantProfil.filiereId !== session.filiere_id) {
-            res.status(403).json({ 
-                success: false, 
-                message: `🎓 Vous n'êtes pas dans la bonne filière. Cette session est pour la filière: ${session.filiere?.nom}` 
+            res.status(403).json({
+                success: false,
+                message: `Vous n'êtes pas dans la bonne filière. Cette session est pour la filière: ${session.filiere?.nom}`
             });
             return;
         }
 
         // 6. Vérifier la classe
         if (etudiantProfil.classeId !== session.classe_id) {
-            res.status(403).json({ 
-                success: false, 
-                message: `🏫 Vous n'êtes pas dans la bonne classe. Cette session est pour la classe: ${session.classe?.nom}` 
+            res.status(403).json({
+                success: false,
+                message: `Vous n'êtes pas dans la bonne classe. Cette session est pour la classe: ${session.classe?.nom}`
             });
             return;
         }
@@ -399,9 +404,9 @@ export const verifySessionCode = async (req: AuthRequest, res: Response, next: N
         });
     } catch (err) {
         console.error('Erreur verifySessionCode:', err);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erreur serveur. Veuillez réessayer plus tard.' 
+        res.status(500).json({
+            success: false,
+            message: 'Erreur serveur. Veuillez réessayer plus tard.'
         });
     }
 };
@@ -433,10 +438,14 @@ export const verifyQRCode = async (req: AuthRequest, res: Response, next: NextFu
             return;
         }
 
-        const session = await sessionRepo.findOne({
-            where: { id: sessionId, code },
-            relations: ['classe', 'filiere']
-        });
+       const session = await sessionRepo.findOne({
+    where: { code },
+    relations: {
+        classe: true,
+        filiere: true,
+        professeur: true
+    }
+});
 
         if (!session) {
             res.status(404).json({ success: false, message: 'Session invalide' });
@@ -472,8 +481,8 @@ export const verifyQRCode = async (req: AuthRequest, res: Response, next: NextFu
             if (session.status === SessionStatus.ACTIVE) {
                 await sessionRepo.update(session.id, { status: SessionStatus.COMPLETED });
             }
-            res.status(403).json({ 
-                success: false, 
+            res.status(403).json({
+                success: false,
                 message: '⏰ Temps écoulé ! Cette session est maintenant terminée.'
             });
             return;
@@ -532,8 +541,8 @@ export const joinSession = async (req: AuthRequest, res: Response, next: NextFun
 
         if (tempsRestant <= 0) {
             await sessionRepo.update(session.id, { status: SessionStatus.COMPLETED });
-            res.status(403).json({ 
-                success: false, 
+            res.status(403).json({
+                success: false,
                 message: '⏰ Temps écoulé ! Vous ne pouvez plus rejoindre cette session.'
             });
             return;
@@ -551,6 +560,12 @@ export const joinSession = async (req: AuthRequest, res: Response, next: NextFun
                 date_joined: new Date()
             });
             await participantRepo.save(participant);
+        } else if (participant.statut === ParticipantStatus.TERMINE) {
+            res.status(403).json({
+                success: false,
+                message: 'Vous avez déjà terminé cette session. Vos réponses ont été enregistrées.'
+            });
+            return;
         } else if (participant.statut !== ParticipantStatus.PRESENT) {
             participant.statut = ParticipantStatus.PRESENT;
             await participantRepo.save(participant);
@@ -559,7 +574,7 @@ export const joinSession = async (req: AuthRequest, res: Response, next: NextFun
         res.json({
             success: true,
             message: 'Vous avez rejoint la session',
-            data: { 
+            data: {
                 sessionId: session.id,
                 temps_restant: Math.floor(tempsRestant / 1000)
             }
@@ -672,8 +687,10 @@ export const submitSingleReponse = async (req: AuthRequest, res: Response, next:
             return;
         }
 
-        const estCorrecte = arraysEqual([...reponseIds].sort(), [...question.reponses_correctes].sort());
-
+const estCorrecte = arraysEqual(
+    [...reponseIds].map(Number).sort((a: number, b: number) => a - b),
+    [...question.reponses_correctes].map(Number).sort((a: number, b: number) => a - b)
+);
         let reponseExistante = await reponseRepo.findOne({
             where: { session_id: sessionId, etudiant_id: etudiantId, question_id: questionId }
         });
@@ -723,10 +740,10 @@ export const submitReponses = async (req: AuthRequest, res: Response, next: Next
         }
 
         // 🔴 VÉRIFICATION 1: La session existe et est active
-        const session = await sessionRepo.findOne({ 
+        const session = await sessionRepo.findOne({
             where: { id: sessionId, status: SessionStatus.ACTIVE }
         });
-        
+
         if (!session) {
             res.status(404).json({ success: false, message: 'Session non trouvée ou terminée' });
             return;
@@ -744,9 +761,9 @@ export const submitReponses = async (req: AuthRequest, res: Response, next: Next
 
         // 🔴 VÉRIFICATION 3: L'étudiant n'a pas déjà terminé
         if (participant.statut === ParticipantStatus.TERMINE) {
-            res.status(403).json({ 
-                success: false, 
-                message: 'Vous avez déjà terminé cette session. Vous ne pouvez plus modifier vos réponses.' 
+            res.status(403).json({
+                success: false,
+                message: 'Vous avez déjà terminé cette session. Vous ne pouvez plus modifier vos réponses.'
             });
             return;
         }
@@ -757,14 +774,14 @@ export const submitReponses = async (req: AuthRequest, res: Response, next: Next
         if (maintenant > dateFin) {
             await participantRepo.update(
                 { session_id: sessionId, etudiant_id: etudiantId },
-                { 
+                {
                     statut: ParticipantStatus.TERMINE,
                     date_completed: new Date()
                 }
             );
-            res.status(403).json({ 
-                success: false, 
-                message: '⏰ Temps écoulé ! Session terminée automatiquement.' 
+            res.status(403).json({
+                success: false,
+                message: ' Temps écoulé ! Session terminée automatiquement.'
             });
             return;
         }
@@ -774,16 +791,16 @@ export const submitReponses = async (req: AuthRequest, res: Response, next: Next
             const question = await questionRepo.findOne({ where: { id: rep.questionId } });
             if (!question) continue;
 
-            const estCorrecte = arraysEqual(
-                [...rep.reponseIds].sort(), 
-                [...question.reponses_correctes].sort()
-            );
+           const estCorrecte = arraysEqual(
+    [...rep.reponseIds].map(Number).sort((a: number, b: number) => a - b),
+    [...question.reponses_correctes].map(Number).sort((a: number, b: number) => a - b)
+);
 
             let reponseExistante = await reponseRepo.findOne({
-                where: { 
-                    session_id: sessionId, 
-                    etudiant_id: etudiantId, 
-                    question_id: rep.questionId 
+                where: {
+                    session_id: sessionId,
+                    etudiant_id: etudiantId,
+                    question_id: rep.questionId
                 }
             });
 
@@ -808,14 +825,52 @@ export const submitReponses = async (req: AuthRequest, res: Response, next: Next
         // Mettre à jour le score
         await updateEtudiantScore(sessionId, etudiantId);
 
-        // 🔴 MARQUER LA SESSION COMME TERMINÉE POUR L'ÉTUDIANT
+        // MARQUER LA SESSION COMME TERMINÉE POUR L'ÉTUDIANT
         await participantRepo.update(
             { session_id: sessionId, etudiant_id: etudiantId },
-            { 
+            {
                 statut: ParticipantStatus.TERMINE,
                 date_completed: new Date()
             }
         );
+
+        // ── Notifier le professeur en temps réel ──────────────────────────────
+        const io = getSocketIO();
+        if (io) {
+            const [participantMaj, etudiant, questions] = await Promise.all([
+                participantRepo.findOne({ where: { session_id: sessionId, etudiant_id: etudiantId } }),
+                userRepo.findOne({ where: { id: etudiantId } }),
+                questionRepo.find({ where: { session_id: sessionId } })
+            ]);
+
+            const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
+
+            io.to(`session_${sessionId}`).emit('student-submitted', {
+                sessionId,
+                etudiant: {
+                    id: etudiantId,
+                    nom: etudiant?.nom,
+                    prenom: etudiant?.prenom,
+                    email: etudiant?.email
+                },
+                score: participantMaj?.score || 0,
+                totalPoints,
+                statut: ParticipantStatus.TERMINE,
+                date_completed: new Date()
+            });
+
+            console.log(` Soumission notifiée à session_${sessionId}`);
+
+
+            // ← AJOUTE ICI
+            await createNotification(session.created_by, {
+                titre: `${etudiant?.prenom} ${etudiant?.nom} a terminé`,
+                message: `Score : ${participantMaj?.score || 0}/${totalPoints} pts`,
+                type: NotificationType.STUDENT_SUBMITTED,
+                link: `/teachers/qcm/${sessionId}`,
+                sessionId
+            })
+        }
 
         res.json({
             success: true,
@@ -831,76 +886,129 @@ export const submitReponses = async (req: AuthRequest, res: Response, next: Next
 
 export const getSessionResults = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const sessionId = parseId(req.params.id);
-        const etudiantId = req.user!.id;
+        const sessionId  = parseId(req.params.id)
+        const etudiantId = req.user!.id
 
         if (!sessionId) {
-            res.status(400).json({ success: false, message: 'ID invalide' });
-            return;
+            res.status(400).json({ success: false, message: 'ID invalide' })
+            return
         }
 
-        const session = await sessionRepo.findOne({ where: { id: sessionId } });
+        const session = await sessionRepo.findOne({
+            where:     { id: sessionId },
+            relations: ['filiere', 'classe']
+        })
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' });
-            return;
+            res.status(404).json({ success: false, message: 'Session non trouvée' })
+            return
+        }
+
+        // ─── Vérifier si les résultats sont visibles ──────────────────────────
+        if (!session.resultatsVisibles) {
+            res.status(403).json({
+                success: false,
+                message: 'Les résultats ne sont pas encore disponibles.',
+                code:    'RESULTS_HIDDEN'
+            })
+            return
         }
 
         const participant = await participantRepo.findOne({
             where: { session_id: sessionId, etudiant_id: etudiantId }
-        });
+        })
+
+        if (!participant) {
+            res.status(404).json({ success: false, message: 'Vous n\'avez pas participé à cette session' })
+            return
+        }
 
         const questions = await questionRepo.find({
             where: { session_id: sessionId },
             order: { ordre: 'ASC' }
-        });
+        })
 
         const reponses = await reponseRepo.find({
             where: { session_id: sessionId, etudiant_id: etudiantId }
-        });
+        })
 
+        // ─── Recalculer est_correcte depuis les vraies données ────────────────
         const detailsQuestions = questions.map(q => {
-            const reponse = reponses.find(r => r.question_id === q.id);
-            return {
-                question_id: q.id,
-                texte: q.texte,
-                points: q.points,
-                reponse_donnee: reponse?.reponse_ids || [],
-                est_correcte: reponse?.est_correcte || false,
-                points_obtenus: reponse?.est_correcte ? q.points : 0
-            };
-        });
+            const reponse = reponses.find(r => r.question_id === q.id)
 
-        const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
-        const pointsObtenus = detailsQuestions.reduce((sum, q) => sum + q.points_obtenus, 0);
-        const noteSur20 = totalPoints > 0 ? (pointsObtenus / totalPoints) * 20 : 0;
+            const reponseDonnee:   number[] = reponse?.reponse_ids
+                ? [...reponse.reponse_ids].map(Number).sort((a, b) => a - b)
+                : []
+
+            const reponsesCorrectes: number[] = q.reponses_correctes
+                ? [...q.reponses_correctes].map(Number).sort((a, b) => a - b)
+                : []
+
+            // Comparaison stricte des tableaux triés
+            const estCorrecte = reponseDonnee.length > 0
+                && reponseDonnee.length === reponsesCorrectes.length
+                && reponseDonnee.every((val, idx) => val === reponsesCorrectes[idx])
+
+            const pointsObtenus = estCorrecte ? q.points : 0
+
+            return {
+                question_id:       q.id,
+                texte:             q.texte,
+                type:              q.type,
+                points:            q.points,
+                points_obtenus:    pointsObtenus,
+                options:           q.options           || [],
+                reponses_correctes: reponsesCorrectes,
+                reponse_donnee:    reponse?.reponse_ids
+                    ? [...reponse.reponse_ids].map(Number)
+                    : [],
+                est_correcte:      estCorrecte,
+                a_repondu:         !!reponse && reponseDonnee.length > 0
+            }
+        })
+
+        const totalPoints   = questions.reduce((sum, q) => sum + q.points, 0)
+        const pointsObtenus = detailsQuestions.reduce((sum, q) => sum + q.points_obtenus, 0)
+        const noteSur20     = totalPoints > 0 ? (pointsObtenus / totalPoints) * 20 : 0
+        const pourcentage   = totalPoints > 0 ? (pointsObtenus / totalPoints) * 100 : 0
+
+        const nbCorrectes   = detailsQuestions.filter(q => q.est_correcte).length
+        const nbIncorrectes = detailsQuestions.filter(q => !q.est_correcte && q.a_repondu).length
+        const nbOmises      = detailsQuestions.filter(q => !q.a_repondu).length
 
         res.json({
             success: true,
             data: {
                 session: {
-                    id: session.id,
-                    titre: session.titre,
+                    id:         session.id,
+                    titre:      session.titre,
+                    theme:      session.theme,
                     date_debut: session.date_debut,
-                    date_fin: session.date_fin
+                    date_fin:   session.date_fin,
+                    filiere:    session.filiere?.nom,
+                    classe:     session.classe?.nom
                 },
                 participant: {
-                    score: participant?.score || 0,
-                    statut: participant?.statut,
-                    date_completed: participant?.date_completed
+                    score:          pointsObtenus, // recalculé, plus fiable que participant.score
+                    statut:         participant.statut,
+                    date_completed: participant.date_completed
                 },
                 resultats: {
-                    total_points: totalPoints,
+                    total_points:   totalPoints,
                     points_obtenus: pointsObtenus,
-                    note_sur_20: noteSur20.toFixed(2),
-                    pourcentage: totalPoints > 0 ? (pointsObtenus / totalPoints) * 100 : 0
+                    note_sur_20:    parseFloat(noteSur20.toFixed(2)),
+                    pourcentage:    parseFloat(pourcentage.toFixed(1)),
+                    nb_correctes:   nbCorrectes,
+                    nb_incorrectes: nbIncorrectes,
+                    nb_omises:      nbOmises,
+                    total_questions: questions.length
                 },
                 details: detailsQuestions
             }
-        });
+        })
     } catch (err) {
-        next(err);
+        next(err)
     }
-};
+}
 
 // ==================== 10. HISTORIQUE ====================
 
@@ -918,20 +1026,28 @@ export const getHistorique = async (req: AuthRequest, res: Response, next: NextF
         console.log('Participants trouvés:', participants.length);
 
         // Ne pas filtrer sur le score > 0, juste vérifier que le participant existe
-        const historique = participants.map(p => ({
-            id: p.id,
-            session: {
-                id: p.session.id,
-                titre: p.session.titre,
-                theme: p.session.theme,
-                date_debut: p.session.date_debut,
-                date_fin: p.session.date_fin,
-                duree: p.session.duree
-            },
-            score: p.score || 0,
-            date_completed: p.date_completed || p.date_joined,
-            statut: p.statut
-        }));
+        const historique = await Promise.all(participants.map(async (p) => {
+            const questions = await questionRepo.find({ where: { session_id: p.session.id } })
+            const totalPoints = questions.reduce((sum, q) => sum + q.points, 0)
+
+            return {
+                id: p.id,
+                session: {
+                    id: p.session.id,
+                    titre: p.session.titre,
+                    theme: p.session.theme,
+                    date_debut: p.session.date_debut,
+                    date_fin: p.session.date_fin,
+                    duree: p.session.duree,
+                    total_points: totalPoints , // ← ajout
+                    resultatsVisibles: p.session.resultatsVisibles  // ← AJOUTE
+
+                },
+                score: p.score || 0,
+                date_completed: p.date_completed || p.date_joined,
+                statut: p.statut
+            }
+        }))
 
         console.log('Historique généré:', historique.length);
 
@@ -954,9 +1070,9 @@ export const getStudentProfil = async (req: AuthRequest, res: Response, next: Ne
         });
 
         if (!etudiantProfil) {
-            res.status(404).json({ 
-                success: false, 
-                message: 'Profil étudiant non trouvé' 
+            res.status(404).json({
+                success: false,
+                message: 'Profil étudiant non trouvé'
             });
             return;
         }

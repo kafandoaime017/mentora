@@ -29,4 +29,16 @@ export class Ecole {
 
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  @Column({ type: 'enum', enum: ['gratuit', 'starter', 'pro'], default: 'gratuit' })
+plan!: 'gratuit' | 'starter' | 'pro'
+
+@Column({ type: 'datetime', nullable: true })
+plan_expire_at!: Date | null
+
+@Column({ type: 'varchar', length: 255, nullable: true })
+stripe_customer_id!: string | null
+
+@Column({ type: 'varchar', length: 255, nullable: true })
+stripe_subscription_id!: string | null
 }

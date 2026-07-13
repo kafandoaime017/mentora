@@ -1,0 +1,46 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+
+const async = require('./async.js');
+const instrument = require('./instrument.js');
+const instrumentEmail = require('./instrumentations/worker/instrumentEmail.js');
+const instrumentFetch = require('./instrumentations/worker/instrumentFetch.js');
+const instrumentQueue = require('./instrumentations/worker/instrumentQueue.js');
+const instrumentScheduled = require('./instrumentations/worker/instrumentScheduled.js');
+const instrumentTail = require('./instrumentations/worker/instrumentTail.js');
+const hono = require('./integrations/hono.js');
+const isCloudflareClass = require('./utils/isCloudflareClass.js');
+const instrumentWorkerEntrypoint = require('./instrumentations/instrumentWorkerEntrypoint.js');
+
+function withSentry(optionsCallback, handler) {
+  if (isCloudflareClass.isCloudflareClass(handler, "WorkerEntrypoint")) {
+    return instrumentWorkerEntrypoint.instrumentWorkerEntrypoint(optionsCallback, handler);
+  }
+  async.setAsyncLocalStorageAsyncContextStrategy();
+  try {
+    instrumentFetch.instrumentExportedHandlerFetch(handler, optionsCallback);
+    instrumentHonoErrorHandler(handler);
+    instrumentScheduled.instrumentExportedHandlerScheduled(handler, optionsCallback);
+    instrumentEmail.instrumentExportedHandlerEmail(handler, optionsCallback);
+    instrumentQueue.instrumentExportedHandlerQueue(handler, optionsCallback);
+    instrumentTail.instrumentExportedHandlerTail(handler, optionsCallback);
+  } catch {
+  }
+  return handler;
+}
+function instrumentHonoErrorHandler(handler) {
+  if ("onError" in handler && "errorHandler" in handler && typeof handler.errorHandler === "function") {
+    handler.errorHandler = instrument.ensureInstrumented(
+      handler.errorHandler,
+      (original) => new Proxy(original, {
+        apply(target, thisArg, args) {
+          const [err, context] = args;
+          hono.getHonoIntegration()?.handleHonoException(err, context);
+          return Reflect.apply(target, thisArg, args);
+        }
+      })
+    );
+  }
+}
+
+exports.withSentry = withSentry;
+//# sourceMappingURL=withSentry.js.map

@@ -1,0 +1,77 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8
+    container_name: mentora_db_prod
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mentora
+    ports:
+      - "3309:3306"
+    volumes:
+      - mentora_data_prod:/var/lib/mysql
+    networks:
+      - mentora-net-prod
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mentora_backend_prod
+    restart: always
+    ports:
+      - "5001:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DB_HOST: db
+      DB_USER: root
+      DB_PASS: root
+      DB_NAME: mentora
+      JWT_SECRET: supersecret123
+      FRONTEND_URL: https://mentoraapp.online
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 587
+      SMTP_SECURE: "false"
+      EMAIL_USER: kafandoaime017@gmail.com
+      EMAIL_PASS: kxeesaynpotvwsoi
+      GOOGLE_CLIENT_ID: 949195845870-br9qhbpq2sff986pg313cmibipkl3bs0.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: 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
+      OPENROUTER_API_KEY: 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
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - mentora-net-prod
+    command: npm run start
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: mentora_frontend_prod
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      NUXT_PUBLIC_API_BASE: https://api.mentoraapp.online/api
+      NUXT_PUBLIC_WS_BASE: wss://api.mentoraapp.online
+    depends_on:
+      - backend
+    networks:
+      - mentora-net-prod
+
+networks:
+  mentora-net-prod:
+    driver: bridge
+
+volumes:
+  mentora_data_prod:

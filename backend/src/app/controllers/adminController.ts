@@ -1,0 +1,910 @@
+import { Request, Response, NextFunction } from 'express'
+import AppDataSource from '../../config/data-source'
+import { User, UserRole } from '../models/User'
+import { EtudiantProfil } from '../models/EtudiantProfil'
+import { ProfesseurProfil } from '../models/ProfesseurProfil'
+import { Ecole } from '../models/Ecole'
+import { Filiere } from '../models/Filiere'
+import { Classe } from '../models/Classe'
+import { Session, SessionStatus } from '../models/Session'
+import { Invitation, InvitationRole } from '../models/Invitation'
+import { v4 as uuidv4 } from 'uuid'
+import { envoyerInvitation } from '../services/emailService'
+import { SessionParticipant } from '../models/SessionParticipant'
+
+interface AuthRequest extends Request { user?: User }
+
+const userRepo        = AppDataSource.getRepository(User)
+const etudiantRepo    = AppDataSource.getRepository(EtudiantProfil)
+const professeurRepo  = AppDataSource.getRepository(ProfesseurProfil)
+const ecoleRepo       = AppDataSource.getRepository(Ecole)
+const filiereRepo     = AppDataSource.getRepository(Filiere)
+const classeRepo      = AppDataSource.getRepository(Classe)
+const invitationRepo  = AppDataSource.getRepository(Invitation)
+const sessionRepo     = AppDataSource.getRepository(Session)
+const participantRepo = AppDataSource.getRepository(SessionParticipant)
+
+const getEcoleId = (req: AuthRequest, res: Response): number | null => {
+    const ecoleId = req.user!.ecoleId
+    if (!ecoleId) {
+        res.status(400).json({ success: false, message: 'Directeur non associé à une école' })
+        return null
+    }
+    return ecoleId
+}
+
+// ==================== DASHBOARD ====================
+
+export const getDashboard = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const [totalEtudiants, totalProfesseurs, totalFilieres, invitationsEnAttente, professeursPending] = await Promise.all([
+            etudiantRepo.count({ where: { ecoleId } }),
+            professeurRepo.count({ where: { ecoleId } }),
+            filiereRepo.count({ where: { ecoleId, isActive: true } }),
+            invitationRepo.count({ where: { ecoleId, used: false } }),
+            professeurRepo.count({ where: { ecoleId, statut: 'pending' } })
+        ])
+
+        const totalClasses = await classeRepo
+            .createQueryBuilder('c')
+            .innerJoin('c.filiere', 'f')
+            .where('f.ecoleId = :ecoleId', { ecoleId })
+            .andWhere('c.isActive = true')
+            .getCount()
+
+        const derniersInscrits = await userRepo
+            .createQueryBuilder('u')
+            .leftJoin('u.etudiantProfil', 'ep')
+            .leftJoin('u.professeurProfil', 'pp')
+            .where('ep.ecoleId = :ecoleId OR pp.ecoleId = :ecoleId', { ecoleId })
+            .orderBy('u.createdAt', 'DESC')
+            .take(5)
+            .getMany()
+
+        res.json({
+            success: true,
+            data: {
+                stats: { totalEtudiants, totalProfesseurs, totalFilieres, totalClasses, invitationsEnAttente, professeursPending },
+                derniersInscrits: derniersInscrits.map(u => ({
+                    id: u.id, nom: u.nom, prenom: u.prenom, email: u.email, role: u.role, createdAt: u.createdAt
+                }))
+            }
+        })
+    } catch (err) { next(err) }
+}
+
+// ==================== ÉCOLE ====================
+
+export const getEcole = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const ecole = await ecoleRepo.findOne({
+            where: { id: ecoleId },
+            relations: ['filieres', 'filieres.classes']
+        })
+        res.json({ success: true, data: ecole })
+    } catch (err) { next(err) }
+}
+
+export const updateEcole = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const ecole = await ecoleRepo.findOne({ where: { id: ecoleId } })
+        if (!ecole) { res.status(404).json({ success: false, message: 'École non trouvée' }); return }
+
+        const { nom, ville, logo } = req.body
+        if (nom)   ecole.nom   = nom
+        if (ville) ecole.ville = ville
+        if (logo)  ecole.logo  = logo
+
+        await ecoleRepo.save(ecole)
+        res.json({ success: true, data: ecole })
+    } catch (err) { next(err) }
+}
+
+// ==================== FILIÈRES ====================
+
+export const getFilieres = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const filieres = await filiereRepo.find({
+            where: { ecoleId },
+            relations: ['classes'],
+            order: { nom: 'ASC' }
+        })
+        res.json({ success: true, data: filieres })
+    } catch (err) { next(err) }
+}
+
+export const createFiliere = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const { nom } = req.body
+        if (!nom) { res.status(400).json({ success: false, message: 'Le nom est requis' }); return }
+
+        const filiere = filiereRepo.create({ nom, ecoleId })
+        await filiereRepo.save(filiere)
+        res.json({ success: true, data: filiere, message: 'Filière créée' })
+    } catch (err) { next(err) }
+}
+
+export const updateFiliere = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const id      = parseInt(req.params.id as string)
+        const filiere = await filiereRepo.findOne({ where: { id, ecoleId } })
+        if (!filiere) { res.status(404).json({ success: false, message: 'Filière non trouvée' }); return }
+
+        const { nom, isActive } = req.body
+        if (nom      !== undefined) filiere.nom      = nom
+        if (isActive !== undefined) filiere.isActive = isActive
+
+        await filiereRepo.save(filiere)
+        res.json({ success: true, data: filiere, message: 'Filière mise à jour' })
+    } catch (err) { next(err) }
+}
+
+export const deleteFiliere = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const id      = parseInt(req.params.id as string)
+        const filiere = await filiereRepo.findOne({ where: { id, ecoleId }, relations: ['classes'] })
+        if (!filiere) { res.status(404).json({ success: false, message: 'Filière non trouvée' }); return }
+
+        if (filiere.classes?.length > 0) {
+            res.status(400).json({ success: false, message: `Impossible de supprimer : ${filiere.classes.length} classe(s) rattachée(s)` })
+            return
+        }
+
+        await filiereRepo.delete(id)
+        res.json({ success: true, message: 'Filière supprimée' })
+    } catch (err) { next(err) }
+}
+
+// ==================== CLASSES ====================
+
+export const getClasses = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId       = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const { filiereId } = req.query
+
+        const qb = classeRepo.createQueryBuilder('c')
+            .innerJoinAndSelect('c.filiere', 'f')
+            .where('f.ecoleId = :ecoleId', { ecoleId })
+
+        if (filiereId) qb.andWhere('c.filiereId = :filiereId', { filiereId })
+
+        const classes = await qb.orderBy('c.nom', 'ASC').getMany()
+
+        const classesWithCount = await Promise.all(classes.map(async (c) => {
+            const count = await etudiantRepo.count({ where: { classeId: c.id } })
+            return {
+                id: c.id, nom: c.nom, isActive: c.isActive,
+                codeInscription: c.codeInscription,
+                filiereId: c.filiereId, filiere: c.filiere?.nom,
+                nbEtudiants: count
+            }
+        }))
+
+        res.json({ success: true, data: classesWithCount })
+    } catch (err) { next(err) }
+}
+
+export const createClasse = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId        = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const { nom, filiereId } = req.body
+        if (!nom || !filiereId) { res.status(400).json({ success: false, message: 'Nom et filière requis' }); return }
+
+        const filiere = await filiereRepo.findOne({ where: { id: filiereId, ecoleId } })
+        if (!filiere) { res.status(404).json({ success: false, message: 'Filière non trouvée' }); return }
+
+        const classe = classeRepo.create({ nom, filiereId })
+        await classeRepo.save(classe)
+        res.json({ success: true, data: classe, message: 'Classe créée' })
+    } catch (err) { next(err) }
+}
+
+export const updateClasse = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const id     = parseInt(req.params.id as string)
+        const classe = await classeRepo
+            .createQueryBuilder('c')
+            .innerJoin('c.filiere', 'f')
+            .where('c.id = :id', { id })
+            .andWhere('f.ecoleId = :ecoleId', { ecoleId })
+            .getOne()
+
+        if (!classe) { res.status(404).json({ success: false, message: 'Classe non trouvée' }); return }
+
+        const { nom, isActive } = req.body
+        if (nom      !== undefined) classe.nom      = nom
+        if (isActive !== undefined) classe.isActive = isActive
+
+        await classeRepo.save(classe)
+        res.json({ success: true, data: classe, message: 'Classe mise à jour' })
+    } catch (err) { next(err) }
+}
+
+export const deleteClasse = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const id     = parseInt(req.params.id as string)
+        const classe = await classeRepo
+            .createQueryBuilder('c')
+            .innerJoin('c.filiere', 'f')
+            .where('c.id = :id', { id })
+            .andWhere('f.ecoleId = :ecoleId', { ecoleId })
+            .getOne()
+
+        if (!classe) { res.status(404).json({ success: false, message: 'Classe non trouvée' }); return }
+
+        const count = await etudiantRepo.count({ where: { classeId: id } })
+        if (count > 0) {
+            res.status(400).json({ success: false, message: `Impossible de supprimer : ${count} étudiant(s) rattaché(s)` })
+            return
+        }
+
+        await classeRepo.delete(id)
+        res.json({ success: true, message: 'Classe supprimée' })
+    } catch (err) { next(err) }
+}
+
+export const generateClasseCode = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const id     = parseInt(req.params.id as string)
+        const classe = await classeRepo
+            .createQueryBuilder('c')
+            .innerJoinAndSelect('c.filiere', 'f')
+            .where('c.id = :id', { id })
+            .andWhere('f.ecoleId = :ecoleId', { ecoleId })
+            .getOne()
+
+        if (!classe) { res.status(404).json({ success: false, message: 'Classe non trouvée' }); return }
+
+        const prefix = classe.nom.toUpperCase().replace(/\s/g, '').substring(0, 5)
+        const random = Math.random().toString(36).substring(2, 5).toUpperCase()
+        const code   = `${prefix}-${random}`
+
+        await classeRepo.update(id, { codeInscription: code })
+        res.json({ success: true, data: { code }, message: 'Code généré' })
+    } catch (err) { next(err) }
+}
+
+// ==================== UTILISATEURS ====================
+
+export const getUsers = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const { role, search } = req.query
+
+        const qb = userRepo.createQueryBuilder('u')
+            .leftJoinAndSelect('u.etudiantProfil', 'ep')
+            .leftJoinAndSelect('ep.classe', 'c')
+            .leftJoinAndSelect('ep.filiere', 'f')
+            .leftJoinAndSelect('u.professeurProfil', 'pp')
+            .leftJoinAndSelect('pp.filiere', 'pf')
+            .where('(ep.ecoleId = :ecoleId OR pp.ecoleId = :ecoleId)', { ecoleId })
+            .andWhere('u.role != :superadmin', { superadmin: UserRole.SUPERADMIN })
+            .orderBy('u.createdAt', 'DESC')
+
+        if (role)   qb.andWhere('u.role = :role', { role })
+        if (search) qb.andWhere('(u.nom LIKE :s OR u.prenom LIKE :s OR u.email LIKE :s)', { s: `%${search}%` })
+
+        const users = await qb.getMany()
+
+        const formatted = users.map(u => ({
+            id: u.id, nom: u.nom, prenom: u.prenom,
+            email: u.email, role: u.role, isActive: u.isActive,
+            createdAt: u.createdAt,
+            profil: u.role === UserRole.ETUDIANT ? {
+                classe:  u.etudiantProfil?.classe?.nom  || null,
+                filiere: u.etudiantProfil?.filiere?.nom || null,
+            } : {
+                filiere: u.professeurProfil?.filiere?.nom || null,
+                statut:  u.professeurProfil?.statut       || null,
+            }
+        }))
+
+        res.json({ success: true, data: formatted })
+    } catch (err) { next(err) }
+}
+
+export const toggleUserActive = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const id   = parseInt(req.params.id as string)
+        const user = await userRepo
+            .createQueryBuilder('u')
+            .leftJoin('u.etudiantProfil', 'ep')
+            .leftJoin('u.professeurProfil', 'pp')
+            .where('u.id = :id', { id })
+            .andWhere('(ep.ecoleId = :ecoleId OR pp.ecoleId = :ecoleId)', { ecoleId })
+            .getOne()
+
+        if (!user) { res.status(404).json({ success: false, message: 'Utilisateur non trouvé' }); return }
+
+        user.isActive = !user.isActive
+        await userRepo.save(user)
+
+        res.json({
+            success: true,
+            message: user.isActive ? 'Compte activé' : 'Compte désactivé',
+            data: { isActive: user.isActive }
+        })
+    } catch (err) { next(err) }
+}
+
+export const deleteUser = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const id   = parseInt(req.params.id as string)
+        const user = await userRepo
+            .createQueryBuilder('u')
+            .leftJoin('u.etudiantProfil', 'ep')
+            .leftJoin('u.professeurProfil', 'pp')
+            .where('u.id = :id', { id })
+            .andWhere('(ep.ecoleId = :ecoleId OR pp.ecoleId = :ecoleId)', { ecoleId })
+            .getOne()
+
+        if (!user) { res.status(404).json({ success: false, message: 'Utilisateur non trouvé' }); return }
+        if (user.role === UserRole.SUPERADMIN) {
+            res.status(403).json({ success: false, message: 'Impossible de supprimer un superadmin' }); return
+        }
+
+        await userRepo.delete(id)
+        res.json({ success: true, message: 'Utilisateur supprimé' })
+    } catch (err) { next(err) }
+}
+
+export const activateProfesseur = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const id     = parseInt(req.params.id as string)
+        const profil = await professeurRepo.findOne({
+            where: { userId: id, ecoleId },
+            relations: ['user']
+        })
+        if (!profil) { res.status(404).json({ success: false, message: 'Professeur non trouvé' }); return }
+
+        profil.statut        = 'active'
+        profil.user.isActive = true
+        await professeurRepo.save(profil)
+        await userRepo.save(profil.user)
+
+        res.json({ success: true, message: 'Professeur activé' })
+    } catch (err) { next(err) }
+}
+
+// ==================== INVITATIONS ====================
+
+export const getInvitations = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const invitations = await invitationRepo.find({
+            where: { ecoleId },
+            relations: ['classe', 'filiere'],
+            order: { createdAt: 'DESC' }
+        })
+
+        const formatted = invitations.map(inv => ({
+            id: inv.id, email: inv.email, nom: inv.nom, prenom: inv.prenom,
+            role: inv.role, classe: inv.classe?.nom || null, filiere: inv.filiere?.nom || null,
+            used: inv.used, expiresAt: inv.expiresAt, createdAt: inv.createdAt,
+            expired: new Date() > new Date(inv.expiresAt)
+        }))
+
+        res.json({ success: true, data: formatted })
+    } catch (err) { next(err) }
+}
+
+export const sendInvitation = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const { email, nom, prenom, role, filiereId, classeId } = req.body
+
+        if (!email || !nom || !prenom || !role || !filiereId) {
+            res.status(400).json({ success: false, message: 'Champs manquants' }); return
+        }
+
+        if (role === InvitationRole.ETUDIANT && !classeId) {
+            res.status(400).json({ success: false, message: 'La classe est requise pour un étudiant' }); return
+        }
+
+        const existingUser = await userRepo.findOne({ where: { email } })
+        if (existingUser) { res.status(400).json({ success: false, message: 'Cet email est déjà utilisé' }); return }
+
+        const ecole   = await ecoleRepo.findOne({ where: { id: ecoleId } })
+        if (!ecole)   { res.status(404).json({ success: false, message: 'École non trouvée' }); return }
+
+        const filiere = await filiereRepo.findOne({ where: { id: filiereId, ecoleId } })
+        if (!filiere) { res.status(404).json({ success: false, message: 'Filière non trouvée' }); return }
+
+        const classe = classeId ? await classeRepo.findOne({ where: { id: classeId } }) : null
+
+        const existingInvit = await invitationRepo.findOne({ where: { email, used: false } })
+        if (existingInvit) {
+            existingInvit.token     = uuidv4()
+            existingInvit.expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000)
+            existingInvit.nom       = nom
+            existingInvit.prenom    = prenom
+            await invitationRepo.save(existingInvit)
+
+            const lien = `${process.env.FRONTEND_URL}/auth/invitation?token=${existingInvit.token}`
+            await envoyerInvitation(email, prenom, nom, role, filiere.nom, classe?.nom || null, ecole.nom, lien, existingInvit.expiresAt)
+            res.json({ success: true, message: 'Invitation renouvelée', data: { token: existingInvit.token, expiresAt: existingInvit.expiresAt, lien } })
+            return
+        }
+
+        const invitation = invitationRepo.create({
+            email, nom, prenom, role,
+            filiereId, classeId: classeId || null,
+            ecoleId,
+            token:     uuidv4(),
+            expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000)
+        })
+        await invitationRepo.save(invitation)
+
+        const lien = `${process.env.FRONTEND_URL}/auth/invitation?token=${invitation.token}`
+        await envoyerInvitation(email, prenom, nom, role, filiere.nom, classe?.nom || null, ecole.nom, lien, invitation.expiresAt)
+
+        res.json({ success: true, message: 'Invitation envoyée', data: { token: invitation.token, expiresAt: invitation.expiresAt, lien } })
+    } catch (err) { next(err) }
+}
+
+export const deleteInvitation = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const id         = parseInt(req.params.id as string)
+        const invitation = await invitationRepo.findOne({ where: { id, ecoleId } })
+        if (!invitation) { res.status(404).json({ success: false, message: 'Invitation non trouvée' }); return }
+
+        await invitationRepo.delete(id)
+        res.json({ success: true, message: 'Invitation supprimée' })
+    } catch (err) { next(err) }
+}
+
+export const verifyInvitationToken = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { token } = req.query
+
+        const invitation = await invitationRepo.findOne({
+            where: { token: token as string },
+            relations: ['classe', 'filiere', 'ecole']
+        })
+
+        if (!invitation)      { res.status(404).json({ success: false, message: 'Invitation invalide' }); return }
+        if (invitation.used)  { res.status(400).json({ success: false, message: 'Cette invitation a déjà été utilisée' }); return }
+        if (new Date() > new Date(invitation.expiresAt)) { res.status(400).json({ success: false, message: 'Cette invitation a expiré' }); return }
+
+        res.json({
+            success: true,
+            data: {
+                email: invitation.email, nom: invitation.nom, prenom: invitation.prenom,
+                role: invitation.role, classe: invitation.classe?.nom || null,
+                filiere: invitation.filiere?.nom || null, ecole: invitation.ecole?.nom || null
+            }
+        })
+    } catch (err) { next(err) }
+}
+
+export const registerViaInvitation = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { token, password } = req.body
+        const bcrypt = require('bcrypt')
+
+        const invitation = await invitationRepo.findOne({
+            where: { token },
+            relations: ['classe', 'filiere', 'ecole']
+        })
+
+        if (!invitation || invitation.used) { res.status(400).json({ success: false, message: 'Invitation invalide ou déjà utilisée' }); return }
+        if (new Date() > new Date(invitation.expiresAt)) { res.status(400).json({ success: false, message: 'Invitation expirée' }); return }
+
+        const existingUser = await userRepo.findOne({ where: { email: invitation.email } })
+        if (existingUser) { res.status(400).json({ success: false, message: 'Un compte existe déjà avec cet email' }); return }
+
+        const verificationCode    = Math.floor(100000 + Math.random() * 900000).toString()
+        const verificationExpires = new Date(Date.now() + 10 * 60 * 1000)
+        const hashedPassword      = await bcrypt.hash(password, 10)
+
+        const user = userRepo.create({
+            nom: invitation.nom, prenom: invitation.prenom,
+            email: invitation.email, motDePasse: hashedPassword,
+            role: invitation.role as any,
+            isVerified: false, isActive: true,
+            verificationCode, verificationCodeExpires: verificationExpires
+        })
+        await userRepo.save(user)
+
+        if (invitation.role === InvitationRole.ETUDIANT) {
+            const profil = etudiantRepo.create({
+                userId: user.id, classeId: invitation.classeId,
+                filiereId: invitation.filiereId, ecoleId: invitation.ecoleId
+            })
+            await etudiantRepo.save(profil)
+        } else {
+            const profil = professeurRepo.create({
+                userId: user.id, filiereId: invitation.filiereId,
+                ecoleId: invitation.ecoleId, statut: 'active'
+            })
+            await professeurRepo.save(profil)
+        }
+
+        invitation.used = true
+        await invitationRepo.save(invitation)
+
+        const { envoyerCodeVerification } = require('../services/emailService')
+        await envoyerCodeVerification(invitation.email, verificationCode, invitation.prenom)
+
+        res.json({
+            success: true,
+            message: 'Compte créé. Un code de vérification a été envoyé à votre email.',
+            data: { email: invitation.email, requiresVerification: true }
+        })
+    } catch (err) { next(err) }
+}
+
+export const verifyInvitationEmail = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { code, email } = req.query
+
+        const user = await userRepo.findOne({
+            where: { email: email as string, verificationCode: code as string }
+        })
+
+        if (!user) { res.status(400).json({ success: false, message: 'Lien invalide ou expiré' }); return }
+        if (new Date() > new Date(user.verificationCodeExpires!)) { res.status(400).json({ success: false, message: 'Lien expiré' }); return }
+
+        user.isVerified              = true
+        user.verificationCode        = null
+        user.verificationCodeExpires = null
+        await userRepo.save(user)
+
+        let profilInfo = null
+        if (user.role === 'etudiant') {
+            const profil = await etudiantRepo.findOne({ where: { userId: user.id }, relations: ['ecole', 'filiere', 'classe'] })
+            profilInfo = { type: 'etudiant', ecole: profil?.ecole?.nom, ecoleId: profil?.ecoleId, filiere: profil?.filiere?.nom, filiereId: profil?.filiereId, classe: profil?.classe?.nom, classeId: profil?.classeId, dateNaissance: profil?.dateNaissance }
+        } else if (user.role === 'professeur') {
+            const profil = await professeurRepo.findOne({ where: { userId: user.id }, relations: ['filiere'] })
+            profilInfo = { type: 'professeur', filiere: profil?.filiere?.nom, filiereId: profil?.filiereId, statut: profil?.statut }
+        } else {
+            profilInfo = { type: user.role, permissions: 'toutes' }
+        }
+
+        const jwt   = require('jsonwebtoken')
+        const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET!, { expiresIn: '7d' })
+
+        res.json({
+            success: true, message: 'Email vérifié avec succès',
+            data: { token, user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role, avatar: user.avatar, isVerified: true, profil: profilInfo } }
+        })
+    } catch (err) { next(err) }
+}
+
+export const checkEmailVerified = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { email } = req.query
+        const user = await userRepo.findOne({ where: { email: email as string } })
+
+        if (!user)            { res.status(404).json({ success: false, message: 'Utilisateur non trouvé' }); return }
+        if (!user.isVerified) { res.json({ success: true, data: { isVerified: false } }); return }
+
+        const jwt   = require('jsonwebtoken')
+        const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET!, { expiresIn: '7d' })
+
+        let profilInfo = null
+        if (user.role === 'etudiant') {
+            const profil = await etudiantRepo.findOne({ where: { userId: user.id }, relations: ['ecole', 'filiere', 'classe'] })
+            profilInfo = { type: 'etudiant', ecole: profil?.ecole?.nom, ecoleId: profil?.ecoleId, filiere: profil?.filiere?.nom, filiereId: profil?.filiereId, classe: profil?.classe?.nom, classeId: profil?.classeId, dateNaissance: profil?.dateNaissance }
+        } else if (user.role === 'professeur') {
+            const profil = await professeurRepo.findOne({ where: { userId: user.id }, relations: ['filiere'] })
+            profilInfo = { type: 'professeur', filiere: profil?.filiere?.nom, filiereId: profil?.filiereId, statut: profil?.statut }
+        }
+
+        res.json({
+            success: true,
+            data: { isVerified: true, token, user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role, avatar: user.avatar, isVerified: true, profil: profilInfo } }
+        })
+    } catch (err) { next(err) }
+}
+
+export const resendInvitation = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const id         = parseInt(req.params.id as string)
+        const invitation = await invitationRepo.findOne({
+            where: { id, ecoleId },
+            relations: ['classe', 'filiere', 'ecole']
+        })
+        if (!invitation) { res.status(404).json({ success: false, message: 'Invitation non trouvée' }); return }
+        if (invitation.used) { res.status(400).json({ success: false, message: 'Invitation déjà utilisée' }); return }
+
+        invitation.token     = uuidv4()
+        invitation.expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000)
+        await invitationRepo.save(invitation)
+
+        const lien = `${process.env.FRONTEND_URL}/auth/invitation?token=${invitation.token}`
+        await envoyerInvitation(invitation.email, invitation.prenom, invitation.nom, invitation.role, invitation.filiere?.nom || '', invitation.classe?.nom || null, invitation.ecole?.nom || '', lien, invitation.expiresAt)
+
+        res.json({ success: true, message: 'Invitation renvoyée', data: { lien } })
+    } catch (err) { next(err) }
+}
+
+export const revokeInvitation = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const id         = parseInt(req.params.id as string)
+        const invitation = await invitationRepo.findOne({ where: { id, ecoleId } })
+        if (!invitation) { res.status(404).json({ success: false, message: 'Invitation non trouvée' }); return }
+        if (invitation.used) { res.status(400).json({ success: false, message: 'Invitation déjà utilisée' }); return }
+
+        invitation.expiresAt = new Date(Date.now() - 1000)
+        await invitationRepo.save(invitation)
+
+        res.json({ success: true, message: 'Invitation révoquée' })
+    } catch (err) { next(err) }
+}
+
+// ==================== SESSIONS ====================
+
+export const getAllSessions = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const { status, filiereId, classeId, professeurId } = req.query
+
+        const qb = sessionRepo.createQueryBuilder('s')
+            .leftJoinAndSelect('s.classe', 'c')
+            .leftJoinAndSelect('s.filiere', 'f')
+            .leftJoinAndSelect('s.professeur', 'p')
+            .leftJoinAndSelect('s.questions', 'q')
+            .where('f.ecoleId = :ecoleId', { ecoleId })
+            .orderBy('s.created_at', 'DESC')
+
+        if (status)       qb.andWhere('s.status = :status',           { status })
+        if (filiereId)    qb.andWhere('s.filiere_id = :filiereId',    { filiereId })
+        if (classeId)     qb.andWhere('s.classe_id = :classeId',      { classeId })
+        if (professeurId) qb.andWhere('s.created_by = :professeurId', { professeurId })
+
+        const sessions = await qb.getMany()
+
+        const formatted = await Promise.all(sessions.map(async (s) => {
+            const nbParticipants = await participantRepo.count({ where: { session_id: s.id } })
+            return {
+                id: s.id, titre: s.titre, theme: s.theme,
+                status: s.status, code: s.code,
+                date_debut: s.date_debut, date_fin: s.date_fin,
+                duree: s.duree, created_at: s.created_at,
+                classe: s.classe?.nom || null, filiere: s.filiere?.nom || null,
+                professeur: { id: s.professeur?.id, nom: s.professeur?.nom, prenom: s.professeur?.prenom },
+                nb_questions: s.questions?.length || 0, nb_participants: nbParticipants
+            }
+        }))
+
+        res.json({ success: true, data: formatted })
+    } catch (err) { next(err) }
+}
+
+export const getAdminSessionDetails = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const id      = parseInt(req.params.id as string)
+        const session = await sessionRepo
+            .createQueryBuilder('s')
+            .leftJoinAndSelect('s.questions', 'q')
+            .leftJoinAndSelect('s.classe', 'c')
+            .leftJoinAndSelect('s.filiere', 'f')
+            .leftJoinAndSelect('s.professeur', 'p')
+            .where('s.id = :id', { id })
+            .andWhere('f.ecoleId = :ecoleId', { ecoleId })
+            .getOne()
+
+        if (!session) { res.status(404).json({ success: false, message: 'Session non trouvée' }); return }
+
+        const participants = await participantRepo
+            .createQueryBuilder('p')
+            .innerJoinAndSelect('p.etudiant', 'e')
+            .where('p.session_id = :id', { id })
+            .getMany()
+
+        const questions    = session.questions || []
+        const totalPoints  = questions.reduce((sum, q) => sum + q.points, 0)
+        const termines     = participants.filter(p => p.statut === 'termine')
+        const scores       = termines.map(p => p.score || 0)
+        const moyenne      = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0
+        const moyenneSur20 = totalPoints > 0 ? (moyenne / totalPoints) * 20 : 0
+
+        res.json({
+            success: true,
+            data: {
+                session: {
+                    id: session.id, titre: session.titre, theme: session.theme,
+                    status: session.status, code: session.code,
+                    date_debut: session.date_debut, date_fin: session.date_fin,
+                    duree: session.duree, classe: session.classe?.nom,
+                    filiere: session.filiere?.nom,
+                    professeur: `${session.professeur?.prenom} ${session.professeur?.nom}`
+                },
+                stats: {
+                    nb_questions: questions.length, total_points: totalPoints,
+                    nb_participants: participants.length, nb_termines: termines.length,
+                    moyenne_sur_20: Math.round(moyenneSur20 * 100) / 100
+                },
+                participants: participants.map(p => ({
+                    id: p.id, statut: p.statut, score: p.score,
+                    note_sur_20: totalPoints > 0 ? Math.round(((p.score || 0) / totalPoints) * 20 * 100) / 100 : 0,
+                    date_completed: p.date_completed,
+                    etudiant: { id: p.etudiant.id, nom: p.etudiant.nom, prenom: p.etudiant.prenom, email: p.etudiant.email }
+                }))
+            }
+        })
+    } catch (err) { next(err) }
+}
+
+export const adminDeleteSession = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const id      = parseInt(req.params.id as string)
+        const session = await sessionRepo
+            .createQueryBuilder('s')
+            .innerJoin('s.filiere', 'f')
+            .where('s.id = :id', { id })
+            .andWhere('f.ecoleId = :ecoleId', { ecoleId })
+            .getOne()
+
+        if (!session) { res.status(404).json({ success: false, message: 'Session non trouvée' }); return }
+
+        await sessionRepo.delete(id)
+        res.json({ success: true, message: 'Session supprimée' })
+    } catch (err) { next(err) }
+}
+
+export const getUserById = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const ecoleId = getEcoleId(req, res)
+    if (!ecoleId) return
+
+    const id = parseInt(req.params.id as string)
+    
+    const user = await userRepo
+      .createQueryBuilder('u')
+      .leftJoinAndSelect('u.etudiantProfil', 'ep')
+      .leftJoinAndSelect('ep.classe', 'c')
+      .leftJoinAndSelect('ep.filiere', 'f')
+      .leftJoinAndSelect('u.professeurProfil', 'pp')
+      .leftJoinAndSelect('pp.filiere', 'pf')
+      .where('u.id = :id', { id })
+      .andWhere('(ep.ecoleId = :ecoleId OR pp.ecoleId = :ecoleId)', { ecoleId })
+      .getOne()
+
+    if (!user) { 
+      res.status(404).json({ success: false, message: 'Utilisateur non trouvé' }); 
+      return 
+    }
+
+    // Sessions selon le rôle
+    let sessions: any[] = []
+
+    if (user.role === UserRole.ETUDIANT) {
+      const participants = await participantRepo
+        .createQueryBuilder('p')
+        .innerJoinAndSelect('p.session', 's')
+        .innerJoinAndSelect('s.filiere', 'f')
+        .innerJoinAndSelect('s.classe', 'c')
+        .where('p.etudiant_id = :id', { id })
+        .orderBy('s.created_at', 'DESC')
+        .getMany()
+
+      sessions = participants.map(p => {
+        const totalPoints = p.session.questions?.reduce((sum: number, q: any) => sum + q.points, 0) || 0
+        const noteSur20 = totalPoints > 0 ? ((p.score || 0) / totalPoints) * 20 : 0
+        
+        return {
+          id: p.session.id,
+          titre: p.session.titre,
+          filiere: p.session.filiere?.nom,
+          classe: p.session.classe?.nom,
+          date_debut: p.session.date_debut,
+          statut: p.statut,
+          score: p.score,
+          note_sur_20: Math.round(noteSur20 * 100) / 100
+        }
+      })
+    } else if (user.role === UserRole.PROFESSEUR) {
+      const sess = await sessionRepo
+        .createQueryBuilder('s')
+        .leftJoinAndSelect('s.filiere', 'f')
+        .leftJoinAndSelect('s.classe', 'c')
+        .where('s.created_by = :id', { id })
+        .orderBy('s.created_at', 'DESC')
+        .getMany()
+
+      sessions = await Promise.all(sess.map(async s => ({
+        id: s.id,
+        titre: s.titre,
+        filiere: s.filiere?.nom,
+        classe: s.classe?.nom,
+        date_debut: s.date_debut,
+        status: s.status,
+        nb_participants: await participantRepo.count({ where: { session_id: s.id } })
+      })))
+    }
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          nom: user.nom,
+          prenom: user.prenom,
+          email: user.email,
+          role: user.role,
+          isActive: user.isActive,
+          isVerified: user.isVerified,
+          createdAt: user.createdAt,
+          profil: user.role === UserRole.ETUDIANT ? {
+            filiere: user.etudiantProfil?.filiere?.nom || null,
+            classe: user.etudiantProfil?.classe?.nom || null,
+          } : {
+            filiere: user.professeurProfil?.filiere?.nom || null,
+            statut: user.professeurProfil?.statut || null,
+          }
+        },
+        sessions
+      }
+    })
+  } catch (err) { 
+    next(err) 
+  }
+}

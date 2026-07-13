@@ -34,4 +34,7 @@ export class Classe {
 
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  @Column({ type: 'varchar', length: 20, unique: true, nullable: true })
+  codeInscription!: string | null;
 }

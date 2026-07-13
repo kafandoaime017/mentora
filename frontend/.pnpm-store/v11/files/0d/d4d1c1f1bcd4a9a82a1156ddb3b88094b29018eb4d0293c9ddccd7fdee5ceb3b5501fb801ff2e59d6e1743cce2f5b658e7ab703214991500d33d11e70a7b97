@@ -1,0 +1,15 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+
+const kit = require('@nuxt/kit');
+
+function addServerTemplate(template) {
+  const nuxt = kit.useNuxt();
+  if (template.filename) {
+    nuxt.options.nitro.virtual = nuxt.options.nitro.virtual || {};
+    nuxt.options.nitro.virtual[template.filename] = template.getContents;
+  }
+  return template;
+}
+
+exports.addServerTemplate = addServerTemplate;
+//# sourceMappingURL=server-template.js.map

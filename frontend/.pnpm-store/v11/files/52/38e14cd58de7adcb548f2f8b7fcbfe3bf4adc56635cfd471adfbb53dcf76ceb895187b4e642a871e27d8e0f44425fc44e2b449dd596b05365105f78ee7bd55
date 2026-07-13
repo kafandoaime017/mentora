@@ -1,0 +1,67 @@
+import type { Nuxt } from '@nuxt/schema';
+import { type SentryRollupPluginOptions } from '@sentry/rollup-plugin';
+import { type SentryVitePluginOptions } from '@sentry/vite-plugin';
+import type { NitroConfig } from 'nitropack';
+import type { Plugin } from 'vite';
+import type { SentryNuxtModuleOptions } from '../common/types';
+/**
+ * Whether the user enabled (true, 'hidden', 'inline') or disabled (false) source maps
+ */
+export type UserSourceMapSetting = 'enabled' | 'disabled' | 'unset' | undefined;
+/** A valid source map setting */
+export type SourceMapSetting = boolean | 'hidden' | 'inline';
+/**
+ *  Setup source maps for Sentry inside the Nuxt module during build time (in Vite for Nuxt and Rollup for Nitro).
+ */
+export declare function setupSourceMaps(moduleOptions: SentryNuxtModuleOptions, nuxt: Nuxt, addVitePlugin: (plugin: Plugin[], options?: {
+    dev?: boolean;
+    build?: boolean;
+}) => void): void;
+/**
+ *  Generates source maps upload options for the Sentry Vite and Rollup plugin.
+ *
+ *  Only exported for Testing purposes.
+ */
+export declare function getPluginOptions(moduleOptions: SentryNuxtModuleOptions, shouldDeleteFilesFallback?: {
+    client: boolean;
+    server: boolean;
+}): SentryVitePluginOptions | SentryRollupPluginOptions;
+/** only exported for tests */
+export declare function extractNuxtSourceMapSetting(nuxt: {
+    options: {
+        sourcemap?: SourceMapSetting | {
+            server?: SourceMapSetting;
+            client?: SourceMapSetting;
+        };
+    };
+}, runtime: 'client' | 'server' | undefined): SourceMapSetting | undefined;
+/** only exported for testing  */
+export declare function changeNuxtSourceMapSettings(nuxt: Nuxt, sentryModuleOptions: SentryNuxtModuleOptions): {
+    client: UserSourceMapSetting;
+    server: UserSourceMapSetting;
+};
+/** Logs warnings about potentially conflicting source map settings.
+ *  Configures `sourcemapExcludeSources` in Nitro to make source maps usable in Sentry.
+ *
+ * only exported for testing
+ */
+export declare function validateNitroSourceMapSettings(nuxt: {
+    options: {
+        sourcemap?: SourceMapSetting | {
+            server?: SourceMapSetting;
+        };
+    };
+}, nitroConfig: NitroConfig, sentryModuleOptions: SentryNuxtModuleOptions): void;
+/**
+ * Validates that source map settings are consistent between Nuxt and Vite/Nitro configurations.
+ * Logs a warning if conflicting settings are detected.
+ *
+ * @internal Only exported for testing.
+ */
+export declare function validateDifferentSourceMapSettings({ nuxtSettingKey, nuxtSettingValue, otherSettingKey, otherSettingValue, }: {
+    nuxtSettingKey: string;
+    nuxtSettingValue?: SourceMapSetting;
+    otherSettingKey: string;
+    otherSettingValue?: SourceMapSetting;
+}): void;
+//# sourceMappingURL=sourceMaps.d.ts.map

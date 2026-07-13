@@ -14,6 +14,9 @@ import { Question } from "../app/models/Question";
 import { Session } from "../app/models/Session";
 import { SessionParticipant } from "../app/models/SessionParticipant";
 import { ReponseEtudiant } from "../app/models/ReponseEtudiant";
+import { Notification } from '../app/models/Notification'
+import { Invitation } from "../app/models/Invitation";
+
 
 dotenv.config();
 
@@ -26,8 +29,8 @@ const AppDataSource = new DataSource({
     database: process.env.DB_NAME,
     synchronize: false,
     logging: true, // Met true pour voir les erreurs
-    entities: [EtudiantProfil, ProfesseurProfil, User, Classe, Filiere, Ecole,Question,Session,SessionParticipant,ReponseEtudiant],
-    migrations: ["src/app/migrations/*.ts"],
+    entities: [EtudiantProfil, ProfesseurProfil, User, Classe, Filiere, Ecole,Question,Session,SessionParticipant,ReponseEtudiant, Notification,Invitation],
+    migrations: [__dirname + "/app/migrations/*.js"],
     subscribers: [],
 });
 

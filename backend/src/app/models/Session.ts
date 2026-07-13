@@ -82,4 +82,7 @@ export class Session {
 
     @UpdateDateColumn()
     updated_at!: Date;
+
+  @Column({ name: 'resultats_visibles', type: 'tinyint', default: 0 })
+resultatsVisibles!: boolean
 }

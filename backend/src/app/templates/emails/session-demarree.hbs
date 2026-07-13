@@ -1,0 +1,36 @@
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <div style="background: #1e3a2f; padding: 30px; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">Mentora</h1>
+  </div>
+
+  <div style="padding: 40px 30px; background: #ffffff;">
+    <h2 style="color: #1e3a2f; margin-top: 0;">Bonjour {{ prenom }} 👋</h2>
+
+    <p style="color: #444; font-size: 16px; line-height: 1.6;">
+      La session <strong>{{ titreSession }}</strong> vient de démarrer !
+    </p>
+
+    <p style="color: #444; font-size: 16px; line-height: 1.6;">
+      Demandez le code d'accès à votre professeur et rejoignez maintenant.
+    </p>
+
+    <div style="text-align: center; margin: 32px 0;">
+      
+        href="{{ joinUrl }}"
+        style="background: #4a7c5e; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;"
+      >
+        Rejoindre la session
+      </a>
+    </div>
+
+    <p style="color: #999; font-size: 13px;">
+      Si vous n'êtes pas concerné par cette session, ignorez cet email.
+    </p>
+  </div>
+
+  <div style="background: #f5f0e8; padding: 20px; text-align: center;">
+    <p style="color: #9b9589; font-size: 12px; margin: 0;">
+      © {{ year }} Mentora — <a href="{{ websiteUrl }}" style="color: #4a7c5e;">mentora.foulisa.com</a>
+    </p>
+  </div>
+</div>

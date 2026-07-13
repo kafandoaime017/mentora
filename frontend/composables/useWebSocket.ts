@@ -1,101 +1,106 @@
-import { io, Socket } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client'
+import { ref } from 'vue'
+
+let socketInstance: Socket | null = null
+const isConnectedRef = ref(false)
 
 export const useWebSocket = () => {
-    const socket = ref<Socket | null>(null);
-    const isConnected = ref(false);
 
-    const connect = (userId: number, role: string, classeId?: number, filiereId?: number) => {
-        const wsUrl = 'http://localhost:5000';
-        
-        console.log('🔄 Connexion WebSocket à:', wsUrl);
-        
-        if (socket.value?.connected) {
-            console.log('⚠️ Déjà connecté');
-            return;
-        }
-        
-        socket.value = io(wsUrl, {
-            transports: ['websocket', 'polling'],
-            withCredentials: true,
-            reconnection: true,
-            reconnectionAttempts: 5,
-            reconnectionDelay: 1000
-        });
+  const connect = (userId: number, role: string, classeId?: number, filiereId?: number) => {
+    if (socketInstance?.connected) {
+      console.log('⚠️ WebSocket déjà connecté, skip')
+      return
+    }
 
-        socket.value.on('connect', () => {
-            console.log('✅ WebSocket connecté! ID:', socket.value?.id);
-            isConnected.value = true;
-            
-            socket.value?.emit('authenticate', { userId, role });
-            console.log('📤 Authentification envoyée pour user:', userId);
-            
-            if (role === 'etudiant' && classeId && filiereId) {
-                setTimeout(() => {
-                    socket.value?.emit('join-class', { classeId, filiereId });
-                    console.log(`📤 Rejoint classe ${classeId}, filière ${filiereId}`);
-                }, 500);
-            }
-        });
+    const wsUrl = process.env.NUXT_SOCKET_URL || 'https://api.mentoraapp.online'
+    console.log('🔄 Connexion WebSocket à:', wsUrl)
 
-        socket.value.on('authenticated', (data) => {
-            console.log('✅ Authentification confirmée:', data);
-        });
+    socketInstance = io(wsUrl, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000
+    })
 
-        socket.value.on('joined-class', (data) => {
-            console.log('✅ Salle rejointe avec succès:', data);
-        });
+    socketInstance.on('connect', () => {
+      console.log('✅ WebSocket connecté! ID:', socketInstance?.id)
+      isConnectedRef.value = true
+      socketInstance?.emit('authenticate', { userId, role })
+      if (role === 'etudiant' && classeId && filiereId) {
+        setTimeout(() => {
+          socketInstance?.emit('join-class', { classeId, filiereId })
+        }, 500)
+      }
+    })
 
-        socket.value.on('new-session', (data) => {
-            console.log('📢 NOUVELLE SESSION REÇUE!', data);
-            window.dispatchEvent(new CustomEvent('new-session', { detail: data }));
-        });
+    socketInstance.on('authenticated', (data) => {
+      console.log('✅ Authentification confirmée:', data)
+    })
 
-        // ✅ AJOUTER CET ÉCOUTEUR
-        socket.value.on('session-started', (data) => {
-            console.log('▶️ SESSION DÉMARRÉE!', data);
-            window.dispatchEvent(new CustomEvent('session-started', { detail: data }));
-        });
+    socketInstance.on('joined-class', (data) => {
+      console.log('✅ Salle rejointe:', data)
+    })
 
-        socket.value.on('connect_error', (error) => {
-            console.error('❌ Erreur connexion:', error.message);
-            isConnected.value = false;
-        });
+    socketInstance.on('new-session', (data) => {
+      window.dispatchEvent(new CustomEvent('new-session', { detail: data }))
+    })
 
-        socket.value.on('disconnect', (reason) => {
-            console.log('🔌 WebSocket déconnecté:', reason);
-            isConnected.value = false;
-        });
-    };
+    socketInstance.on('session-started', (data) => {
+      window.dispatchEvent(new CustomEvent('session-started', { detail: data }))
+    })
 
-    const disconnect = () => {
-        if (socket.value) {
-            socket.value.disconnect();
-            socket.value = null;
-            isConnected.value = false;
-        }
-    };
+    // ← AJOUTE CET ÉCOUTEUR
+    socketInstance.on('session-completed', (data) => {
+      console.log('🏁 SESSION TERMINÉE!', data)
+      window.dispatchEvent(new CustomEvent('session-completed', { detail: data }))
+    })
 
-    const onNewSession = (callback: (data: any) => void) => {
-        window.addEventListener('new-session', (event: any) => {
-            console.log('🎯 Événement new-session capturé par le callback');
-            callback(event.detail);
-        });
-    };
+    socketInstance.on('connect_error', (error) => {
+      console.error('❌ Erreur connexion:', error.message)
+      isConnectedRef.value = false
+    })
 
-    // ✅ AJOUTER CETTE FONCTION
-    const onSessionStarted = (callback: (data: any) => void) => {
-        window.addEventListener('session-started', (event: any) => {
-            console.log('🎯 Événement session-started capturé par le callback');
-            callback(event.detail);
-        });
-    };
+    socketInstance.on('disconnect', (reason) => {
+      console.log('🔌 WebSocket déconnecté:', reason)
+      isConnectedRef.value = false
+      if (reason === 'io client disconnect') {
+        socketInstance = null
+      }
+    })
+  }
 
-    return {
-        socket,
-        isConnected,
-        connect,
-        disconnect,
-        onNewSession,
-        onSessionStarted  // ✅ EXPORTER LA FONCTION
-    };
-};
+  const disconnect = () => {
+    if (socketInstance) {
+      socketInstance.disconnect()
+      socketInstance = null
+      isConnectedRef.value = false
+    }
+  }
+
+  const onNewSession = (callback: (data: any) => void) => {
+    window.addEventListener('new-session', (event: any) => callback(event.detail))
+  }
+
+  const onSessionStarted = (callback: (data: any) => void) => {
+    window.addEventListener('session-started', (event: any) => callback(event.detail))
+  }
+
+  // ← AJOUTE CETTE FONCTION
+  const onSessionCompleted = (callback: (data: any) => void) => {
+    window.addEventListener('session-completed', (event: any) => callback(event.detail))
+  }
+
+  const getSocket = () => socketInstance
+
+  return {
+    socket: { value: socketInstance },
+    isConnected: isConnectedRef,
+    connect,
+    disconnect,
+    onNewSession,
+    onSessionStarted,
+    onSessionCompleted, // ← AJOUTE
+    getSocket
+  }
+}

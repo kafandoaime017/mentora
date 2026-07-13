@@ -1,0 +1,9 @@
+import type { R2Bucket } from '@cloudflare/workers-types';
+/**
+ * Wraps a Cloudflare R2 Bucket binding to create spans on bucket operations.
+ *
+ * Instrumented methods: get, head, put, delete, list, createMultipartUpload,
+ * resumeMultipartUpload (and the resulting multipart upload operations).
+ */
+export declare function instrumentR2Bucket<T extends R2Bucket>(bucket: T, bindingName: string): T;
+//# sourceMappingURL=instrumentR2.d.ts.map

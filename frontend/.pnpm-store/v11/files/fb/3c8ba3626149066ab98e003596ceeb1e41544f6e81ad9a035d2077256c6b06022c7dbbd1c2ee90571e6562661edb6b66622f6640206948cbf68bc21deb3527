@@ -1,0 +1,24 @@
+import { debug } from '@sentry/core';
+import { DEBUG_BUILD } from '../debug-build.js';
+
+function getEffectiveRpcPropagation(options) {
+  const { enableRpcTracePropagation, instrumentPrototypeMethods } = options;
+  if (enableRpcTracePropagation !== void 0) {
+    if (instrumentPrototypeMethods !== void 0) {
+      DEBUG_BUILD && debug.warn(
+        "[Sentry] Both `enableRpcTracePropagation` and `instrumentPrototypeMethods` are set. Using `enableRpcTracePropagation` and ignoring `instrumentPrototypeMethods`."
+      );
+    }
+    return enableRpcTracePropagation;
+  }
+  if (instrumentPrototypeMethods !== void 0) {
+    DEBUG_BUILD && debug.warn(
+      "[Sentry] `instrumentPrototypeMethods` is deprecated and will be removed in a future major version. Please use `enableRpcTracePropagation` instead."
+    );
+    return instrumentPrototypeMethods === true || Array.isArray(instrumentPrototypeMethods) && instrumentPrototypeMethods.length > 0;
+  }
+  return false;
+}
+
+export { getEffectiveRpcPropagation };
+//# sourceMappingURL=rpcOptions.js.map

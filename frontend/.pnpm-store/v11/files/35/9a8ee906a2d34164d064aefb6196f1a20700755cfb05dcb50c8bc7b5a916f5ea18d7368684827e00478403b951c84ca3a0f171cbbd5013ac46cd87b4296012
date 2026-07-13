@@ -1,0 +1,24 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+
+const core = require('@sentry/core');
+
+function instrumentFetcher(fetchFn) {
+  return function(input, init) {
+    const headers = core._INTERNAL_getTracingHeadersForFetchRequest(input, { headers: init?.headers });
+    if (input instanceof Request && init === void 0) {
+      if (!headers) {
+        return fetchFn(input);
+      }
+      const requestWithTracing = new Request(input, { headers });
+      return fetchFn(requestWithTracing);
+    }
+    const mergedInit = {
+      ...init,
+      ...headers ? { headers } : {}
+    };
+    return fetchFn(input, mergedInit);
+  };
+}
+
+exports.instrumentFetcher = instrumentFetcher;
+//# sourceMappingURL=instrumentFetcher.js.map

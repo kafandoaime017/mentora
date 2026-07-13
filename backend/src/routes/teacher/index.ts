@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { authMiddleware, requireRole } from '../../app/middleware/auth';
 import * as teacherController from '../../app/controllers/teacherController';
+import { checkLimiteSessions, checkPlanIA } from '../../app/middleware/checkPlan'
+import { createQCM } from '../../app/controllers/teacherController';
 
 const router = Router();
 
@@ -9,7 +11,8 @@ router.use(authMiddleware);
 router.use(requireRole(['professeur', 'admin']));
 
 // ==================== QCM ====================
-router.post('/qcm', teacherController.createQCM);
+router.post('/qcm',authMiddleware, requireRole(['professeur']), checkLimiteSessions, createQCM)
+
 router.get('/qcm', teacherController.getSessions);
 router.get('/qcm/:id', teacherController.getSessionDetails);
 router.put('/qcm/:id', teacherController.updateSession);
@@ -45,7 +48,7 @@ router.get('/filieres', teacherController.getFilieres);
 
 // ROUTE POUR RÉCUPÉRER LES CLASSES
 router.get('/classes', teacherController.getClasses);
-
+router.patch('/sessions/:id/toggle-resultats', teacherController.toggleResultatsVisibles)
 
 
 

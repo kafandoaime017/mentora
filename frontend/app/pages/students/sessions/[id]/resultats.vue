@@ -1,293 +1,216 @@
 <template>
   <div class="bg-[#f5f0e8] font-body min-h-screen">
     <StudentLayout>
-      <div class="max-w-3xl mx-auto px-4 py-6">
-        
-        <!-- Bouton retour -->
-        <button 
-          @click="$router.back()"
-          class="flex items-center gap-2 text-[#4a7c5e] hover:text-[#1e3a2f] transition-colors mb-4"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-          </svg>
-          <span class="text-sm font-semibold">Retour</span>
-        </button>
 
-        <!-- Loading -->
-        <div v-if="loading" class="flex justify-center py-12">
-          <div class="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
-        </div>
+      <h2 class="font-body text-xl font-extrabold text-[#1e3a2f] mb-6">Mes sessions</h2>
 
-        <!-- Résultats -->
-        <div v-else>
-          <!-- En-tête avec score -->
-          <div class="bg-white shadow rounded-lg p-5 mb-6">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 class="text-2xl font-bold text-[#1e3a2f]">{{ session.titre }}</h1>
-                <p class="text-sm text-gray-500 mt-1">Professeur: {{ session.professeur?.prenom }} {{ session.professeur?.nom }}</p>
-              </div>
-              <div class="text-center bg-gray-50 px-6 py-3 rounded-lg">
-                <p class="text-xs text-gray-500">Votre note</p>
-                <p class="text-3xl font-bold text-green-600">{{ noteSur20 }}/20</p>
-                <p class="text-sm text-gray-500 mt-1">{{ totalPoints }} points sur {{ totalPointsMax }}</p>
-              </div>
-            </div>
-            
-            <!-- Barre de progression du score -->
-            <div class="mt-4">
-              <div class="flex justify-between text-xs text-gray-500 mb-1">
-                <span>Score</span>
-                <span>{{ pourcentage }}%</span>
-              </div>
-              <div class="w-full bg-gray-200 rounded-full h-2.5">
-                <div class="bg-green-500 h-2.5 rounded-full transition-all duration-500" :style="{ width: `${pourcentage}%` }"></div>
-              </div>
-              <p class="text-sm text-gray-600 mt-2">{{ getMention(noteSur20) }}</p>
-            </div>
-          </div>
-
-          <!-- Questions et réponses -->
-          <div class="space-y-4">
-            <div 
-              v-for="(question, idx) in questions" 
-              :key="question.id" 
-              class="bg-white shadow rounded-lg overflow-hidden"
-            >
-              <!-- En-tête question -->
-              <div class="bg-gray-50 p-4 border-b border-gray-200">
-                <div class="flex justify-between items-start gap-4">
-                  <div class="flex items-center gap-3">
-                    <span class="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
-                      {{ idx + 1 }}
-                    </span>
-                    <h3 class="font-semibold text-[#1e3a2f]">{{ question.texte }}</h3>
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <span class="text-xs bg-gray-200 px-2 py-1 rounded-full text-gray-600">
-                      {{ getTypeLabel(question.type) }}
-                    </span>
-                    <span class="text-sm font-semibold" :class="reponseEstCorrecte(question.id) ? 'text-green-600' : 'text-red-600'">
-                      {{ reponseEstCorrecte(question.id) ? '+' : '' }}{{ question.points }} pts
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Corps question - version désactivée (consultation seule) -->
-              <div class="p-5">
-                <!-- QCM simple -->
-                <div v-if="question.type === 'qcm'" class="space-y-2">
-                  <div 
-                    v-for="(opt, optIdx) in question.options" 
-                    :key="optIdx"
-                    class="flex items-center gap-3 p-3 rounded-xl border transition-all"
-                    :class="{
-                      'bg-green-50 border-green-500': estBonneReponse(question.id, optIdx) && estReponseChoisie(question.id, optIdx),
-                      'bg-red-50 border-red-500': !estBonneReponse(question.id, optIdx) && estReponseChoisie(question.id, optIdx),
-                      'bg-green-50 border-green-300 opacity-60': estBonneReponse(question.id, optIdx) && !estReponseChoisie(question.id, optIdx),
-                      'border-gray-200': !estBonneReponse(question.id, optIdx) && !estReponseChoisie(question.id, optIdx)
-                    }"
-                  >
-                    <div 
-                      class="w-5 h-5 rounded-full border-2 flex items-center justify-center"
-                      :class="{
-                        'border-green-500 bg-green-500': estBonneReponse(question.id, optIdx),
-                        'border-red-500 bg-red-500': !estBonneReponse(question.id, optIdx) && estReponseChoisie(question.id, optIdx),
-                        'border-gray-300': !estBonneReponse(question.id, optIdx) && !estReponseChoisie(question.id, optIdx)
-                      }"
-                    >
-                      <div v-if="estBonneReponse(question.id, optIdx)" class="w-2 h-2 bg-white rounded-full"></div>
-                      <svg v-else-if="estReponseChoisie(question.id, optIdx)" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/>
-                      </svg>
-                    </div>
-                    <span class="text-gray-700">{{ opt }}</span>
-                    <div class="ml-auto flex gap-2">
-                      <span v-if="estBonneReponse(question.id, optIdx)" class="text-xs text-green-600 font-semibold">✓ Bonne réponse</span>
-                      <span v-if="estReponseChoisie(question.id, optIdx) && !estBonneReponse(question.id, optIdx)" class="text-xs text-red-600 font-semibold">✗ Votre réponse</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- QCM multiple -->
-                <div v-else-if="question.type === 'qcm_multiple'" class="space-y-2">
-                  <div 
-                    v-for="(opt, optIdx) in question.options" 
-                    :key="optIdx"
-                    class="flex items-center gap-3 p-3 rounded-xl border transition-all"
-                    :class="{
-                      'bg-green-50 border-green-500': estBonneReponse(question.id, optIdx) && estReponseChoisie(question.id, optIdx),
-                      'bg-red-50 border-red-500': !estBonneReponse(question.id, optIdx) && estReponseChoisie(question.id, optIdx),
-                      'bg-green-50 border-green-300 opacity-60': estBonneReponse(question.id, optIdx) && !estReponseChoisie(question.id, optIdx),
-                      'border-gray-200': !estBonneReponse(question.id, optIdx) && !estReponseChoisie(question.id, optIdx)
-                    }"
-                  >
-                    <div 
-                      class="w-5 h-5 rounded border-2 flex items-center justify-center"
-                      :class="{
-                        'border-green-500 bg-green-500': estBonneReponse(question.id, optIdx),
-                        'border-red-500 bg-red-500': !estBonneReponse(question.id, optIdx) && estReponseChoisie(question.id, optIdx),
-                        'border-gray-300': !estBonneReponse(question.id, optIdx) && !estReponseChoisie(question.id, optIdx)
-                      }"
-                    >
-                      <svg v-if="estBonneReponse(question.id, optIdx) || estReponseChoisie(question.id, optIdx)" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path v-if="estBonneReponse(question.id, optIdx)" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
-                        <path v-else-if="estReponseChoisie(question.id, optIdx) && !estBonneReponse(question.id, optIdx)" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/>
-                      </svg>
-                    </div>
-                    <span class="text-gray-700">{{ opt }}</span>
-                    <div class="ml-auto flex gap-2">
-                      <span v-if="estBonneReponse(question.id, optIdx)" class="text-xs text-green-600 font-semibold">✓ Bonne réponse</span>
-                      <span v-if="estReponseChoisie(question.id, optIdx) && !estBonneReponse(question.id, optIdx)" class="text-xs text-red-600 font-semibold">✗ Votre réponse</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Vrai/Faux -->
-                <div v-else-if="question.type === 'vrai_faux'" class="flex gap-4">
-                  <div 
-                    class="flex-1 p-3 rounded-xl text-center font-medium transition-all"
-                    :class="{
-                      'bg-green-500 text-white': estBonneReponse(question.id, 0) && estReponseChoisie(question.id, 0),
-                      'bg-red-500 text-white': !estBonneReponse(question.id, 0) && estReponseChoisie(question.id, 0),
-                      'bg-green-100 text-green-700 border border-green-300': estBonneReponse(question.id, 0) && !estReponseChoisie(question.id, 0),
-                      'bg-gray-100 text-gray-500': !estBonneReponse(question.id, 0) && !estReponseChoisie(question.id, 0)
-                    }"
-                  >
-                    Vrai
-                    <span v-if="estBonneReponse(question.id, 0) && estReponseChoisie(question.id, 0)" class="ml-2">✓</span>
-                    <span v-else-if="!estBonneReponse(question.id, 0) && estReponseChoisie(question.id, 0)" class="ml-2">✗</span>
-                  </div>
-                  <div 
-                    class="flex-1 p-3 rounded-xl text-center font-medium transition-all"
-                    :class="{
-                      'bg-green-500 text-white': estBonneReponse(question.id, 1) && estReponseChoisie(question.id, 1),
-                      'bg-red-500 text-white': !estBonneReponse(question.id, 1) && estReponseChoisie(question.id, 1),
-                      'bg-green-100 text-green-700 border border-green-300': estBonneReponse(question.id, 1) && !estReponseChoisie(question.id, 1),
-                      'bg-gray-100 text-gray-500': !estBonneReponse(question.id, 1) && !estReponseChoisie(question.id, 1)
-                    }"
-                  >
-                    Faux
-                    <span v-if="estBonneReponse(question.id, 1) && estReponseChoisie(question.id, 1)" class="ml-2">✓</span>
-                    <span v-else-if="!estBonneReponse(question.id, 1) && estReponseChoisie(question.id, 1)" class="ml-2">✗</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- Onglets -->
+      <div class="mb-6 border-b">
+        <nav class="flex gap-1">
+          <button
+            v-for="onglet in onglets" :key="onglet.id"
+            @click="ongletActif = onglet.id; currentPage = 1"
+            class="px-6 py-2 border-2 border-primary text-xs font-body font-semibold transition-all"
+            :class="ongletActif === onglet.id ? 'text-white bg-primary' : 'text-primary hover:text-[#4a7c5e]'"
+          >
+            {{ onglet.nom }}
+            <span v-if="onglet.count !== undefined" class="ml-1 bg-white/30 px-1.5 py-0.5 rounded-full text-[10px]">
+              {{ onglet.count }}
+            </span>
+          </button>
+        </nav>
       </div>
+
+      <!-- Loading -->
+      <div v-if="loading" class="flex justify-center py-12">
+        <div class="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"/>
+      </div>
+
+      <template v-else>
+        <!-- Grille -->
+        <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+          <template v-if="sessionsPaginées.length > 0">
+            <div
+              v-for="item in sessionsPaginées"
+              :key="item.id"
+              class="flex flex-col justify-between shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] p-4 bg-white rounded-xl cursor-pointer hover:shadow-md transition-all"
+              @click="voirDetails(item.session.id)"
+            >
+              <div>
+                <div class="flex justify-between items-start gap-2 mb-1">
+                  <p class="font-bold text-base font-body text-primary leading-snug line-clamp-2 flex-1">
+                    {{ item.session.titre }}
+                  </p>
+                  <!-- Note si disponible -->
+                  <span
+                    v-if="item.score !== null && item.score !== undefined"
+                    class="text-lg font-extrabold whitespace-nowrap font-body"
+                    :class="getNoteColor(calculerNote(item))"
+                  >
+                    {{ calculerNote(item) }}/20
+                  </span>
+                </div>
+
+                <p class="text-xs font-body text-gray-400 mb-3">
+                  {{ formatDate(item.session.date_debut) }}
+                </p>
+
+                <div class="flex items-center gap-3 text-xs text-gray-400 mb-2">
+                  <span class="flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    {{ item.session.duree }} min
+                  </span>
+                  <span v-if="item.session.theme" class="text-gray-400">· {{ item.session.theme }}</span>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                <span
+                  class="inline-block px-3 py-1 rounded-full text-xs font-semibold"
+                  :class="item.statut === 'termine' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
+                >
+                  {{ item.statut === 'termine' ? 'Terminé' : item.statut }}
+                </span>
+                <button
+                  class="border border-primary text-primary text-xs font-semibold px-4 py-1.5 rounded-lg hover:bg-primary hover:text-white transition font-body"
+                  @click.stop="voirDetails(item.session.id)"
+                >
+                  Voir détails
+                </button>
+              </div>
+            </div>
+          </template>
+
+          <!-- Empty state -->
+          <div v-else class="col-span-full bg-white border border-[#e2ddd4] rounded-xl p-10 text-center">
+            <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+            <p class="text-gray-500 font-body text-sm">Aucune session trouvée</p>
+          </div>
+        </section>
+
+        <!-- Pagination -->
+        <div v-if="totalPages > 1" class="flex items-center justify-center gap-2">
+          <button
+            @click="currentPage--"
+            :disabled="currentPage === 1"
+            class="px-4 py-2 rounded-lg text-sm font-body font-semibold transition-all"
+            :class="currentPage === 1 ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-secondary text-white hover:bg-secondary/80'"
+          >
+            ← Préc
+          </button>
+
+          <button
+            v-for="p in totalPages" :key="p"
+            @click="currentPage = p"
+            class="w-9 h-9 rounded-full text-sm font-semibold font-body transition-all"
+            :class="currentPage === p ? 'bg-primary text-white' : 'bg-white text-gray-600 hover:bg-gray-100'"
+          >
+            {{ p }}
+          </button>
+
+          <button
+            @click="currentPage++"
+            :disabled="currentPage === totalPages"
+            class="px-4 py-2 rounded-lg text-sm font-body font-semibold transition-all"
+            :class="currentPage === totalPages ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-primary text-white hover:bg-primary/80'"
+          >
+            Suiv →
+          </button>
+        </div>
+
+      </template>
+
     </StudentLayout>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { useStudent } from '~~/composables/useStudent'
 import { useToast } from '~~/composables/useToast'
 
-const route = useRoute()
-const router = useRouter()
-const { getSessionForStudent } = useStudent()
+const { getHistorique } = useStudent()
 const toast = useToast()
 
-const sessionId = parseInt(route.params.id)
-const loading = ref(true)
-const session = ref({})
-const questions = ref([])
-const reponses = ref({})
-const totalPointsMax = ref(0)
+const loading            = ref(true)
+const historiqueSessions = ref([])
+const ongletActif        = ref('toutes')
+const currentPage        = ref(1)
+const parPage            = 9
 
-const totalPoints = computed(() => {
-  let points = 0
-  for (const q of questions.value) {
-    if (reponseEstCorrecte(q.id)) {
-      points += q.points
-    }
-  }
-  return points
+const onglets = computed(() => [
+  { id: 'toutes',    nom: 'Toutes',      count: historiqueSessions.value.length },
+  { id: 'terminees', nom: 'Terminées',   count: historiqueSessions.value.filter(i => i.statut === 'termine').length },
+  { id: 'publiees',  nom: 'Avec notes',  count: historiqueSessions.value.filter(i => i.statut === 'termine' && i.score > 0).length }
+])
+
+// ─── Sessions filtrées selon l'onglet ────────────────────────────────────────
+const sessionsFiltrees = computed(() => {
+  if (ongletActif.value === 'terminees')
+    return historiqueSessions.value.filter(i => i.statut === 'termine')
+  if (ongletActif.value === 'publiees')
+    return historiqueSessions.value.filter(i => i.statut === 'termine' && i.score > 0)
+  return historiqueSessions.value
 })
 
-const pourcentage = computed(() => {
-  if (totalPointsMax.value === 0) return 0
-  return Math.round((totalPoints.value / totalPointsMax.value) * 100)
+const totalPages     = computed(() => Math.ceil(sessionsFiltrees.value.length / parPage))
+const sessionsPaginées = computed(() => {
+  const debut = (currentPage.value - 1) * parPage
+  return sessionsFiltrees.value.slice(debut, debut + parPage)
 })
 
-const noteSur20 = computed(() => {
-  if (totalPointsMax.value === 0) return 0
-  return ((totalPoints.value / totalPointsMax.value) * 20).toFixed(1)
-})
-
-const getTypeLabel = (type) => {
-  const labels = {
-    qcm: 'Choix unique',
-    qcm_multiple: 'Choix multiples',
-    vrai_faux: 'Vrai / Faux'
-  }
-  return labels[type] || type
+// ─── Utils ────────────────────────────────────────────────────────────────────
+const formatDate = (date) => {
+  if (!date) return ''
+  return new Date(date).toLocaleString('fr-FR', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  })
 }
 
-const getMention = (note) => {
-  if (note >= 16) return '✨ Excellent ! Félicitations !'
-  if (note >= 14) return '🌟 Très bien !'
-  if (note >= 12) return '👍 Bien'
-  if (note >= 10) return '📚 Passable'
-  return '💪 À améliorer, ne lâchez rien !'
+// Calcul correct : score en points bruts / total points * 20
+// Le backend renvoie note_sur_20 si disponible, sinon on utilise score
+const calculerNote = (item) => {
+  if (item.note_sur_20 !== undefined && item.note_sur_20 !== null)
+    return parseFloat(item.note_sur_20).toFixed(1)
+  // Fallback : si score <= 20 c'est déjà une note, sinon c'est des points
+  return item.score <= 20
+    ? parseFloat(item.score).toFixed(1)
+    : (item.score).toFixed(1)
 }
 
-const estBonneReponse = (questionId, optIndex) => {
-  const question = questions.value.find(q => q.id === questionId)
-  if (!question) return false
-  return question.reponses_correctes?.includes(optIndex) || false
+const getNoteColor = (note) => {
+  const n = parseFloat(note)
+  if (n >= 16) return 'text-green-600'
+  if (n >= 14) return 'text-blue-600'
+  if (n >= 12) return 'text-cyan-600'
+  if (n >= 10) return 'text-yellow-600'
+  return 'text-red-600'
 }
 
-const estReponseChoisie = (questionId, optIndex) => {
-  const reponse = reponses.value[questionId]
-  if (!reponse) return false
-  if (Array.isArray(reponse)) {
-    return reponse.includes(optIndex)
-  }
-  return reponse === optIndex
-}
+// ─── Actions ──────────────────────────────────────────────────────────────────
+const voirDetails = (sessionId) => navigateTo(`/students/sessions/${sessionId}/resultats`)
 
-const reponseEstCorrecte = (questionId) => {
-  const reponse = reponses.value[questionId]
-  const question = questions.value.find(q => q.id === questionId)
-  if (!reponse || !question) return false
-  
-  if (Array.isArray(reponse)) {
-    return JSON.stringify(reponse.sort()) === JSON.stringify(question.reponses_correctes?.sort())
-  }
-  return reponse === question.reponses_correctes?.[0]
-}
-
-const loadSession = async () => {
+const loadHistorique = async () => {
   loading.value = true
-  const result = await getSessionForStudent(sessionId)
-  
-  if (result.success && result.data) {
-    session.value = result.data
-    questions.value = result.data.questions || []
-    totalPointsMax.value = result.data.total_points || 0
-    
-    if (result.data.reponses_existantes) {
-      reponses.value = result.data.reponses_existantes
-    }
-  } else {
-    toast.error(result.message || 'Erreur lors du chargement')
-    router.back()
-  }
+  const result = await getHistorique()
+  if (result.success) historiqueSessions.value = result.data || []
+  else toast.error(result.message || 'Erreur lors du chargement')
   loading.value = false
 }
 
-onMounted(() => {
-  loadSession()
-})
+onMounted(loadHistorique)
 </script>
 
 <style scoped>
-/* Styles supplémentaires si nécessaire */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 </style>

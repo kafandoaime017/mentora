@@ -1,0 +1,22 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+
+const core = require('@sentry/core');
+
+function addCloudResourceContext(scope) {
+  scope.setContext("cloud_resource", {
+    "cloud.provider": "cloudflare"
+  });
+}
+function addCultureContext(scope, cf) {
+  scope.setContext("culture", {
+    timezone: cf.timezone
+  });
+}
+function addRequest(scope, request) {
+  scope.setSDKProcessingMetadata({ normalizedRequest: core.winterCGRequestToRequestData(request) });
+}
+
+exports.addCloudResourceContext = addCloudResourceContext;
+exports.addCultureContext = addCultureContext;
+exports.addRequest = addRequest;
+//# sourceMappingURL=scope-utils.js.map

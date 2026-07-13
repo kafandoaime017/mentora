@@ -1,0 +1,21 @@
+import { createResolver, addServerPlugin } from '@nuxt/kit';
+import { addServerTemplate } from '../vendor/server-template.js';
+
+function addStorageInstrumentation(nuxt, isLegacyNitro) {
+  const moduleDirResolver = createResolver(import.meta.url);
+  const userStorageMounts = Object.keys(nuxt.options.nitro.storage || {});
+  addServerTemplate({
+    filename: "#sentry/storage-config.mjs",
+    getContents: () => {
+      return `export const userStorageMounts = ${JSON.stringify(userStorageMounts)};`;
+    }
+  });
+  if (isLegacyNitro) {
+    addServerPlugin(moduleDirResolver.resolve("./runtime/plugins/storage-legacy.server"));
+  } else {
+    addServerPlugin(moduleDirResolver.resolve("./runtime/plugins/storage.server"));
+  }
+}
+
+export { addStorageInstrumentation };
+//# sourceMappingURL=storageConfig.js.map

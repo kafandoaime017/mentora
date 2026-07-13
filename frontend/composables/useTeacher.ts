@@ -349,9 +349,37 @@ const getTeacherStats = async () => {
     }
 }
 
+
+/**
+ * Générer des questions avec l'IA
+ */
+const generateQuestionsAI = async (data: {
+    titre: string
+    description?: string
+    theme?: string
+    nombreQuestions: number
+}) => {
+    try {
+        const res = await $fetch('/api/ai/generate-questions', {
+            method: 'POST',
+            body: data,
+            headers: getAuthHeader()
+        })
+
+        return res
+    } catch (error: any) {
+        console.error('Erreur génération IA:', error)
+        return error.data || {
+            success: false,
+            message: 'Erreur lors de la génération des questions'
+        }
+    }
+}
+
     return {
         // QCM
         createQCM,
+        generateQuestionsAI,
         getQCMList,
         getQCMDetails,
         updateQCM,

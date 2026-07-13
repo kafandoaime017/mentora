@@ -1,0 +1,7 @@
+import type { NitroConfig } from 'nitropack/types';
+import type { SentryNuxtModuleOptions } from '../common/types';
+/**
+ * Sets up the database instrumentation.
+ */
+export declare function addDatabaseInstrumentation(nitro: NitroConfig, isLegacyNitro: boolean, moduleOptions?: SentryNuxtModuleOptions): void;
+//# sourceMappingURL=databaseConfig.d.ts.map

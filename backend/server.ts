@@ -7,38 +7,78 @@ import cors from "cors";
 import { errorHandler } from "./src/app/middleware/errorHandler";
 import path from "path";
 import { setupSocketIO } from "./src/socket";
-import { setSocketIO } from "./src/app/controllers/teacherController";
+import { handleWebhook } from "./src/app/controllers/stripeController";
 
 const app = express();
 const server = createServer(app);
 
-// Configuration CORS
-app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true
-}));
+// ============================================
+// CONFIGURATION CORS UNIFIÉE
+// ============================================
+const allowedOrigins = [
+  'https://mentoraapp.online',
+  'https://www.mentoraapp.online',
+  'https://api.mentoraapp.online',
+  'http://localhost:3000',
+  'http://localhost:5000',
+  'http://31.97.55.208:3000',
+  'http://31.97.55.208:5000'
+];
 
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // Permettre les requêtes sans origin (comme les appels serveur-à-serveur)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      console.warn('❌ CORS bloqué pour:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'Origin', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length', 'Authorization'],
+  maxAge: 86400
+};
+
+// Appliquer CORS à toutes les routes
+app.use(cors(corsOptions));
+
+// ⚠️ WEBHOOK STRIPE — DOIT ÊTRE AVANT express.json()
+app.post(
+  '/api/stripe/webhook',
+  express.raw({ type: 'application/json' }),
+  handleWebhook
+)
+
+// JSON parser pour toutes les autres routes
 app.use(express.json());
-
 app.use('/uploads', express.static(path.join(__dirname, 'src/public/uploads')));
-
 app.use("/api", routes);
 app.use(errorHandler);
 
-// Configuration Socket.io
+// ============================================
+// WEBSOCKET avec la MÊME configuration CORS
+// ============================================
 const io = new SocketServer(server, {
     cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+                callback(null, true);
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
         methods: ['GET', 'POST'],
         credentials: true
     }
 });
 
-// Initialiser les WebSockets
 setupSocketIO(io);
-
-// 🔴 PASSER L'INSTANCE AU CONTRÔLEUR
-setSocketIO(io);
 
 const PORT = process.env.PORT || 5000;
 
@@ -48,6 +88,7 @@ AppDataSource.initialize()
         server.listen(PORT, () => {
             console.log(`🚀 Server is running on port ${PORT}`);
             console.log(`🔌 WebSocket server is ready`);
+            console.log(`✅ CORS autorisé pour:`, allowedOrigins);
         });
     })
     .catch((err: Error) => {

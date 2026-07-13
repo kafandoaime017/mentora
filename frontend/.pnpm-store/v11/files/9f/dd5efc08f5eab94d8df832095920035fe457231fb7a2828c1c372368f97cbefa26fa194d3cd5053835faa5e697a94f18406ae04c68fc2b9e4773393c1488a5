@@ -1,0 +1,32 @@
+import { defineIntegration, getIsolationScope, captureBodyFromWinterCGRequest } from '@sentry/core';
+
+const INTEGRATION_NAME = "HttpServer";
+const _httpServerIntegration = ((options = {}) => {
+  return {
+    name: INTEGRATION_NAME,
+    maxRequestBodySize: options.maxRequestBodySize ?? "medium",
+    ignoreRequestBody: options.ignoreRequestBody
+  };
+});
+const httpServerIntegration = defineIntegration(_httpServerIntegration);
+async function captureIncomingRequestBody(client, request) {
+  const integration = client.getIntegrationByName(INTEGRATION_NAME);
+  if (!integration) {
+    return;
+  }
+  const maxRequestBodySize = integration.maxRequestBodySize;
+  if (maxRequestBodySize === "none") {
+    return;
+  }
+  if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") {
+    return;
+  }
+  if (integration.ignoreRequestBody?.(request.url, request)) {
+    return;
+  }
+  const isolationScope = getIsolationScope();
+  await captureBodyFromWinterCGRequest(request, isolationScope, maxRequestBodySize);
+}
+
+export { captureIncomingRequestBody, httpServerIntegration };
+//# sourceMappingURL=httpServer.js.map

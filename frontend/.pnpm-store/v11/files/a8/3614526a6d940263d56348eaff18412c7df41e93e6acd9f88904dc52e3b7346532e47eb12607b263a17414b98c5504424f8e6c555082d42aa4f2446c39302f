@@ -1,0 +1,6 @@
+import { useStorage } from "nitropack/runtime";
+import { userStorageMounts } from "#sentry/storage-config.mjs";
+import { createStoragePlugin } from "../utils/instrumentStorage.js";
+export default async (_nitroApp) => {
+  await createStoragePlugin(useStorage, userStorageMounts);
+};

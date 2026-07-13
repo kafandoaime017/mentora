@@ -1,0 +1,13 @@
+import { useNuxt } from '@nuxt/kit';
+
+function addServerTemplate(template) {
+  const nuxt = useNuxt();
+  if (template.filename) {
+    nuxt.options.nitro.virtual = nuxt.options.nitro.virtual || {};
+    nuxt.options.nitro.virtual[template.filename] = template.getContents;
+  }
+  return template;
+}
+
+export { addServerTemplate };
+//# sourceMappingURL=server-template.js.map

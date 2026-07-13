@@ -8,13 +8,18 @@ import { Classe } from '../models/Classe';
 import { Filiere } from '../models/Filiere';
 import { User } from '../models/User';
 import QRCode from 'qrcode';
+import { getSocketIO } from '../../socket';
+import { createNotification } from './notificationController';
+import { NotificationType } from '../models/Notification';
+import { EtudiantProfil } from '../models/EtudiantProfil';
+import { 
+    envoyerEmailSessionDemarree,
+    envoyerEmailNouvelleSession,
+    envoyerEmailNotesPubliees
+} from '../services/emailService'
 
 
-let ioInstance: any;
 
-export const setSocketIO = (io: any) => {
-  ioInstance = io;
-};
 
 // Définir le type pour les requêtes authentifiées
 interface AuthRequest extends Request {
@@ -28,6 +33,7 @@ const reponseRepo = AppDataSource.getRepository(ReponseEtudiant);
 const classeRepo = AppDataSource.getRepository(Classe);
 const filiereRepo = AppDataSource.getRepository(Filiere);
 const userRepo = AppDataSource.getRepository(User);
+const etudiantProfilRepo = AppDataSource.getRepository(EtudiantProfil);
 
 interface QuestionInput {
     texte: string;
@@ -50,10 +56,32 @@ const parseId = (id: string | string[] | undefined): number => {
 };
 
 const autoCloseSession = async (sessionId: number): Promise<void> => {
-    const session = await sessionRepo.findOne({ where: { id: sessionId } });
+    const session = await sessionRepo.findOne({
+        where: { id: sessionId },
+        relations: ['classe', 'filiere']
+    });
     if (session && session.status === SessionStatus.ACTIVE) {
         await sessionRepo.update(sessionId, { status: SessionStatus.COMPLETED });
         await calculateAndUpdateScores(sessionId);
+
+        const io = getSocketIO();
+        if (io) {
+            const roomName = `classe_${session.classe_id}_filiere_${session.filiere_id}`;
+
+            // Notifier le dashboard étudiant
+            io.to(roomName).emit('session-completed', {
+                sessionId: session.id,
+                message: `La session "${session.titre}" est maintenant terminée.`
+            })
+
+            // ← Notifier les étudiants EN TRAIN de participer
+            io.to(roomName).emit('session-force-ended', {
+                sessionId: session.id,
+                message: `La session "${session.titre}" a été terminée par le professeur.`
+            })
+
+            console.log(`📢 Session terminée notifiée à: ${roomName}`)
+        }
     }
 };
 
@@ -63,19 +91,19 @@ const calculateAndUpdateScores = async (sessionId: number): Promise<void> => {
     });
 
     const questions = await questionRepo.find({ where: { session_id: sessionId } });
-    const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
 
     for (const participant of participants) {
         const reponses = await reponseRepo.find({
             where: { session_id: sessionId, etudiant_id: participant.etudiant_id }
         });
 
+        // ✅ Points bruts, pas pourcentage
         const pointsObtenus = reponses.reduce((sum, r) => {
             const question = questions.find(q => q.id === r.question_id);
-            return sum + (r.est_correcte ? (question?.points || 0) : 0);
+            return sum + (r.est_correcte && question ? question.points : 0);
         }, 0);
 
-        participant.score = totalPoints > 0 ? (pointsObtenus / totalPoints) * 100 : 0;
+        participant.score = pointsObtenus; // ← points bruts
         participant.statut = ParticipantStatus.TERMINE;
         participant.date_completed = new Date();
         await participantRepo.save(participant);
@@ -138,9 +166,10 @@ export const createQCM = async (req: AuthRequest, res: Response, next: NextFunct
         await sessionRepo.save(session);
 
         // 🔴 NOTIFIER LES ÉTUDIANTS VIA WEBSOCKET
-        if (ioInstance) {
+        const io = getSocketIO();
+        if (io) {
             const roomName = `classe_${classe_id}_filiere_${filiere_id}`;
-            
+
             const sessionData = {
                 id: session.id,
                 titre: session.titre,
@@ -151,12 +180,33 @@ export const createQCM = async (req: AuthRequest, res: Response, next: NextFunct
                 code: session.code,
                 professeur: `${req.user!.prenom} ${req.user!.nom}`
             };
-            
-            ioInstance.to(roomName).emit('new-session', {
+
+            io.to(roomName).emit('new-session', {
                 session: sessionData,
                 message: `📚 Nouvelle session disponible: ${session.titre}`
             });
-            
+
+            // Notifier les étudiants de la classe en DB
+            const etudiants = await etudiantProfilRepo.find({
+                where: { classeId: classe_id, filiereId: filiere_id }
+            })
+            for (const etudiant of etudiants) {
+                await createNotification(etudiant.userId, {
+                    titre: 'Nouvelle session disponible',
+                    message: `La session "${session.titre}" a été créée par ${req.user!.prenom} ${req.user!.nom}`,
+                    type: NotificationType.NEW_SESSION,
+                    link: '/students',
+                    sessionId: session.id
+                })
+
+
+                 // ← AJOUTE
+                const user = await userRepo.findOne({ where: { id: etudiant.userId } })
+                if (user?.notifNouvelleSession) {
+                    await envoyerEmailNouvelleSession(user.email, user.prenom, session.titre)
+                }
+            }
+
             console.log(`📢 Nouvelle session notifiée à la salle: ${roomName}`);
         }
 
@@ -217,9 +267,10 @@ export const createSession = async (req: AuthRequest, res: Response, next: NextF
         await sessionRepo.save(session);
 
         // 🔴 NOTIFIER LES ÉTUDIANTS VIA WEBSOCKET
-        if (ioInstance) {
+        const io = getSocketIO();
+        if (io) {
             const roomName = `classe_${classe_id}_filiere_${filiere_id}`;
-            
+
             const sessionData = {
                 id: session.id,
                 titre: session.titre,
@@ -230,12 +281,12 @@ export const createSession = async (req: AuthRequest, res: Response, next: NextF
                 code: session.code,
                 professeur: `${req.user!.prenom} ${req.user!.nom}`
             };
-            
-            ioInstance.to(roomName).emit('new-session', {
+
+            io.to(roomName).emit('new-session', {
                 session: sessionData,
                 message: `📚 Nouvelle session planifiée: ${session.titre}`
             });
-            
+
             console.log(`📢 Nouvelle session notifiée à la salle: ${roomName}`);
         }
 
@@ -324,22 +375,22 @@ export const updateSession = async (req: AuthRequest, res: Response, next: NextF
         }
 
         const { titre, description, theme, date_debut, date_fin, duree, classe_id, filiere_id, questions } = req.body;
-        
+
         // ID du professeur connecté
         const professeurId = req.user!.id;
 
         // Récupérer la session avec vérification du créateur
-        const session = await sessionRepo.findOne({ 
-            where: { 
+        const session = await sessionRepo.findOne({
+            where: {
                 id: sessionId,
-                created_by: professeurId 
-            } 
+                created_by: professeurId
+            }
         });
 
         if (!session) {
-            res.status(404).json({ 
-                success: false, 
-                message: 'Session non trouvée ou vous n\'êtes pas autorisé à la modifier' 
+            res.status(404).json({
+                success: false,
+                message: 'Session non trouvée ou vous n\'êtes pas autorisé à la modifier'
             });
             return;
         }
@@ -354,10 +405,10 @@ export const updateSession = async (req: AuthRequest, res: Response, next: NextF
         }
 
         // Vérifier si des réponses existent déjà (optionnel)
-        const hasReponses = await reponseRepo.count({ 
-            where: { session_id: sessionId } 
+        const hasReponses = await reponseRepo.count({
+            where: { session_id: sessionId }
         });
-        
+
         if (hasReponses > 0 && questions) {
             res.status(400).json({
                 success: false,
@@ -382,7 +433,7 @@ export const updateSession = async (req: AuthRequest, res: Response, next: NextF
         if (questions && Array.isArray(questions)) {
             // Supprimer les anciennes questions
             await questionRepo.delete({ session_id: sessionId });
-            
+
             // Créer les nouvelles questions
             for (let i = 0; i < questions.length; i++) {
                 const q = questions[i];
@@ -461,7 +512,7 @@ export const startSession = async (req: AuthRequest, res: Response, next: NextFu
             return;
         }
 
-        const session = await sessionRepo.findOne({ 
+        const session = await sessionRepo.findOne({
             where: { id: sessionId },
             relations: ['classe', 'filiere']
         });
@@ -485,10 +536,11 @@ export const startSession = async (req: AuthRequest, res: Response, next: NextFu
         });
 
         // 🔴 NOTIFIER LES ÉTUDIANTS QUE LA SESSION A COMMENCÉ
-        if (ioInstance) {
+        const io = getSocketIO();
+        if (io) {
             const roomName = `classe_${session.classe_id}_filiere_${session.filiere_id}`;
-            
-            ioInstance.to(roomName).emit('session-started', {
+
+            io.to(roomName).emit('session-started', {
                 sessionId: session.id,
                 session: {
                     id: session.id,
@@ -500,11 +552,30 @@ export const startSession = async (req: AuthRequest, res: Response, next: NextFu
                     code: session.code,
                     status: 'active'
                 },
-                message: `▶️ La session "${session.titre}" vient de commencer ! Rejoignez maintenant.`,
+                message: `La session "${session.titre}" vient de commencer ! Rejoignez maintenant.`,
                 timestamp: new Date()
             });
-            
-            console.log(`📢 Session démarrée - Notification envoyée à la salle: ${roomName}`);
+
+            // Notifier les étudiants en DB
+            const etudiants = await etudiantProfilRepo.find({
+                where: { classeId: session.classe_id, filiereId: session.filiere_id }
+            })
+            for (const etudiant of etudiants) {
+                await createNotification(etudiant.userId, {
+                    titre: 'Session démarrée !',
+                    message: `La session "${session.titre}" vient de commencer. Rejoignez maintenant !`,
+                    type: NotificationType.SESSION_STARTED,
+                    link: `/students/join-session?code=${session.code}`,
+                    sessionId: session.id
+                })
+
+                 const user = await userRepo.findOne({ where: { id: etudiant.userId } })
+                    if (user?.notifSessionDemarree) {
+                        await envoyerEmailSessionDemarree(user.email, user.prenom, session.titre)
+                    }
+                            }
+
+            console.log(`Session démarrée - Notification envoyée à la salle: ${roomName}`);
         }
 
         const now = new Date();
@@ -529,22 +600,19 @@ export const startSession = async (req: AuthRequest, res: Response, next: NextFu
 
 export const endSession = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const sessionId = parseId(req.params.id);
+        const sessionId = parseId(req.params.id)
         if (!sessionId) {
-            res.status(400).json({ success: false, message: 'ID invalide' });
-            return;
+            res.status(400).json({ success: false, message: 'ID invalide' })
+            return
         }
 
-        await autoCloseSession(sessionId);
+        await autoCloseSession(sessionId) // autoCloseSession émet déjà les deux events
 
-        res.json({
-            success: true,
-            message: 'Session terminée'
-        });
+        res.json({ success: true, message: 'Session terminée' })
     } catch (err) {
-        next(err);
+        next(err)
     }
-};
+}
 
 // ==================== 9. PARTICIPANTS D'UNE SESSION ====================
 
@@ -594,7 +662,7 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
 
         const participantsWithProgress = await Promise.all(participants.map(async (p) => {
             const etudiantReponses = reponsesMap.get(p.etudiant.id) || [];
-            
+
             // Calculer le score réel de l'étudiant
             let calculatedScore = 0;
             for (const reponse of etudiantReponses) {
@@ -702,12 +770,13 @@ export const getStatistics = async (req: AuthRequest, res: Response, next: NextF
         const meilleur = Math.max(...scores, 0);
         const moinsBon = Math.min(...scores.filter(s => s > 0), 0);
 
+        // Remplace la repartition actuelle par :
         const repartition = {
-            '0-20%': scores.filter(s => s <= 20).length,
-            '20-40%': scores.filter(s => s > 20 && s <= 40).length,
-            '40-60%': scores.filter(s => s > 40 && s <= 60).length,
-            '60-80%': scores.filter(s => s > 60 && s <= 80).length,
-            '80-100%': scores.filter(s => s > 80).length
+            '0-20%': scores.filter(s => totalPoints > 0 && (s / totalPoints) <= 0.2).length,
+            '20-40%': scores.filter(s => totalPoints > 0 && (s / totalPoints) > 0.2 && (s / totalPoints) <= 0.4).length,
+            '40-60%': scores.filter(s => totalPoints > 0 && (s / totalPoints) > 0.4 && (s / totalPoints) <= 0.6).length,
+            '60-80%': scores.filter(s => totalPoints > 0 && (s / totalPoints) > 0.6 && (s / totalPoints) <= 0.8).length,
+            '80-100%': scores.filter(s => totalPoints > 0 && (s / totalPoints) > 0.8).length,
         };
 
         res.json({
@@ -739,7 +808,7 @@ export const getEtudiantReponses = async (req: AuthRequest, res: Response, next:
     try {
         const sessionId = parseId(req.params.id);
         const etudiantId = parseId(req.params.etudiantId);
-        
+
         if (!sessionId || !etudiantId) {
             res.status(400).json({ success: false, message: 'ID invalide' });
             return;
@@ -771,7 +840,7 @@ export const getEtudiantReponses = async (req: AuthRequest, res: Response, next:
             const reponse = reponsesMap.get(question.id);
             const estCorrecte = reponse?.est_correcte || false;
             const pointsObtenus = estCorrecte ? question.points : 0;
-            
+
             if (estCorrecte) {
                 totalScore += question.points;
             }
@@ -998,15 +1067,15 @@ export const generateCode = async (req: AuthRequest, res: Response, next: NextFu
 export const getFilieres = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const professeurId = req.user!.id;
-        
+
         // Récupérer le professeur avec son école
         const professeur = await userRepo.findOne({
             where: { id: professeurId },
             relations: ['professeurProfil']
         });
-        
+
         let filieres;
-        
+
         if (professeur?.professeurProfil?.ecoleId) {
             // Si le professeur est affecté à une école, ne voir que ses filières
             filieres = await filiereRepo.find({
@@ -1021,16 +1090,16 @@ export const getFilieres = async (req: AuthRequest, res: Response, next: NextFun
                 order: { nom: 'ASC' }
             });
         }
-        
-        res.json({ 
-            success: true, 
-            data: filieres 
+
+        res.json({
+            success: true,
+            data: filieres
         });
     } catch (error) {
         console.error('Erreur récupération filières:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erreur lors de la récupération des filières' 
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la récupération des filières'
         });
     }
 };
@@ -1041,9 +1110,9 @@ export const getFilieres = async (req: AuthRequest, res: Response, next: NextFun
 export const getClasses = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { filiereId } = req.query;
-        
+
         let classes;
-        
+
         if (filiereId) {
             classes = await classeRepo.find({
                 where: { filiereId: parseInt(filiereId as string) },
@@ -1055,16 +1124,16 @@ export const getClasses = async (req: AuthRequest, res: Response, next: NextFunc
                 order: { nom: 'ASC' }
             });
         }
-        
-        res.json({ 
-            success: true, 
-            data: classes 
+
+        res.json({
+            success: true,
+            data: classes
         });
     } catch (error) {
         console.error('Erreur récupération classes:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erreur lors de la récupération des classes' 
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la récupération des classes'
         });
     }
 };
@@ -1077,7 +1146,7 @@ export const getTeacherStats = async (req: AuthRequest, res: Response, next: Nex
     try {
         const professeurId = req.user!.id;
 
-        if (req.user!.role !== 'professeur' && req.user!.role !== 'admin') {
+if (req.user!.role !== 'professeur' && req.user!.role !== 'superadmin') {
             res.status(403).json({
                 success: false,
                 message: 'Accès non autorisé. Seuls les professeurs peuvent accéder à ces statistiques.'
@@ -1086,7 +1155,7 @@ export const getTeacherStats = async (req: AuthRequest, res: Response, next: Nex
         }
 
         const sessions = await sessionRepo.find({
-            where: { created_by: professeurId }, 
+            where: { created_by: professeurId },
             relations: ['questions', 'participants', 'classe', 'filiere']
         });
 
@@ -1107,7 +1176,7 @@ export const getTeacherStats = async (req: AuthRequest, res: Response, next: Nex
 
             if (session.status === 'completed' || dateFin < maintenant) {
                 terminees++;
-            } 
+            }
             else if (session.status === 'active' || (dateDebut <= maintenant && dateFin >= maintenant)) {
                 enCours++;
             }
@@ -1141,7 +1210,7 @@ export const getTeacherStats = async (req: AuthRequest, res: Response, next: Nex
         for (const session of sessions) {
             if (session.status === 'completed' && session.questions && session.participants) {
                 const pointsSession = session.questions.reduce((sum, q) => sum + q.points, 0);
-                
+
                 for (const participant of session.participants) {
                     if (participant.score !== null) {
                         totalScores += participant.score;
@@ -1152,8 +1221,10 @@ export const getTeacherStats = async (req: AuthRequest, res: Response, next: Nex
             }
         }
 
+        // Remplace
         const moyenneGenerale = totalParticipants > 0 ? (totalScores / totalParticipants) : 0;
         const moyenneSur20 = totalPointsPossibles > 0 ? (totalScores / totalPointsPossibles) * 20 : 0;
+        // Ces deux lignes sont déjà correctes avec des points bruts ✅
 
         res.json({
             success: true,
@@ -1182,4 +1253,68 @@ export const getTeacherStats = async (req: AuthRequest, res: Response, next: Nex
 
 
 
+// ==================== TOGGLE RÉSULTATS VISIBLES ====================
 
+export const toggleResultatsVisibles = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const sessionId = parseId(req.params.id)
+        if (!sessionId) {
+            res.status(400).json({ success: false, message: 'ID invalide' })
+            return
+        }
+
+        const session = await sessionRepo.findOne({
+            where: { id: sessionId },
+            relations: ['classe', 'filiere']
+        })
+        if (!session) {
+            res.status(404).json({ success: false, message: 'Session non trouvée' })
+            return
+        }
+
+        session.resultatsVisibles = !session.resultatsVisibles
+        await sessionRepo.save(session)
+
+        // ─── Notifier les étudiants si notes maintenant visibles ─────────────
+        if (session.resultatsVisibles) {
+            const io = getSocketIO()
+            if (io) {
+                const roomName = `classe_${session.classe_id}_filiere_${session.filiere_id}`
+
+                // WebSocket temps réel
+                io.to(roomName).emit('notes-publiees', {
+                    sessionId: session.id,
+                    titre:     session.titre,
+                    message:   `Les notes de "${session.titre}" sont maintenant disponibles.`
+                })
+
+                // Notification en base pour chaque étudiant
+                const etudiants = await etudiantProfilRepo.find({
+                    where: { classeId: session.classe_id, filiereId: session.filiere_id }
+                })
+                for (const etudiant of etudiants) {
+                    await createNotification(etudiant.userId, {
+                        titre:     'Notes disponibles',
+                        message:   `Vos notes pour "${session.titre}" sont maintenant disponibles.`,
+                        type:      NotificationType.SESSION_COMPLETED,
+                        link:      `/students/notes/${session.id}`,
+                        sessionId: session.id
+                    })
+
+                     // ← AJOUTE
+                        const user = await userRepo.findOne({ where: { id: etudiant.userId } })
+                        if (user?.notifNotesPubliees) {
+                            await envoyerEmailNotesPubliees(user.email, user.prenom, session.titre, session.id)
+                        }
+                }
+
+                console.log(`Notes publiées notifiées à: ${roomName}`)
+            }
+        }
+
+        res.json({
+            success: true,
+            data: { resultatsVisibles: session.resultatsVisibles }
+        })
+    } catch (err) { next(err) }
+}
