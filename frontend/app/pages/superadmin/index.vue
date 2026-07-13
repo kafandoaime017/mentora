@@ -143,7 +143,7 @@ onMounted(async () => {
   loading.value = true
   const [statsRes, dirsRes] = await Promise.all([getStats(), getDirecteurs()])
   if (statsRes.success) statsData.value = statsRes.data
-  if (dirsRes.success)  derniersDirecteurs.value = dirsRes.data.slice(0, 5)
+  if (dirsRes.success)  derniersDirecteurs.value = (dirsRes.data.directeurs || []).slice(0, 5)
   loading.value = false
 })
 </script>

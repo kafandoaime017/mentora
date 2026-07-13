@@ -40,6 +40,7 @@
                 <th class="px-5 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase">Rôle</th>
                 <th class="px-5 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase">Statut</th>
                 <th class="px-5 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase">Créé le</th>
+                <th class="px-5 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
@@ -69,6 +70,15 @@
                 <td class="px-5 py-4 text-center text-xs text-gray-400">
                   {{ new Date(u.createdAt).toLocaleDateString('fr-FR') }}
                 </td>
+                <td class="px-5 py-4">
+                  <div class="flex items-center justify-center gap-1.5">
+                    <button @click="toggleActif(u)"
+                      class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition"
+                      :class="u.isActive ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'"
+                    >{{ u.isActive ? 'Désactiver' : 'Activer' }}</button>
+                    <button @click="confirmerSuppression(u)" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-600 transition">Supprimer</button>
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -78,7 +88,7 @@
         <!-- Mobile cards -->
         <div class="md:hidden space-y-3">
           <div v-for="u in usersFiltres" :key="u.id" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between mb-3">
               <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                   :class="roleStyle(u.role).bg + ' ' + roleStyle(u.role).text">
@@ -100,8 +110,31 @@
                 </span>
               </div>
             </div>
+            <div class="flex items-center gap-2">
+              <button @click="toggleActif(u)" class="flex-1 py-2 rounded-lg text-xs font-semibold" :class="u.isActive ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'">
+                {{ u.isActive ? 'Désactiver' : 'Activer' }}
+              </button>
+              <button @click="confirmerSuppression(u)" class="flex-1 py-2 rounded-lg text-xs font-semibold bg-gray-50 text-gray-500">Supprimer</button>
+            </div>
           </div>
           <div v-if="usersFiltres.length === 0" class="py-16 text-center text-gray-400 text-sm">Aucun utilisateur trouvé</div>
+        </div>
+      </div>
+
+      <!-- Modal suppression -->
+      <div v-if="modalSuppressionVisible" class="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4" @click.self="modalSuppressionVisible = false">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+          <h3 class="font-bold text-gray-800 mb-2">Supprimer l'utilisateur</h3>
+          <p class="text-sm text-gray-500 mb-6">Êtes-vous sûr de vouloir supprimer <strong>{{ userASupprimer?.prenom }} {{ userASupprimer?.nom }}</strong> ? Cette action est irréversible.</p>
+          <div class="flex gap-3">
+            <button @click="modalSuppressionVisible = false" class="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-semibold">Annuler</button>
+            <button @click="supprimerUser" :disabled="enregistrement"
+              class="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold hover:bg-red-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <div v-if="enregistrement" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"/>
+              <span v-else>Supprimer</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -114,12 +147,16 @@ import { useSuperadmin } from '~~/composables/useSuperadmin'
 import { useToast } from '~~/composables/useToast'
 definePageMeta({ layout: false })
 
-const { getAllUsers } = useSuperadmin()
+const toast = useToast()
+const { getAllUsers, toggleUserActif, deleteUser } = useSuperadmin()
 
-const loading     = ref(true)
-const users       = ref([])
-const filtreActif = ref('tous')
-const search      = ref('')
+const loading         = ref(true)
+const users           = ref([])
+const filtreActif     = ref('tous')
+const search          = ref('')
+const modalSuppressionVisible = ref(false)
+const enregistrement  = ref(false)
+const userASupprimer  = ref(null)
 
 const filtres = [
   { value: 'tous',       label: 'Tous' },
@@ -148,6 +185,25 @@ const usersFiltres = computed(() => {
   }
   return list
 })
+
+const toggleActif = async (u) => {
+  const result = await toggleUserActif(u.id)
+  if (result.success) { u.isActive = result.data.isActive; toast.success(result.message) }
+  else toast.error(result.message || 'Erreur')
+}
+
+const confirmerSuppression = (u) => { userASupprimer.value = u; modalSuppressionVisible.value = true }
+
+const supprimerUser = async () => {
+  enregistrement.value = true
+  const result = await deleteUser(userASupprimer.value.id)
+  if (result.success) {
+    toast.success(result.message)
+    users.value = users.value.filter(u => u.id !== userASupprimer.value.id)
+    modalSuppressionVisible.value = false
+  } else toast.error(result.message || 'Erreur')
+  enregistrement.value = false
+}
 
 onMounted(async () => {
   loading.value = true

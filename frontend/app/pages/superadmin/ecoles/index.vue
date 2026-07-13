@@ -22,50 +22,85 @@
 
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         <div v-for="ecole in ecoles" :key="ecole.id"
-          class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow"
+          class="group bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all overflow-hidden flex flex-col"
         >
-          <div class="flex items-start justify-between mb-4">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-blacky/10 rounded-xl flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5 text-blacky" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                </svg>
+          <!-- Header -->
+          <div class="px-5 pt-5 pb-4 border-b border-gray-50">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-11 h-11 bg-blacky/10 rounded-xl flex items-center justify-center shrink-0">
+                  <svg class="w-5 h-5 text-blacky" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                  </svg>
+                </div>
+                <div class="min-w-0">
+                  <h3 class="font-bold text-gray-800 text-sm truncate">{{ ecole.nom }}</h3>
+                  <p class="text-xs text-gray-400 mt-0.5 truncate">{{ ecole.ville || 'Ville non renseignée' }}</p>
+                </div>
               </div>
-              <div>
-                <h3 class="font-bold text-gray-800 text-sm">{{ ecole.nom }}</h3>
-                <p class="text-xs text-gray-400 mt-0.5">{{ ecole.ville || 'Ville non renseignée' }}</p>
+              <div class="relative shrink-0">
+                <button @click.stop="menuOuvert = menuOuvert === ecole.id ? null : ecole.id" class="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01"/></svg>
+                </button>
+                <div v-if="menuOuvert === ecole.id" class="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-20">
+                  <button @click="ouvrirModalModifier(ecole)" class="w-full text-left px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50">Modifier</button>
+                  <button @click="confirmerSuppression(ecole)" class="w-full text-left px-4 py-2 text-xs font-medium text-red-500 hover:bg-red-50">Supprimer</button>
+                </div>
               </div>
             </div>
-            <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
-              :class="ecole.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'">
-              {{ ecole.isActive ? 'Active' : 'Inactive' }}
-            </span>
+
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="px-2.5 py-1 rounded-full text-xs font-semibold" :class="planStyle(ecole.plan)">{{ ecole.plan }}</span>
+              <span class="px-2.5 py-1 rounded-full text-xs font-semibold" :class="ecole.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'">
+                {{ ecole.isActive ? 'Active' : 'Inactive' }}
+              </span>
+            </div>
           </div>
 
-          <div class="flex gap-3 text-xs text-gray-500 mb-4 bg-gray-50 rounded-xl p-3">
-            <div class="flex-1 text-center">
-              <p class="font-bold text-gray-800 text-base">{{ ecole.stats?.nbProfs || 0 }}</p>
-              <p>Profs</p>
+          <!-- Directeur -->
+          <div class="px-5 py-3 border-b border-gray-50">
+            <div v-if="ecole.directeur" class="flex items-center gap-2 text-xs">
+              <div class="w-6 h-6 rounded-full bg-secondary/10 flex items-center justify-center font-bold text-secondary shrink-0">{{ ecole.directeur.prenom?.[0] }}</div>
+              <span class="text-gray-600 truncate">{{ ecole.directeur.prenom }} {{ ecole.directeur.nom }}</span>
+              <span v-if="!ecole.directeur.isVerified" class="text-yellow-600 font-semibold shrink-0">· en attente</span>
             </div>
-            <div class="w-px bg-gray-200"/>
-            <div class="flex-1 text-center">
-              <p class="font-bold text-gray-800 text-base">{{ ecole.stats?.nbEtudiants || 0 }}</p>
-              <p>Étudiants</p>
+            <p v-else class="text-xs text-gray-300">Aucun directeur rattaché</p>
+          </div>
+
+          <!-- Usage vs limites -->
+          <div class="px-5 py-4 space-y-3 flex-1">
+            <div>
+              <div class="flex items-center justify-between text-[11px] mb-1">
+                <span class="text-gray-400">Étudiants</span>
+                <span class="font-semibold text-gray-600">{{ ecole.stats?.nbEtudiants || 0 }} / {{ ecole.limites?.maxEtudiants === -1 ? '∞' : ecole.limites?.maxEtudiants }}</span>
+              </div>
+              <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full bg-primary rounded-full" :style="{ width: usagePct(ecole.stats?.nbEtudiants, ecole.limites?.maxEtudiants) + '%' }"/>
+              </div>
             </div>
-            <div class="w-px bg-gray-200"/>
-            <div class="flex-1 text-center">
-              <p class="font-bold text-gray-800 text-base">{{ ecole.stats?.nbSessions || 0 }}</p>
-              <p>Sessions</p>
+            <div>
+              <div class="flex items-center justify-between text-[11px] mb-1">
+                <span class="text-gray-400">Professeurs</span>
+                <span class="font-semibold text-gray-600">{{ ecole.stats?.nbProfs || 0 }} / {{ ecole.limites?.maxProfs === -1 ? '∞' : ecole.limites?.maxProfs }}</span>
+              </div>
+              <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full bg-secondary rounded-full" :style="{ width: usagePct(ecole.stats?.nbProfs, ecole.limites?.maxProfs) + '%' }"/>
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-[11px] pt-1">
+              <span class="text-gray-400">Sessions</span>
+              <span class="font-semibold text-gray-600">{{ ecole.stats?.nbSessions || 0 }}</span>
             </div>
           </div>
 
-          <div class="flex gap-2">
-            <button @click="ouvrirModalModifier(ecole)"
-              class="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl text-xs font-semibold hover:bg-gray-200 transition"
-            >Modifier</button>
-            <button @click="confirmerSuppression(ecole)"
-              class="flex-1 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-100 transition"
-            >Supprimer</button>
+          <!-- Footer action -->
+          <div class="px-5 pb-5">
+            <nuxt-link :to="`/superadmin/ecoles/${ecole.id}`"
+              class="flex items-center justify-center gap-1.5 w-full py-2.5 bg-blacky/5 group-hover:bg-blacky group-hover:text-white text-blacky rounded-xl text-xs font-semibold transition"
+            >
+              Voir les détails
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </nuxt-link>
           </div>
         </div>
 
@@ -133,7 +168,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useSuperadmin } from '~~/composables/useSuperadmin'
 import { useToast } from '~~/composables/useToast'
 definePageMeta({ layout: false })
@@ -150,10 +185,26 @@ const enregistrement          = ref(false)
 const erreur                  = ref('')
 const ecoleEnEdition          = ref(null)
 const ecoleASupprimer         = ref(null)
+const menuOuvert              = ref(null)
 const form                    = reactive({ nom: '', ville: '' })
 
+const planStyle = (plan) => ({
+  gratuit: 'bg-gray-100 text-gray-500',
+  starter: 'bg-blacky/10 text-blacky',
+  pro:     'bg-secondary/10 text-secondary'
+}[plan] || 'bg-gray-100 text-gray-500')
+
+const usagePct = (val, max) => {
+  val = val || 0
+  if (max === -1 || max === undefined) return 8
+  if (max === 0) return 0
+  return Math.min(100, Math.round((val / max) * 100))
+}
+
+const fermerMenu = () => { menuOuvert.value = null }
+
 const ouvrirModalCreer = () => { modeEdition.value = false; form.nom = ''; form.ville = ''; erreur.value = ''; modalVisible.value = true }
-const ouvrirModalModifier = (ecole) => { modeEdition.value = true; ecoleEnEdition.value = ecole; form.nom = ecole.nom; form.ville = ecole.ville || ''; erreur.value = ''; modalVisible.value = true }
+const ouvrirModalModifier = (ecole) => { fermerMenu(); modeEdition.value = true; ecoleEnEdition.value = ecole; form.nom = ecole.nom; form.ville = ecole.ville || ''; erreur.value = ''; modalVisible.value = true }
 const fermerModal = () => { modalVisible.value = false }
 
 const sauvegarder = async () => {
@@ -168,7 +219,7 @@ const sauvegarder = async () => {
   enregistrement.value = false
 }
 
-const confirmerSuppression = (ecole) => { ecoleASupprimer.value = ecole; modalSuppressionVisible.value = true }
+const confirmerSuppression = (ecole) => { fermerMenu(); ecoleASupprimer.value = ecole; modalSuppressionVisible.value = true }
 
 const supprimerEcole = async () => {
   enregistrement.value = true
@@ -183,5 +234,12 @@ const chargerEcoles = async () => {
   if (result.success) ecoles.value = result.data
 }
 
-onMounted(async () => { loading.value = true; await chargerEcoles(); loading.value = false })
+onMounted(async () => {
+  loading.value = true
+  await chargerEcoles()
+  loading.value = false
+  document.addEventListener('click', fermerMenu)
+})
+
+onUnmounted(() => { document.removeEventListener('click', fermerMenu) })
 </script>

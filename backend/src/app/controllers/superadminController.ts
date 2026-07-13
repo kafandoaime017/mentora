@@ -26,6 +26,14 @@ const profilRepo     = AppDataSource.getRepository(EtudiantProfil)
 const profProfRepo   = AppDataSource.getRepository(ProfesseurProfil)
 const invitationRepo = AppDataSource.getRepository(Invitation)
 
+// Limites par plan — dupliquées ici (source de vérité : stripeController) car superadmin
+// doit pouvoir afficher/juger l'usage d'une école sans dépendre d'un appel Stripe.
+const LIMITES: Record<string, { maxEtudiants: number, maxProfs: number, maxSessions: number, ia: boolean }> = {
+  gratuit: { maxEtudiants: 25,  maxProfs: 5,  maxSessions: 100, ia: false },
+  starter: { maxEtudiants: 100, maxProfs: 15, maxSessions: -1,  ia: false },
+  pro:     { maxEtudiants: -1,  maxProfs: -1, maxSessions: -1,  ia: true  },
+}
+
 // ─── Stats globales ───────────────────────────────────────────────────────────
 export const getStats = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
@@ -59,8 +67,17 @@ export const getEcoles = async (req: AuthRequest, res: Response, next: NextFunct
         .innerJoin('s.filiere', 'f')
         .where('f.ecoleId = :ecoleId', { ecoleId: ecole.id })
         .getCount()
+      const directeur = await userRepo.findOne({
+        where: { role: UserRole.DIRECTEUR, ecoleId: ecole.id },
+        select: ['id', 'nom', 'prenom', 'email', 'isVerified']
+      })
 
-      return { ...ecole, stats: { nbProfs, nbEtudiants, nbSessions } }
+      return {
+        ...ecole,
+        stats: { nbProfs, nbEtudiants, nbSessions },
+        limites: LIMITES[ecole.plan] || LIMITES.gratuit,
+        directeur
+      }
     }))
 
     res.json({ success: true, data: ecolesAvecStats })
@@ -75,7 +92,37 @@ export const getEcoleById = async (req: AuthRequest, res: Response, next: NextFu
       relations: ['filieres', 'filieres.classes']
     })
     if (!ecole) { res.status(404).json({ success: false, message: 'École non trouvée' }); return }
-    res.json({ success: true, data: ecole })
+
+    const [directeur, profs, etudiants, nbSessions] = await Promise.all([
+      userRepo.findOne({
+        where: { role: UserRole.DIRECTEUR, ecoleId: id },
+        select: ['id', 'nom', 'prenom', 'email', 'isActive', 'isVerified', 'createdAt']
+      }),
+      profProfRepo.find({ where: { ecoleId: id }, relations: ['user', 'filiere'] }),
+      profilRepo.find({ where: { ecoleId: id }, relations: ['user', 'filiere', 'classe'] }),
+      sessionRepo.createQueryBuilder('s').innerJoin('s.filiere', 'f').where('f.ecoleId = :id', { id }).getCount()
+    ])
+
+    const profsList = profs.map(p => ({
+      id: p.userId, nom: p.user?.nom, prenom: p.user?.prenom, email: p.user?.email,
+      statut: p.statut, filiere: p.filiere?.nom, isActive: p.user?.isActive
+    }))
+    const etudiantsList = etudiants.map(e => ({
+      id: e.userId, nom: e.user?.nom, prenom: e.user?.prenom, email: e.user?.email,
+      filiere: e.filiere?.nom, classe: e.classe?.nom, isActive: e.user?.isActive
+    }))
+
+    res.json({
+      success: true,
+      data: {
+        ...ecole,
+        directeur,
+        limites: LIMITES[ecole.plan] || LIMITES.gratuit,
+        stats: { nbProfs: profs.length, nbEtudiants: etudiants.length, nbSessions },
+        profs: profsList,
+        etudiants: etudiantsList
+      }
+    })
   } catch (err) { next(err) }
 }
 
@@ -107,6 +154,27 @@ export const updateEcole = async (req: AuthRequest, res: Response, next: NextFun
   } catch (err) { next(err) }
 }
 
+// Override manuel du plan d'une école par le superadmin (hors circuit Stripe —
+// utile pour offrir un plan, corriger une anomalie de facturation, etc.)
+export const updateEcolePlan = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id    = parseId(req.params.id)
+    const ecole = await ecoleRepo.findOne({ where: { id } })
+    if (!ecole) { res.status(404).json({ success: false, message: 'École non trouvée' }); return }
+
+    const { plan, plan_expire_at } = req.body
+    if (!['gratuit', 'starter', 'pro'].includes(plan)) {
+      res.status(400).json({ success: false, message: 'Plan invalide' }); return
+    }
+
+    ecole.plan = plan
+    ecole.plan_expire_at = plan === 'gratuit' ? null : (plan_expire_at ? new Date(plan_expire_at) : ecole.plan_expire_at)
+
+    await ecoleRepo.save(ecole)
+    res.json({ success: true, message: `Plan mis à jour : ${plan}`, data: ecole })
+  } catch (err) { next(err) }
+}
+
 export const deleteEcole = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const id    = parseId(req.params.id)
@@ -123,10 +191,92 @@ export const getDirecteurs = async (req: AuthRequest, res: Response, next: NextF
   try {
     const directeurs = await userRepo.find({
       where: { role: UserRole.DIRECTEUR },
-      select: ['id', 'nom', 'prenom', 'email', 'isActive', 'isVerified', 'createdAt'],
+      select: ['id', 'nom', 'prenom', 'email', 'isActive', 'isVerified', 'createdAt', 'ecoleId'],
       order: { createdAt: 'DESC' }
     })
-    res.json({ success: true, data: directeurs })
+
+    // Invitations envoyées mais pas encore transformées en compte (le directeur
+    // n'a pas encore cliqué le lien / créé son mot de passe)
+    const invitationsBrutes = await invitationRepo.find({
+      where: { role: InvitationRole.DIRECTEUR, used: false },
+      relations: ['ecole'],
+      order: { createdAt: 'DESC' }
+    })
+    const maintenant = new Date()
+    const invitations = invitationsBrutes.map(inv => ({
+      id: inv.id, nom: inv.nom, prenom: inv.prenom, email: inv.email,
+      ecole: inv.ecole?.nom, ecoleId: inv.ecoleId,
+      expiresAt: inv.expiresAt,
+      expiree: new Date(inv.expiresAt) < maintenant
+    }))
+
+    const ecoles = await ecoleRepo.find({ select: ['id', 'nom'] })
+    const ecoleParId: Record<number, string> = {}
+    ecoles.forEach(e => { ecoleParId[e.id] = e.nom })
+    const directeursAvecEcole = directeurs.map(d => ({ ...d, ecole: d.ecoleId ? ecoleParId[d.ecoleId] : null }))
+
+    res.json({ success: true, data: { directeurs: directeursAvecEcole, invitations } })
+  } catch (err) { next(err) }
+}
+
+export const resendDirecteurInvitation = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = parseId(req.params.id)
+    const invitation = await invitationRepo.findOne({ where: { id, role: InvitationRole.DIRECTEUR }, relations: ['ecole'] })
+    if (!invitation) { res.status(404).json({ success: false, message: 'Invitation non trouvée' }); return }
+    if (invitation.used) { res.status(400).json({ success: false, message: 'Invitation déjà utilisée' }); return }
+
+    invitation.token     = uuidv4()
+    invitation.expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000)
+    await invitationRepo.save(invitation)
+
+    const invitationUrl = `${process.env.FRONTEND_URL}/auth/invitation?token=${invitation.token}`
+    await envoyerInvitation(invitation.email, invitation.prenom, invitation.nom, 'directeur', '', null, invitation.ecole?.nom || '', invitationUrl, invitation.expiresAt)
+
+    res.json({ success: true, message: 'Invitation renvoyée' })
+  } catch (err) { next(err) }
+}
+
+export const revokeDirecteurInvitation = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id = parseId(req.params.id)
+    const invitation = await invitationRepo.findOne({ where: { id, role: InvitationRole.DIRECTEUR } })
+    if (!invitation) { res.status(404).json({ success: false, message: 'Invitation non trouvée' }); return }
+    if (invitation.used) { res.status(400).json({ success: false, message: 'Invitation déjà utilisée' }); return }
+
+    await invitationRepo.delete(id)
+    res.json({ success: true, message: 'Invitation annulée' })
+  } catch (err) { next(err) }
+}
+
+export const resendVerificationDirecteur = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id   = parseId(req.params.id)
+    const user = await userRepo.findOne({ where: { id, role: UserRole.DIRECTEUR } })
+    if (!user) { res.status(404).json({ success: false, message: 'Directeur non trouvé' }); return }
+    if (user.isVerified) { res.status(400).json({ success: false, message: 'Ce compte est déjà vérifié' }); return }
+
+    const verificationCode    = Math.floor(100000 + Math.random() * 900000).toString()
+    user.verificationCode        = verificationCode
+    user.verificationCodeExpires = new Date(Date.now() + 10 * 60 * 1000)
+    await userRepo.save(user)
+
+    const { envoyerVerificationInvitation } = require('../services/emailService')
+    const verificationUrl = `${process.env.FRONTEND_URL}/auth/verify-invitation?code=${verificationCode}&email=${encodeURIComponent(user.email)}`
+    await envoyerVerificationInvitation(user.email, user.prenom, verificationUrl)
+
+    res.json({ success: true, message: 'Email de vérification renvoyé' })
+  } catch (err) { next(err) }
+}
+
+export const deleteDirecteur = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id   = parseId(req.params.id)
+    const user = await userRepo.findOne({ where: { id, role: UserRole.DIRECTEUR } })
+    if (!user) { res.status(404).json({ success: false, message: 'Directeur non trouvé' }); return }
+
+    await userRepo.delete(id)
+    res.json({ success: true, message: 'Directeur supprimé' })
   } catch (err) { next(err) }
 }
 
@@ -250,5 +400,37 @@ export const getAllUsers = async (req: AuthRequest, res: Response, next: NextFun
       order: { createdAt: 'DESC' }
     })
     res.json({ success: true, data: users })
+  } catch (err) { next(err) }
+}
+
+// Actions génériques superadmin — s'appliquent à n'importe quel utilisateur non-superadmin,
+// sans restriction d'école (contrairement aux versions "directeur" dans adminController).
+export const toggleUserActif = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id   = parseId(req.params.id)
+    const user = await userRepo.findOne({ where: { id } })
+    if (!user) { res.status(404).json({ success: false, message: 'Utilisateur non trouvé' }); return }
+    if (user.role === UserRole.SUPERADMIN) {
+      res.status(403).json({ success: false, message: 'Impossible de modifier un superadmin' }); return
+    }
+
+    user.isActive = !user.isActive
+    await userRepo.save(user)
+
+    res.json({ success: true, message: user.isActive ? 'Compte activé' : 'Compte désactivé', data: { isActive: user.isActive } })
+  } catch (err) { next(err) }
+}
+
+export const deleteUserSuperadmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const id   = parseId(req.params.id)
+    const user = await userRepo.findOne({ where: { id } })
+    if (!user) { res.status(404).json({ success: false, message: 'Utilisateur non trouvé' }); return }
+    if (user.role === UserRole.SUPERADMIN) {
+      res.status(403).json({ success: false, message: 'Impossible de supprimer un superadmin' }); return
+    }
+
+    await userRepo.delete(id)
+    res.json({ success: true, message: 'Utilisateur supprimé' })
   } catch (err) { next(err) }
 }
