@@ -95,7 +95,7 @@
                   <p class="text-xs font-body text-black">
                     {{ s.theme ? `${s.theme} · ` : '' }}
                   </p>
-                 
+
                 </td>
 
                 <!-- Professeur -->
@@ -141,12 +141,12 @@
                       'bg-blue-500 text-white':     s.status === 'draft',
                     }"
                   >
-                   
+
                     {{ statusLabel(s.status) }}
                   </span>
                 </td>
 
-              
+
 
                 <!-- Actions -->
                 <td class="px-4 py-3 border border-gray-200">
