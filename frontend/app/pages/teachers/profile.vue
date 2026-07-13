@@ -340,7 +340,8 @@ const avatarURL = computed(() => {
     return userData.avatar
   }
 
-  return `http://localhost:5000${userData.avatar}`
+  const config = useRuntimeConfig()
+  return `${config.public.apiBase.replace(/\/api$/, '')}${userData.avatar}`
 })
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
