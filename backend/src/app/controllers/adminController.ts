@@ -11,6 +11,8 @@ import { Invitation, InvitationRole } from '../models/Invitation'
 import { v4 as uuidv4 } from 'uuid'
 import { envoyerInvitation } from '../services/emailService'
 import { SessionParticipant } from '../models/SessionParticipant'
+import { createNotification } from './notificationController'
+import { NotificationType } from '../models/Notification'
 
 interface AuthRequest extends Request { user?: User }
 
@@ -577,6 +579,20 @@ export const registerViaInvitation = async (req: Request, res: Response, next: N
 
         invitation.used = true
         await invitationRepo.save(invitation)
+
+        // Notifier les superadmins qu'un nouveau directeur vient de rejoindre
+        if (invitation.role === InvitationRole.DIRECTEUR) {
+            const ecoleNom = invitation.ecole?.nom || (await ecoleRepo.findOne({ where: { id: invitation.ecoleId! } }))?.nom || 'une école'
+            const superadmins = await userRepo.find({ where: { role: UserRole.SUPERADMIN } })
+            for (const sa of superadmins) {
+                await createNotification(sa.id, {
+                    titre: 'Nouveau directeur inscrit',
+                    message: `${invitation.prenom} ${invitation.nom} a rejoint en tant que directeur de ${ecoleNom}.`,
+                    type: NotificationType.NEW_SESSION,
+                    link: '/superadmin/directeurs'
+                })
+            }
+        }
 
         const { envoyerVerificationInvitation } = require('../services/emailService')
         const verificationUrl = `${process.env.FRONTEND_URL}/auth/verify-invitation?code=${verificationCode}&email=${encodeURIComponent(invitation.email)}`

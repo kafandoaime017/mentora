@@ -66,10 +66,15 @@ export const useSuperadmin = () => {
     } catch (err) { return { success: false, data: [], message: err?.data?.message || 'Erreur' } }
   }
 
+  const getAbonnements = async () => {
+    try { return await $fetch('/api/superadmin/abonnements', { headers: getAuthHeader() }) }
+    catch (err) { return { success: false, data: null, message: err?.data?.message || 'Erreur' } }
+  }
+
   return {
     getStats,
     getEcoles, createEcole, updateEcole, deleteEcole,
     getDirecteurs, inviterDirecteur, toggleDirecteur,
-    getAllUsers
+    getAllUsers, getAbonnements
   }
 }

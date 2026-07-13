@@ -30,7 +30,9 @@ const AppDataSource = new DataSource({
     synchronize: false,
     logging: true, // Met true pour voir les erreurs
     entities: [EtudiantProfil, ProfesseurProfil, User, Classe, Filiere, Ecole,Question,Session,SessionParticipant,ReponseEtudiant, Notification,Invitation],
-    migrations: [__dirname + "/app/migrations/*.js"],
+    // .ts pour "npm run migration:run" (execute via ts-node sur les sources),
+    // .js pour le serveur compile (dist/) en production
+    migrations: [__dirname + "/../app/migrations/*.{js,ts}"],
     subscribers: [],
 });
 

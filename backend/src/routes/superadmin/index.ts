@@ -15,5 +15,6 @@ router.get('/directeurs',               ...isSuperadmin, ctrl.getDirecteurs)
 router.post('/directeurs/inviter',      ...isSuperadmin, ctrl.inviterDirecteur)
 router.patch('/directeurs/:id/toggle',  ...isSuperadmin, ctrl.toggleDirecteurActif)
 router.get('/users',                    ...isSuperadmin, ctrl.getAllUsers)
+router.get('/abonnements',              ...isSuperadmin, ctrl.getAbonnements)
 
 export default router

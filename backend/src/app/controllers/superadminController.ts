@@ -199,6 +199,44 @@ export const toggleDirecteurActif = async (req: AuthRequest, res: Response, next
   } catch (err) { next(err) }
 }
 
+// ─── Abonnements / Plans des écoles ───────────────────────────────────────────
+export const getAbonnements = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const ecoles = await ecoleRepo.find({ order: { nom: 'ASC' } })
+
+    const maintenant = new Date()
+    const data = ecoles.map(ecole => {
+      const expireAt    = ecole.plan_expire_at ? new Date(ecole.plan_expire_at) : null
+      const joursRestants = expireAt ? Math.ceil((expireAt.getTime() - maintenant.getTime()) / (1000 * 60 * 60 * 24)) : null
+      const expireBientot = joursRestants !== null && joursRestants <= 7 && joursRestants >= 0
+      const expire      = joursRestants !== null && joursRestants < 0
+
+      return {
+        id: ecole.id,
+        nom: ecole.nom,
+        ville: ecole.ville,
+        isActive: ecole.isActive,
+        plan: ecole.plan,
+        plan_expire_at: ecole.plan_expire_at,
+        joursRestants,
+        expireBientot,
+        expire,
+        aAbonnementStripe: !!ecole.stripe_subscription_id
+      }
+    })
+
+    const repartition = {
+      gratuit: data.filter(e => e.plan === 'gratuit').length,
+      starter: data.filter(e => e.plan === 'starter').length,
+      pro:     data.filter(e => e.plan === 'pro').length
+    }
+
+    const expirationsProches = data.filter(e => e.expireBientot)
+
+    res.json({ success: true, data: { ecoles: data, repartition, expirationsProches } })
+  } catch (err) { next(err) }
+}
+
 // ─── Tous les utilisateurs ────────────────────────────────────────────────────
 export const getAllUsers = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {

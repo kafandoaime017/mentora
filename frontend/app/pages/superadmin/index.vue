@@ -29,7 +29,7 @@
         <!-- Accès rapides -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
           <h3 class="text-sm font-bold text-gray-700 mb-4">Accès rapides</h3>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
             <nuxt-link to="/superadmin/ecoles"
               class="flex flex-col items-center gap-2 p-4 bg-blacky/5 hover:bg-blacky/10 rounded-xl transition-colors"
             >
@@ -69,6 +69,16 @@
                 </svg>
               </div>
               <span class="text-xs font-semibold text-gray-700 text-center">Tous les users</span>
+            </nuxt-link>
+            <nuxt-link to="/superadmin/abonnements"
+              class="flex flex-col items-center gap-2 p-4 bg-secondary/10 hover:bg-secondary/20 rounded-xl transition-colors"
+            >
+              <div class="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                </svg>
+              </div>
+              <span class="text-xs font-semibold text-gray-700 text-center">Abonnements</span>
             </nuxt-link>
           </div>
         </div>
