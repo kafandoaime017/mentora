@@ -3,4 +3,17 @@ backend/dist/
 frontend/node_modules/
 frontend/.nuxt/
 frontend/dist/
+
+# Fichiers d'environnement reels (ne jamais commiter de secrets)
+backend/.env
+backend/.env.*
 frontend/.env
+frontend/.env.*
+.env
+.env.dev
+.env.prod
+.env.swarm
+.env.*
+!backend/.env.example
+!frontend/.env.example
+!.env.example

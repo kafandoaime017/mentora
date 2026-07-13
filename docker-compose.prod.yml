@@ -1,5 +1,11 @@
 version: "3.9"
 
+# Environnement de PRODUCTION
+# Lancer avec : docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+#
+# ATTENTION: MYSQL_ROOT_PASSWORD (DB_ROOT_PASSWORD) doit venir de .env.prod
+# et correspondre a DB_PASSWORD dans backend/.env.prod
+
 services:
   db:
     image: mysql:8
@@ -9,7 +15,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_DATABASE}
     ports:
-      - "3309:3306"  # ← CHANGÉ DE 3306 À 3309
+      - "3309:3306"  # <- change de 3306 a 3309
     volumes:
       - mentora_data_prod:/var/lib/mysql
     networks:
@@ -28,7 +34,7 @@ services:
     container_name: mentora_backend_prod
     restart: always
     ports:
-      - "5001:5000"  # ← CHANGÉ DE 5000 À 5001 (optionnel)
+      - "5001:5000"  # <- change de 5000 a 5001 (optionnel)
     env_file:
       - ./backend/.env.prod
     depends_on:
@@ -51,7 +57,7 @@ services:
     container_name: mentora_frontend_prod
     restart: always
     ports:
-      - "3001:3000"  # ← CHANGÉ DE 3000 À 3001 (optionnel)
+      - "3001:3000"  # <- change de 3000 a 3001 (optionnel)
     env_file:
       - ./frontend/.env.prod
     depends_on:
@@ -117,7 +123,7 @@ services:
       glitchtip-valkey:
         condition: service_healthy
     ports:
-      - "8001:8000"  # ← CHANGÉ DE 8000 À 8001 (optionnel)
+      - "8001:8000"  # <- change de 8000 a 8001 (optionnel)
     networks:
       - mentora-net-prod
     command: >
@@ -185,7 +191,7 @@ services:
       umami-db:
         condition: service_healthy
     ports:
-      - "3002:3000"  # ← CHANGÉ DE 3001 À 3002 (optionnel)
+      - "3002:3000"  # <- change de 3001 a 3002 (optionnel)
     networks:
       - mentora-net-prod
     volumes:
