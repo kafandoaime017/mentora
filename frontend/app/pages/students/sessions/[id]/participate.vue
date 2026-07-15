@@ -141,6 +141,60 @@
                 >Faux</button>
               </div>
 
+              <!-- Texte libre -->
+              <div v-else-if="questions[currentIndex]?.type === 'texte_libre'">
+                <textarea
+                  :value="getReponse(questions[currentIndex].id) || ''"
+                  @input="reponseTexteLibre(questions[currentIndex].id, $event.target.value)"
+                  rows="5"
+                  placeholder="Écrivez votre réponse ici..."
+                  class="w-full font-body p-4 text-sm text-gray-800 border border-gray-200 rounded-xl focus:outline-none focus:border-primary"
+                />
+                <p class="text-xs text-gray-400 mt-2">Cette question sera corrigée manuellement par votre professeur.</p>
+              </div>
+
+              <!-- Appariement -->
+              <div v-else-if="questions[currentIndex]?.type === 'appariement'" class="space-y-3">
+                <div
+                  v-for="(terme, gIdx) in questions[currentIndex]?.options?.gauche || []" :key="gIdx"
+                  class="flex items-center gap-3"
+                >
+                  <span class="flex-1 p-3 bg-gray-100 rounded-xl text-sm font-body text-gray-800">{{ terme }}</span>
+                  <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                  </svg>
+                  <select
+                    :value="getAppariementValeur(questions[currentIndex].id, gIdx)"
+                    @change="reponseAppariement(questions[currentIndex].id, gIdx, $event.target.value)"
+                    class="flex-1 p-3 bg-input rounded-xl text-sm font-body focus:outline-none"
+                  >
+                    <option value="">Sélectionner...</option>
+                    <option
+                      v-for="(item, dIdx) in getDroiteMelangee(questions[currentIndex])" :key="dIdx"
+                      :value="item.indexOriginal"
+                    >{{ item.texte }}</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Upload de fichier -->
+              <div v-else-if="questions[currentIndex]?.type === 'fichier'">
+                <div v-if="getReponse(questions[currentIndex].id)" class="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
+                  <svg class="w-6 h-6 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span class="text-sm font-body text-green-700">Fichier envoyé avec succès</span>
+                </div>
+                <label v-else class="flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                  <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                  </svg>
+                  <span class="text-sm font-body text-gray-500">{{ envoiFichierEnCours ? 'Envoi en cours...' : 'Cliquez pour téléverser un fichier (max 10 Mo)' }}</span>
+                  <input type="file" class="hidden" :disabled="envoiFichierEnCours" @change="reponseFichier(questions[currentIndex].id, $event)" />
+                </label>
+                <p class="text-xs text-gray-400 mt-2">Cette question sera corrigée manuellement par votre professeur.</p>
+              </div>
+
             </div>
 
             <!-- Navigation -->
@@ -285,7 +339,7 @@ import { useWebSocket } from '~~/composables/useWebSocket'
 
 const route  = useRoute()
 const router = useRouter()
-const { getSessionForStudent, submitAllReponses } = useStudent()
+const { getSessionForStudent, submitAllReponses, submitReponseFichier } = useStudent()
 const { getSocket } = useWebSocket()
 const toast  = useToast()
 
@@ -347,7 +401,8 @@ const getReponse = (qId) => reponses[qId]
 const isQuestionRepondue = (qId) => {
   const r = reponses[qId]
   if (r === undefined || r === null) return false
-  if (Array.isArray(r)) return r.length > 0
+  if (Array.isArray(r)) return r.length > 0 && r.every(v => v !== null && v !== undefined)
+  if (typeof r === 'string') return r.trim().length > 0
   return true
 }
 
@@ -375,6 +430,66 @@ const reponseCheckbox = (qId, optIdx) => {
   reponses[qId] = current
 }
 
+// ─── Texte libre ──────────────────────────────────────────────────────────────
+const reponseTexteLibre = (qId, valeur) => {
+  reponses[qId] = valeur
+}
+
+// ─── Appariement : on mélange l'ordre d'affichage de la colonne de droite,
+// mais on soumet toujours l'index ORIGINAL (celui qui matche la colonne de
+// gauche à la même position, tel que saisi par le professeur) ──────────────
+const droiteMelangeeCache = reactive({})
+
+const getDroiteMelangee = (question) => {
+  if (!question) return []
+  if (!droiteMelangeeCache[question.id]) {
+    const droite = question.options?.droite || []
+    const items = droite.map((texte, indexOriginal) => ({ texte, indexOriginal }))
+    // Fisher-Yates
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]]
+    }
+    droiteMelangeeCache[question.id] = items
+  }
+  return droiteMelangeeCache[question.id]
+}
+
+const getAppariementValeur = (qId, gIdx) => {
+  const r = reponses[qId]
+  return Array.isArray(r) && r[gIdx] !== undefined && r[gIdx] !== null ? r[gIdx] : ''
+}
+
+const reponseAppariement = (qId, gIdx, valeur) => {
+  const current = Array.isArray(reponses[qId]) ? [...reponses[qId]] : []
+  current[gIdx] = valeur === '' ? null : Number(valeur)
+  reponses[qId] = current
+}
+
+// ─── Upload de fichier ────────────────────────────────────────────────────────
+const envoiFichierEnCours = ref(false)
+
+const reponseFichier = async (qId, event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  if (file.size > 10 * 1024 * 1024) {
+    toast.error('Le fichier ne doit pas dépasser 10 Mo')
+    return
+  }
+
+  envoiFichierEnCours.value = true
+  const result = await submitReponseFichier(sessionId, qId, file)
+  envoiFichierEnCours.value = false
+
+  if (result.success) {
+    reponses[qId] = result.data?.reponse_fichier || 'envoye'
+    toast.success('Fichier envoyé')
+  } else {
+    toast.error(result.message || 'Erreur lors de l\'envoi du fichier')
+  }
+}
+
 // ─── Normaliser les réponses (forcer les valeurs en Number) ───────────────────
 const normaliserReponses = (raw) => {
   const normalized = {}
@@ -394,23 +509,29 @@ const soumettreReponses = async (auto = false) => {
   if (soumissionAutoEffectuee.value) return
 
   // Construire le tableau de réponses — forcer Number partout
-  const reponsesFormatees = questions.value.map(q => {
-    const rep = reponses[q.id]
-    let reponseIds = []
+  const reponsesFormatees = questions.value
+    .filter(q => q.type !== 'fichier') // déjà envoyé via l'endpoint dédié
+    .map(q => {
+      const rep = reponses[q.id]
 
-    if (rep !== undefined && rep !== null) {
-      if (Array.isArray(rep)) {
-        reponseIds = rep.map(Number)
-      } else {
-        reponseIds = [Number(rep)]
+      if (q.type === 'texte_libre') {
+        return { questionId: Number(q.id), reponseTexte: rep || '' }
       }
-    }
 
-    return {
-      questionId: Number(q.id),
-      reponseIds
-    }
-  })
+      let reponseIds = []
+      if (rep !== undefined && rep !== null) {
+        if (Array.isArray(rep)) {
+          reponseIds = rep.map(v => v === null || v === undefined ? -1 : Number(v))
+        } else {
+          reponseIds = [Number(rep)]
+        }
+      }
+
+      return {
+        questionId: Number(q.id),
+        reponseIds
+      }
+    })
 
 
   submitting.value = true

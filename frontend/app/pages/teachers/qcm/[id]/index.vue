@@ -201,6 +201,65 @@
 
           <!-- SESSION ACTIVE / COMPLETED -->
           <template v-else>
+
+            <!-- Réponses à corriger manuellement (texte_libre / fichier) -->
+            <div v-if="qcm.status === 'completed' && (loadingCorrections || reponsesACorreger.length > 0)" class="bg-white shadow-[1px_1px_3px_1px_rgba(0,0,0,0.16)] rounded-lg overflow-hidden mb-6">
+              <div class="border-b border-[#e2ddd4] p-4 bg-[#f5f0e8]/30 flex items-center justify-between">
+                <h3 class="font-body text-lg font-bold text-[#1e3a2f]">Réponses à corriger</h3>
+                <span v-if="!loadingCorrections" class="text-xs font-body text-[#9b9589]">
+                  {{ reponsesACorreger.filter(r => !r.corrige_manuellement).length }} en attente
+                </span>
+              </div>
+
+              <div v-if="loadingCorrections" class="p-12 text-center">
+                <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-[#4a7c5e] border-t-transparent"/>
+              </div>
+
+              <div v-else class="divide-y divide-[#e2ddd4]">
+                <div v-for="r in reponsesACorreger" :key="r.id" class="p-4">
+                  <div class="flex justify-between items-start gap-4 mb-2">
+                    <div>
+                      <p class="text-sm font-body font-semibold text-[#1e3a2f]">{{ r.etudiant.prenom }} {{ r.etudiant.nom }}</p>
+                      <p class="text-xs font-body text-[#9b9589]">{{ r.question_texte }}</p>
+                    </div>
+                    <span
+                      class="shrink-0 text-xs font-body px-2 py-0.5 rounded-full"
+                      :class="r.corrige_manuellement ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'"
+                    >{{ r.corrige_manuellement ? 'Corrigée' : 'En attente' }}</span>
+                  </div>
+
+                  <div v-if="r.question_type === 'texte_libre'" class="bg-[#f5f0e8]/40 rounded-lg p-3 text-sm font-body text-gray-700 mb-2">
+                    {{ r.reponse_texte || '(réponse vide)' }}
+                  </div>
+                  <div v-else-if="r.question_type === 'fichier'" class="mb-2">
+                    <a v-if="r.reponse_fichier" :href="fichierUrl(r.reponse_fichier)" target="_blank" class="text-sm font-body text-primary underline">
+                      Voir le fichier envoyé
+                    </a>
+                    <span v-else class="text-sm font-body text-gray-400">(aucun fichier envoyé)</span>
+                  </div>
+
+                  <p v-if="r.reponse_indicative" class="text-xs font-body text-[#9b9589] mb-2">Réponse indicative : {{ r.reponse_indicative }}</p>
+
+                  <div class="flex items-center gap-2">
+                    <input
+                      v-model.number="notesSaisies[r.id]"
+                      type="number" min="0" :max="r.points_max"
+                      class="w-24 font-body px-3 py-2 text-sm text-gray-800 bg-input rounded-lg focus:outline-none"
+                      :placeholder="`/ ${r.points_max}`"
+                    />
+                    <span class="text-xs text-[#9b9589]">/ {{ r.points_max }} pts</span>
+                    <button
+                      @click="validerCorrection(r)"
+                      :disabled="correctionEnCours === r.id"
+                      class="px-3 py-2 bg-[#4a7c5e] text-white text-xs font-body font-semibold rounded-lg hover:bg-[#1e3a2f] disabled:opacity-50"
+                    >
+                      {{ r.corrige_manuellement ? 'Modifier la note' : 'Valider' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
               <div class="space-y-6">
@@ -444,9 +503,10 @@ import html2canvas from 'html2canvas'
 
 const route  = useRoute()
 const router = useRouter()
-const { getQCMDetails, startSession, endSession, generateQRCode, generateNewCode, getParticipants, getEtudiantReponses } = useTeacher()
+const { getQCMDetails, startSession, endSession, generateQRCode, generateNewCode, getParticipants, getEtudiantReponses, getReponsesACorreger, corrigerReponse } = useTeacher()
 const { getSocket } = useWebSocket()
 const toast = useToast()
+const config = useRuntimeConfig()
 
 const loading             = ref(true)
 const loadingParticipants = ref(false)
@@ -459,6 +519,12 @@ const selectedEtudiantId  = ref('')
 const etudiantReponses    = ref({})
 const newSubmissionFlash  = ref(false)
 const recentlyUpdated     = ref(new Set())
+
+// ─── Correction manuelle (texte_libre / fichier) ──────────────────────────────
+const loadingCorrections  = ref(false)
+const reponsesACorreger   = ref([])
+const notesSaisies        = ref({})
+const correctionEnCours   = ref(null)
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 const totalPoints = computed(() => qcm.value.questions?.reduce((sum, q) => sum + q.points, 0) || 0)
@@ -624,7 +690,7 @@ const getQuestionResult = (questionId) => {
 }
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
-const getTypeLabel   = (type)   => ({ qcm: 'QCM simple', qcm_multiple: 'QCM multiple', vrai_faux: 'Vrai / Faux' })[type] || type
+const getTypeLabel   = (type)   => ({ qcm: 'QCM simple', qcm_multiple: 'QCM multiple', vrai_faux: 'Vrai / Faux', texte_libre: 'Texte libre', appariement: 'Appariement', fichier: 'Fichier' })[type] || type
 const getStatusText  = (status) => ({ pending: 'Programmé', active: 'En cours', completed: 'Terminé', draft: 'Brouillon' })[status] || status
 const getStatusClass = (status) => ({ pending: 'bg-yellow-200 text-yellow-800', active: 'bg-green-200 text-green-800', completed: 'bg-gray-200 text-gray-800', draft: 'bg-blue-100 text-blue-800' })[status] || 'bg-gray-200 text-gray-800'
 const formatDate     = (date)   => date ? new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
@@ -668,6 +734,7 @@ const loadQCMDetails = async () => {
   if (result.success) {
     qcm.value = result.data
     await loadParticipants()
+    if (qcm.value.status === 'completed') await chargerCorrections()
     await nextTick()
     const socket = getSocket()
     if (socket?.connected) { joinSessionRoom(); listenStudentSubmissions() }
@@ -677,6 +744,48 @@ const loadQCMDetails = async () => {
     router.back()
   }
   loading.value = false
+}
+
+// ─── Correction manuelle (texte_libre / fichier) ──────────────────────────────
+const fichierUrl = (path) => path ? `${config.public.apiBase.replace(/\/api$/, '')}${path}` : ''
+
+const chargerCorrections = async () => {
+  loadingCorrections.value = true
+  try {
+    const result = await getReponsesACorreger(qcm.value.id)
+    if (result.success) {
+      reponsesACorreger.value = result.data || []
+      reponsesACorreger.value.forEach(r => {
+        notesSaisies.value[r.id] = r.note_manuelle ?? 0
+      })
+    } else {
+      toast.error(result.message || 'Erreur chargement des réponses à corriger')
+    }
+  } catch {
+    toast.error('Erreur chargement des réponses à corriger')
+  } finally {
+    loadingCorrections.value = false
+  }
+}
+
+const validerCorrection = async (r) => {
+  const points = Number(notesSaisies.value[r.id])
+  if (isNaN(points) || points < 0) { toast.error('Note invalide'); return }
+  correctionEnCours.value = r.id
+  try {
+    const result = await corrigerReponse(r.id, points)
+    if (result.success) {
+      toast.success('Correction enregistrée')
+      await chargerCorrections()
+      await loadParticipants()
+    } else {
+      toast.error(result.message || 'Erreur lors de la correction')
+    }
+  } catch {
+    toast.error('Erreur lors de la correction')
+  } finally {
+    correctionEnCours.value = null
+  }
 }
 
 onMounted(() => loadQCMDetails())

@@ -3,7 +3,7 @@ import AppDataSource from '../../config/data-source';
 import { Session, SessionStatus } from '../models/Session';
 import { SessionParticipant, ParticipantStatus } from '../models/SessionParticipant';
 import { ReponseEtudiant } from '../models/ReponseEtudiant';
-import { Question } from '../models/Question';
+import { Question, QuestionType } from '../models/Question';
 import { User } from '../models/User';
 import { In } from 'typeorm';
 import { getSocketIO } from '../../socket';
@@ -37,6 +37,18 @@ const arraysEqual = (a: any[], b: any[]): boolean => {
     return a.every((val, idx) => Number(val) === Number(b[idx]));
 };
 
+// Types auto-corrigés à la soumission (comparaison d'indices) vs types à
+// correction manuelle (texte_libre/fichier), notés plus tard par le prof.
+const isTypeAutoCorrige = (type: QuestionType): boolean =>
+    type !== QuestionType.TEXTE_LIBRE && type !== QuestionType.FICHIER;
+
+const computePointsForReponse = (r: ReponseEtudiant, q: Question): number => {
+    if (!isTypeAutoCorrige(q.type)) {
+        return r.corrige_manuellement ? (r.note_manuelle || 0) : 0;
+    }
+    return r.est_correcte ? q.points : 0;
+};
+
 const updateEtudiantScore = async (sessionId: number, etudiantId: number): Promise<void> => {
     const toutesReponses = await reponseRepo.find({
         where: { session_id: sessionId, etudiant_id: etudiantId }
@@ -46,8 +58,8 @@ const updateEtudiantScore = async (sessionId: number, etudiantId: number): Promi
     let pointsObtenus = 0;
     for (const r of toutesReponses) {
         const q = toutesQuestions.find(q => q.id === r.question_id);
-        if (r.est_correcte && q) {
-            pointsObtenus += q.points;
+        if (q) {
+            pointsObtenus += computePointsForReponse(r, q);
         }
     }
 
@@ -674,7 +686,7 @@ export const submitSingleReponse = async (req: AuthRequest, res: Response, next:
         const sessionId = parseId(req.params.id);
         const questionId = parseId(req.params.questionId);
         const etudiantId = req.user!.id;
-        const { reponseIds } = req.body;
+        const { reponseIds, reponseTexte } = req.body;
 
         if (!sessionId || !questionId) {
             res.status(400).json({ success: false, message: 'ID invalide' });
@@ -687,13 +699,40 @@ export const submitSingleReponse = async (req: AuthRequest, res: Response, next:
             return;
         }
 
-const estCorrecte = arraysEqual(
-    [...reponseIds].map(Number).sort((a: number, b: number) => a - b),
-    [...question.reponses_correctes].map(Number).sort((a: number, b: number) => a - b)
-);
         let reponseExistante = await reponseRepo.findOne({
             where: { session_id: sessionId, etudiant_id: etudiantId, question_id: questionId }
         });
+
+        // Texte libre : réponse écrite, pas de correction automatique possible
+        if (question.type === QuestionType.TEXTE_LIBRE) {
+            if (reponseExistante) {
+                reponseExistante.reponse_texte = reponseTexte ?? null;
+                reponseExistante.submitted_at = new Date();
+                await reponseRepo.save(reponseExistante);
+            } else {
+                await reponseRepo.save(reponseRepo.create({
+                    session_id: sessionId,
+                    etudiant_id: etudiantId,
+                    question_id: questionId,
+                    reponse_texte: reponseTexte ?? null,
+                    est_correcte: false,
+                    submitted_at: new Date()
+                }));
+            }
+            res.json({ success: true, message: 'Réponse enregistrée (en attente de correction)', data: { est_correcte: null } });
+            return;
+        }
+
+        // Fichier : géré par un endpoint multipart dédié, pas par cette route JSON
+        if (question.type === QuestionType.FICHIER) {
+            res.status(400).json({ success: false, message: 'Utilisez l\'upload de fichier pour ce type de question' });
+            return;
+        }
+
+        const estCorrecte = arraysEqual(
+            [...(reponseIds || [])].map(Number).sort((a: number, b: number) => a - b),
+            [...(question.reponses_correctes || [])].map(Number).sort((a: number, b: number) => a - b)
+        );
 
         if (reponseExistante) {
             reponseExistante.reponse_ids = reponseIds;
@@ -791,11 +830,6 @@ export const submitReponses = async (req: AuthRequest, res: Response, next: Next
             const question = await questionRepo.findOne({ where: { id: rep.questionId } });
             if (!question) continue;
 
-           const estCorrecte = arraysEqual(
-    [...rep.reponseIds].map(Number).sort((a: number, b: number) => a - b),
-    [...question.reponses_correctes].map(Number).sort((a: number, b: number) => a - b)
-);
-
             let reponseExistante = await reponseRepo.findOne({
                 where: {
                     session_id: sessionId,
@@ -803,6 +837,36 @@ export const submitReponses = async (req: AuthRequest, res: Response, next: Next
                     question_id: rep.questionId
                 }
             });
+
+            // Texte libre : pas de correction automatique, on stocke juste le texte
+            if (question.type === QuestionType.TEXTE_LIBRE) {
+                if (reponseExistante) {
+                    reponseExistante.reponse_texte = rep.reponseTexte ?? null;
+                    reponseExistante.submitted_at = new Date();
+                    await reponseRepo.save(reponseExistante);
+                } else {
+                    await reponseRepo.save(reponseRepo.create({
+                        session_id: sessionId,
+                        etudiant_id: etudiantId,
+                        question_id: rep.questionId,
+                        reponse_texte: rep.reponseTexte ?? null,
+                        est_correcte: false,
+                        submitted_at: new Date()
+                    }));
+                }
+                continue;
+            }
+
+            // Fichier : uploadé séparément via l'endpoint multipart dédié —
+            // on ne touche pas à la réponse déjà enregistrée par cet upload
+            if (question.type === QuestionType.FICHIER) {
+                continue;
+            }
+
+            const estCorrecte = arraysEqual(
+                [...(rep.reponseIds || [])].map(Number).sort((a: number, b: number) => a - b),
+                [...(question.reponses_correctes || [])].map(Number).sort((a: number, b: number) => a - b)
+            );
 
             if (reponseExistante) {
                 reponseExistante.reponse_ids = rep.reponseIds;
@@ -882,6 +946,59 @@ export const submitReponses = async (req: AuthRequest, res: Response, next: Next
     }
 };
 
+// ==================== 8b. SOUMETTRE UNE RÉPONSE FICHIER ====================
+// Question de type "fichier" : l'étudiant téléverse un document, noté plus
+// tard manuellement par le professeur (jamais de correction automatique).
+
+export const submitReponseFichier = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const sessionId = parseId(req.params.id);
+        const questionId = parseId(req.params.questionId);
+        const etudiantId = req.user!.id;
+        const file = (req as any).file;
+
+        if (!sessionId || !questionId) {
+            res.status(400).json({ success: false, message: 'ID invalide' });
+            return;
+        }
+        if (!file) {
+            res.status(400).json({ success: false, message: 'Aucun fichier reçu' });
+            return;
+        }
+
+        const question = await questionRepo.findOne({ where: { id: questionId } });
+        if (!question || question.type !== QuestionType.FICHIER) {
+            res.status(400).json({ success: false, message: "Cette question n'accepte pas de fichier" });
+            return;
+        }
+
+        const cheminFichier = `/uploads/reponses/${file.filename}`;
+
+        const reponseExistante = await reponseRepo.findOne({
+            where: { session_id: sessionId, etudiant_id: etudiantId, question_id: questionId }
+        });
+
+        if (reponseExistante) {
+            reponseExistante.reponse_fichier = cheminFichier;
+            reponseExistante.submitted_at = new Date();
+            await reponseRepo.save(reponseExistante);
+        } else {
+            await reponseRepo.save(reponseRepo.create({
+                session_id: sessionId,
+                etudiant_id: etudiantId,
+                question_id: questionId,
+                reponse_fichier: cheminFichier,
+                est_correcte: false,
+                submitted_at: new Date()
+            }));
+        }
+
+        res.json({ success: true, message: 'Fichier envoyé (en attente de correction)', data: { reponse_fichier: cheminFichier } });
+    } catch (err) {
+        next(err);
+    }
+};
+
 // ==================== 9. RÉSULTATS D'UNE SESSION ====================
 
 export const getSessionResults = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -934,6 +1051,28 @@ export const getSessionResults = async (req: AuthRequest, res: Response, next: N
         // ─── Recalculer est_correcte depuis les vraies données ────────────────
         const detailsQuestions = questions.map(q => {
             const reponse = reponses.find(r => r.question_id === q.id)
+            const manuel = !isTypeAutoCorrige(q.type)
+
+            // Types texte_libre / fichier : jamais auto-corrigés, on affiche
+            // l'état de correction manuelle plutôt qu'un est_correcte calculé
+            if (manuel) {
+                const enAttente = !!reponse && !reponse.corrige_manuellement
+                const pointsObtenus = reponse?.corrige_manuellement ? (reponse.note_manuelle || 0) : 0
+
+                return {
+                    question_id:          q.id,
+                    texte:                q.texte,
+                    type:                 q.type,
+                    points:               q.points,
+                    points_obtenus:       pointsObtenus,
+                    reponse_texte:        reponse?.reponse_texte || null,
+                    reponse_fichier:      reponse?.reponse_fichier || null,
+                    corrige_manuellement: reponse?.corrige_manuellement || false,
+                    est_correcte:         reponse?.corrige_manuellement ? pointsObtenus > 0 : null,
+                    a_repondu:            !!reponse && (!!reponse.reponse_texte || !!reponse.reponse_fichier),
+                    en_attente_correction: enAttente
+                }
+            }
 
             const reponseDonnee:   number[] = reponse?.reponse_ids
                 ? [...reponse.reponse_ids].map(Number).sort((a, b) => a - b)
@@ -962,7 +1101,8 @@ export const getSessionResults = async (req: AuthRequest, res: Response, next: N
                     ? [...reponse.reponse_ids].map(Number)
                     : [],
                 est_correcte:      estCorrecte,
-                a_repondu:         !!reponse && reponseDonnee.length > 0
+                a_repondu:         !!reponse && reponseDonnee.length > 0,
+                en_attente_correction: false
             }
         })
 
@@ -972,8 +1112,9 @@ export const getSessionResults = async (req: AuthRequest, res: Response, next: N
         const pourcentage   = totalPoints > 0 ? (pointsObtenus / totalPoints) * 100 : 0
 
         const nbCorrectes   = detailsQuestions.filter(q => q.est_correcte).length
-        const nbIncorrectes = detailsQuestions.filter(q => !q.est_correcte && q.a_repondu).length
+        const nbIncorrectes = detailsQuestions.filter(q => q.est_correcte === false && q.a_repondu).length
         const nbOmises      = detailsQuestions.filter(q => !q.a_repondu).length
+        const correctionEnAttente = detailsQuestions.some(q => q.en_attente_correction)
 
         res.json({
             success: true,
@@ -1000,7 +1141,8 @@ export const getSessionResults = async (req: AuthRequest, res: Response, next: N
                     nb_correctes:   nbCorrectes,
                     nb_incorrectes: nbIncorrectes,
                     nb_omises:      nbOmises,
-                    total_questions: questions.length
+                    total_questions: questions.length,
+                    correction_en_attente: correctionEnAttente
                 },
                 details: detailsQuestions
             }

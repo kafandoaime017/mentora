@@ -190,13 +190,22 @@
                   {{ totalPointsForm }} pts au total
                 </p>
               </div>
-              <button
-                type="button"
-                @click="addQuestion"
-                class="px-4 py-2 bg-[#4a7c5e] text-white text-sm font-semibold hover:bg-[#1e3a2f] transition-colors rounded-lg"
-              >
-                + Ajouter une question
-              </button>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  @click="ouvrirBanque"
+                  class="px-4 py-2 bg-gray-200 text-[#1e3a2f] text-sm font-semibold hover:bg-gray-300 transition-colors rounded-lg"
+                >
+                  Importer depuis la banque
+                </button>
+                <button
+                  type="button"
+                  @click="addQuestion"
+                  class="px-4 py-2 bg-[#4a7c5e] text-white text-sm font-semibold hover:bg-[#1e3a2f] transition-colors rounded-lg"
+                >
+                  + Ajouter une question
+                </button>
+              </div>
             </div>
 
             <div class="p-3 md:p-6">
@@ -276,6 +285,9 @@
                           <option value="qcm">QCM (une seule réponse)</option>
                           <option value="qcm_multiple">QCM multiple</option>
                           <option value="vrai_faux">Vrai / Faux</option>
+                          <option value="texte_libre">Texte libre (correction manuelle)</option>
+                          <option value="appariement">Appariement</option>
+                          <option value="fichier">Upload de fichier</option>
                         </select>
                       </div>
                       <div>
@@ -290,7 +302,7 @@
                     </div>
 
                     <!-- Options QCM -->
-                    <div v-if="question.type !== 'vrai_faux'">
+                    <div v-if="!['vrai_faux', 'texte_libre', 'appariement', 'fichier'].includes(question.type)">
                       <label class="block text-sm font-semibold text-[#1e3a2f] mb-2">Options</label>
                       <div class="space-y-2">
                         <div
@@ -378,6 +390,75 @@
                       </div>
                     </div>
 
+                    <!-- Texte libre -->
+                    <div v-if="question.type === 'texte_libre'">
+                      <label class="block text-sm font-semibold text-[#1e3a2f] mb-2">Réponse indicative (facultatif)</label>
+                      <textarea
+                        v-model="question.reponse_indicative"
+                        rows="2"
+                        class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:outline-none"
+                        placeholder="Ex: réponse attendue, pour vous aider lors de la correction"
+                      />
+                      <p class="text-xs text-[#9b9589] mt-1">
+                        Cette question sera à corriger manuellement après la session (pas de note automatique).
+                      </p>
+                    </div>
+
+                    <!-- Appariement -->
+                    <div v-if="question.type === 'appariement'">
+                      <label class="block text-sm font-semibold text-[#1e3a2f] mb-2">Paires à apparier</label>
+                      <div class="space-y-2">
+                        <div
+                          v-for="(_, pIndex) in question.appariement_gauche"
+                          :key="pIndex"
+                          class="flex items-center gap-2"
+                        >
+                          <input
+                            v-model="question.appariement_gauche[pIndex]"
+                            type="text"
+                            class="flex-1 font-body pl-4 pr-4 py-2.5 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:outline-none"
+                            :placeholder="`Terme ${pIndex + 1}`"
+                          />
+                          <svg class="w-4 h-4 text-[#9b9589] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                          </svg>
+                          <input
+                            v-model="question.appariement_droite[pIndex]"
+                            type="text"
+                            class="flex-1 font-body pl-4 pr-4 py-2.5 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:outline-none"
+                            :placeholder="`Correspond à ${pIndex + 1}`"
+                          />
+                          <button
+                            type="button"
+                            @click="removePaire(index, pIndex)"
+                            class="text-red-400 hover:text-red-600 shrink-0"
+                          >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          @click="addPaire(index)"
+                          class="text-sm text-[#4a7c5e] hover:text-[#1e3a2f] transition-colors"
+                        >
+                          + Ajouter une paire
+                        </button>
+                      </div>
+                      <p class="text-xs text-[#9b9589] mt-1">
+                        L'étudiant devra associer chaque terme de gauche à sa correspondance (mélangée) à droite.
+                      </p>
+                    </div>
+
+                    <!-- Upload de fichier -->
+                    <div v-if="question.type === 'fichier'">
+                      <p class="text-xs text-[#9b9589] bg-[#f5f0e8]/50 rounded-lg p-3">
+                        L'étudiant devra téléverser un fichier (max 10 Mo) en réponse à cette question.
+                        Cette question sera à corriger manuellement après la session (pas de note automatique).
+                      </p>
+                    </div>
+
                   </div>
                 </div>
               </div>
@@ -405,6 +486,49 @@
 
         </form>
       </div>
+
+      <!-- Modal import depuis la banque de questions -->
+      <div v-if="showBanqueModal" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="showBanqueModal = false">
+        <div class="bg-white rounded-lg max-w-2xl w-full max-h-[85vh] overflow-y-auto">
+          <div class="border-b border-[#e2ddd4] p-4 bg-[#f5f0e8]/30 flex justify-between items-center">
+            <h3 class="font-body text-lg font-bold text-[#1e3a2f]">Importer depuis la banque</h3>
+            <button @click="showBanqueModal = false" class="text-[#9b9589] hover:text-[#1e3a2f]">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          <div class="p-4 space-y-3">
+            <div v-if="loadingBanque" class="text-center py-8">
+              <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-[#4a7c5e] border-t-transparent" />
+            </div>
+            <div v-else-if="banqueQuestions.length === 0" class="text-center py-8 text-[#9b9589] text-sm">
+              Aucune question dans votre banque. Ajoutez-en depuis la page "Banque de questions".
+            </div>
+            <label
+              v-for="q in banqueQuestions"
+              :key="q.id"
+              class="flex items-start gap-3 p-3 rounded-lg border border-[#e2ddd4] cursor-pointer hover:bg-[#f5f0e8]/30"
+            >
+              <input type="checkbox" :value="q.id" v-model="selectionBanque" class="w-4 h-4 mt-1 accent-[#4a7c5e]" />
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                  <span class="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">{{ getTypeLabel(q.type) }}</span>
+                  <span v-if="q.theme" class="text-[10px] bg-[#4a7c5e]/10 text-[#1e3a2f] px-2 py-0.5 rounded-full">{{ q.theme }}</span>
+                  <span class="text-[10px] text-[#9b9589]">{{ q.points }} pt{{ q.points > 1 ? 's' : '' }}</span>
+                </div>
+                <p class="text-sm text-[#1e3a2f]">{{ q.texte }}</p>
+              </div>
+            </label>
+          </div>
+
+          <div class="border-t border-[#e2ddd4] p-4 flex justify-end gap-3">
+            <button @click="showBanqueModal = false" class="px-4 py-2.5 bg-gray-200 text-[#1e3a2f] text-sm font-body font-semibold rounded-lg hover:bg-gray-300">Annuler</button>
+            <button @click="importerSelection" :disabled="selectionBanque.length === 0" class="px-4 py-2.5 bg-[#4a7c5e] text-white text-sm font-body font-semibold rounded-lg hover:bg-[#1e3a2f] disabled:opacity-50">
+              Importer ({{ selectionBanque.length }})
+            </button>
+          </div>
+        </div>
+      </div>
     </TeacherLayout>
   </div>
 </template>
@@ -417,7 +541,7 @@ import flatpickr from 'flatpickr'
 import 'flatpickr/dist/flatpickr.css'
 import 'flatpickr/dist/themes/material_green.css'
 
-const { getFilieres, getClassesByFiliere, createQCM,generateQuestionsAI } = useTeacher()
+const { getFilieres, getClassesByFiliere, createQCM, generateQuestionsAI, getBanqueQuestions } = useTeacher()
 const toast = useToast()
 
 const loading         = ref(false)
@@ -425,6 +549,11 @@ const loadingAI       = ref(false)
 const filieres        = ref([])
 const classes         = ref([])
 const nombreQuestionsAI = ref(5)
+
+const showBanqueModal = ref(false)
+const loadingBanque   = ref(false)
+const banqueQuestions = ref([])
+const selectionBanque = ref([])
 
 const dateDebutInput  = ref(null)
 const dateFinInput    = ref(null)
@@ -455,7 +584,8 @@ const totalPointsForm = computed(() =>
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
 const getTypeLabel = (type) => ({
-  qcm: 'QCM', qcm_multiple: 'QCM multiple', vrai_faux: 'Vrai/Faux'
+  qcm: 'QCM', qcm_multiple: 'QCM multiple', vrai_faux: 'Vrai/Faux',
+  texte_libre: 'Texte libre', appariement: 'Appariement', fichier: 'Fichier'
 })[type] || type
 
 const isOptionCorrect = (question, optIndex) => {
@@ -496,6 +626,9 @@ const addQuestion = () => {
     points: 1,
     options: ['', ''],
     reponses_correctes: [],
+    reponse_indicative: '',
+    appariement_gauche: ['', ''],
+    appariement_droite: ['', ''],
     generatedByAI: false,
     explication: ''
   })
@@ -518,14 +651,62 @@ const removeOption = (questionIndex, optionIndex) => {
     .map(i => i > optionIndex ? i - 1 : i)
 }
 
+const addPaire = (questionIndex) => {
+  const q = form.value.questions[questionIndex]
+  q.appariement_gauche.push('')
+  q.appariement_droite.push('')
+}
+
+const removePaire = (questionIndex, paireIndex) => {
+  const q = form.value.questions[questionIndex]
+  q.appariement_gauche.splice(paireIndex, 1)
+  q.appariement_droite.splice(paireIndex, 1)
+}
+
 const onTypeChange = (index) => {
   const q = form.value.questions[index]
   q.reponses_correctes = []
   if (q.type === 'vrai_faux') {
     q.options = ['Vrai', 'Faux']
+  } else if (q.type === 'appariement') {
+    if (!q.appariement_gauche || q.appariement_gauche.length < 2) q.appariement_gauche = ['', '']
+    if (!q.appariement_droite || q.appariement_droite.length < 2) q.appariement_droite = ['', '']
+  } else if (q.type === 'texte_libre' || q.type === 'fichier') {
+    // Pas d'options nécessaires pour ces types
   } else if (q.options.length < 2) {
     q.options = ['', '']
   }
+}
+
+// ─── Banque de questions ────────────────────────────────────────────────────────
+
+const ouvrirBanque = async () => {
+  showBanqueModal.value = true
+  selectionBanque.value = []
+  loadingBanque.value = true
+  const res = await getBanqueQuestions()
+  if (res.success) banqueQuestions.value = res.data
+  loadingBanque.value = false
+}
+
+const importerSelection = () => {
+  const questionsAImporter = banqueQuestions.value.filter(q => selectionBanque.value.includes(q.id))
+  questionsAImporter.forEach(q => {
+    form.value.questions.push({
+      texte: q.texte,
+      type: q.type,
+      points: q.points,
+      options: q.type === 'appariement' ? ['', ''] : (Array.isArray(q.options) ? [...q.options] : ['', '']),
+      reponses_correctes: [...(q.reponses_correctes || [])],
+      reponse_indicative: q.reponse_indicative || '',
+      appariement_gauche: q.type === 'appariement' ? [...(q.options?.gauche || ['', ''])] : ['', ''],
+      appariement_droite: q.type === 'appariement' ? [...(q.options?.droite || ['', ''])] : ['', ''],
+      generatedByAI: false,
+      explication: ''
+    })
+  })
+  toast.success(`${questionsAImporter.length} question(s) importée(s)`)
+  showBanqueModal.value = false
 }
 
 // ─── IA ───────────────────────────────────────────────────────────────────────
@@ -629,14 +810,41 @@ const submitQCM = async () => {
   for (let i = 0; i < form.value.questions.length; i++) {
     const q = form.value.questions[i]
     if (!q.texte.trim()) { toast.error(`Question ${i + 1} : veuillez saisir le texte`); return }
-    if (q.type !== 'vrai_faux' && q.options.some(opt => !opt.trim())) { toast.error(`Question ${i + 1} : veuillez remplir toutes les options`); return }
-    if (q.reponses_correctes.length === 0) { toast.error(`Question ${i + 1} : veuillez sélectionner la réponse correcte`); return }
+
+    if (q.type === 'appariement') {
+      if (q.appariement_gauche.length < 2 || q.appariement_gauche.some(v => !v.trim()) || q.appariement_droite.some(v => !v.trim())) {
+        toast.error(`Question ${i + 1} : veuillez remplir toutes les paires à apparier (au moins 2)`)
+        return
+      }
+    } else if (q.type === 'texte_libre' || q.type === 'fichier') {
+      // Rien à valider : pas d'options, correction manuelle après la session
+    } else {
+      if (q.options.some(opt => !opt.trim())) { toast.error(`Question ${i + 1} : veuillez remplir toutes les options`); return }
+      if (q.reponses_correctes.length === 0) { toast.error(`Question ${i + 1} : veuillez sélectionner la réponse correcte`); return }
+    }
   }
 
   loading.value = true
 
+  // Construire les questions au format attendu par le backend :
+  // l'appariement se transforme en { options: {gauche, droite}, reponses_correctes: [0,1,2,...] }
+  const questionsAEnvoyer = form.value.questions.map(q => {
+    if (q.type === 'appariement') {
+      return {
+        ...q,
+        options: { gauche: q.appariement_gauche, droite: q.appariement_droite },
+        reponses_correctes: q.appariement_gauche.map((_, idx) => idx)
+      }
+    }
+    if (q.type === 'texte_libre' || q.type === 'fichier') {
+      return { ...q, options: [], reponses_correctes: [] }
+    }
+    return q
+  })
+
   const result = await createQCM({
     ...form.value,
+    questions: questionsAEnvoyer,
     date_debut: new Date(form.value.date_debut).toISOString(),
     date_fin:   new Date(form.value.date_fin).toISOString()
   })

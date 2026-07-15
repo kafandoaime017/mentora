@@ -56,3 +56,37 @@ export const uploadEcoleLogo = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: fileFilter
 });
+
+// ─── Upload fichier réponse (question de type "fichier") ───────────────────
+// Écrit directement dans src/public/uploads/reponses pour être servi par
+// app.use('/uploads', express.static(path.join(__dirname, 'src/public/uploads')))
+const reponseFichierDir = path.join(__dirname, '../../public/uploads/reponses');
+if (!fs.existsSync(reponseFichierDir)) {
+  fs.mkdirSync(reponseFichierDir, { recursive: true });
+}
+
+const reponseFichierStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, reponseFichierDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `reponse-${uniqueSuffix}${path.extname(file.originalname)}`);
+  }
+});
+
+const reponseFichierFilter = (req: any, file: any, cb: any) => {
+  const allowedTypes = /jpeg|jpg|png|gif|webp|pdf|doc|docx|txt|zip/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  if (extname) {
+    return cb(null, true);
+  } else {
+    cb(new Error('Type de fichier non autorisé'));
+  }
+};
+
+export const uploadReponseFichier = multer({
+  storage: reponseFichierStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: reponseFichierFilter
+});

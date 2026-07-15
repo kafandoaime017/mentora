@@ -137,13 +137,37 @@ const submitAllReponses = async (sessionId: number, reponses: Array<{ questionId
     }
 }
 
+// Question de type "fichier" : upload direct au backend (multipart), pas via
+// le proxy Nuxt JSON habituel — même approche que les autres uploads (avatar,
+// logo d'école) dans ce projet.
+const submitReponseFichier = async (sessionId: number, questionId: number, file: File): Promise<ApiResponse> => {
+    try {
+        const config = useRuntimeConfig()
+        const token  = useCookie('auth_token').value
+        const formData = new FormData()
+        formData.append('fichier', file)
+
+        const res = await fetch(`${config.public.apiBase}/students/sessions/${sessionId}/reponses/${questionId}/fichier`, {
+            method: 'POST',
+            body: formData,
+            headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await res.json()
+        return data
+    } catch (error: any) {
+        console.error('Erreur envoi fichier réponse:', error)
+        return { success: false, message: 'Erreur lors de l\'envoi du fichier' }
+    }
+}
+
     return {
         getAvailableSessions,
         verifySessionCode,
         joinSession,
         getSessionForStudent,
-        getHistorique, 
+        getHistorique,
         getSessionResult,
-        submitAllReponses
+        submitAllReponses,
+        submitReponseFichier
     }
 }

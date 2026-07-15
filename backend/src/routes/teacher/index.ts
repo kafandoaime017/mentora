@@ -50,7 +50,15 @@ router.get('/filieres', teacherController.getFilieres);
 router.get('/classes', teacherController.getClasses);
 router.patch('/sessions/:id/toggle-resultats', teacherController.toggleResultatsVisibles)
 
+// ==================== BANQUE DE QUESTIONS ====================
+router.get('/banque-questions', teacherController.getBanqueQuestions);
+router.post('/banque-questions', teacherController.createBanqueQuestion);
+router.put('/banque-questions/:id', teacherController.updateBanqueQuestion);
+router.delete('/banque-questions/:id', teacherController.deleteBanqueQuestion);
 
+// ==================== CORRECTION MANUELLE ====================
+router.get('/sessions/:id/reponses-a-corriger', teacherController.getReponsesACorreger);
+router.patch('/reponses/:reponseId/corriger', teacherController.corrigerReponse);
 
 
 export default router;
