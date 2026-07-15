@@ -2,6 +2,9 @@
 import { Request, Response, NextFunction } from 'express';
 import * as authService from '../services/authService';
 import { OAuth2Client } from 'google-auth-library';
+import AppDataSource from '../../config/data-source';
+import { ProfesseurProfil } from '../models/ProfesseurProfil';
+import { logAudit, getClientIp } from '../services/auditService';
 
 const googleClient = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
@@ -19,8 +22,30 @@ export const inscription = async (req: Request, res: Response, next: NextFunctio
 export const connexion = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await authService.connecter(req.body);
+
+    // Audit : on ne journalise que les connexions pleinement abouties
+    // (pas les demandes de code TOTP, qui ne sont qu'une étape intermédiaire).
+    if (result?.success && result.token && result.user) {
+      let ecoleId: number | null = result.user.profil?.ecoleId ?? null
+      if (result.user.role === 'professeur' && !ecoleId) {
+        const profil = await AppDataSource.getRepository(ProfesseurProfil).findOne({ where: { userId: result.user.id } })
+        ecoleId = profil?.ecoleId ?? null
+      }
+      logAudit({
+        ecoleId,
+        userId: result.user.id,
+        userNom: `${result.user.prenom} ${result.user.nom}`,
+        userRole: result.user.role,
+        action: 'connexion',
+        ip: getClientIp(req)
+      })
+    }
+
     res.json(result);
-  } catch (err) { next(err); }
+  } catch (err: any) {
+    logAudit({ action: 'connexion_echouee', details: { email: req.body?.email, motif: err?.message }, ip: getClientIp(req) })
+    next(err);
+  }
 };
 
 export const connexionGoogle = async (req: Request, res: Response, next: NextFunction) => {

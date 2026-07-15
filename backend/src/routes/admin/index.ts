@@ -25,12 +25,17 @@ import {
     adminExportResultsPdf,
     adminExportUserHistoryPdf
 } from '../../app/controllers/adminController'
+import {
+    getAnnonces, createAnnonce, getAnnonceResultats, toggleAnnonceActif, deleteAnnonce
+} from '../../app/controllers/announcementController'
+import { getAuditLogs } from '../../app/controllers/auditLogController'
 import { checkLimiteEtudiants, checkLimiteProfesseurs } from '../../app/middleware/checkPlan'
 import { uploadEcoleLogo as uploadEcoleLogoMiddleware } from '../../app/middleware/upload'
 
 const router = Router()
 
 const isAdmin = [authMiddleware, requireRole(['directeur', 'superadmin'])]
+const isDirecteur = [authMiddleware, requireRole(['directeur'])]
 
 // Dashboard
 router.get('/dashboard', ...isAdmin, getDashboard)
@@ -98,5 +103,15 @@ router.get('/sessions/:id/export/pdf',         ...isAdmin, adminExportResultsPdf
 
 router.get('/invitations/verify-email', verifyInvitationEmail)
 router.get('/invitations/check-verified', checkEmailVerified)
+
+// Annonces & sondages
+router.get('/annonces',                 ...isDirecteur, getAnnonces)
+router.post('/annonces',                ...isDirecteur, createAnnonce)
+router.get('/annonces/:id/resultats',   ...isDirecteur, getAnnonceResultats)
+router.patch('/annonces/:id/toggle-actif', ...isDirecteur, toggleAnnonceActif)
+router.delete('/annonces/:id',          ...isDirecteur, deleteAnnonce)
+
+// Logs d'audit
+router.get('/audit-logs', ...isDirecteur, getAuditLogs)
 
 export default router

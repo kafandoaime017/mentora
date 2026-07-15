@@ -296,6 +296,10 @@
                       <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-green-100 border border-green-400 inline-block"/> Manquée</span>
                     </div>
                   </div>
+                  <div v-if="selectedEtudiantId && nbChangementsOngletSelection > 0" class="px-4 py-2 bg-amber-50 border-b border-amber-100 text-xs font-body text-amber-700 flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    {{ nbChangementsOngletSelection }} changement{{ nbChangementsOngletSelection > 1 ? 's' : '' }} d'onglet/plein écran détecté{{ nbChangementsOngletSelection > 1 ? 's' : '' }} pendant cette session
+                  </div>
 
                   <div v-if="loadingReponses" class="p-12 text-center">
                     <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-[#4a7c5e] border-t-transparent"/>
@@ -315,10 +319,18 @@
                           <span class="w-6 h-6 rounded-full bg-[#4a7c5e]/10 flex items-center justify-center text-xs font-bold shrink-0">{{ idx + 1 }}</span>
                           <span class="font-medium font-body text-sm">{{ question.texte }}</span>
                         </div>
-                        <span
-                          class="shrink-0 ml-2 text-xs font-body px-2 py-0.5 rounded-full"
-                          :class="getReponseStatus(question.id, null) === 'question_correct' ? 'bg-green-100 text-green-700' : etudiantReponses[question.id] ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'"
-                        >{{ getQuestionResult(question.id) }}</span>
+                        <span class="flex items-center gap-1.5 shrink-0 ml-2">
+                          <span
+                            v-if="etudiantReponses[question.id]?.reponse_rapide_suspecte"
+                            class="text-amber-600" title="Réponse anormalement rapide"
+                          >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                          </span>
+                          <span
+                            class="text-xs font-body px-2 py-0.5 rounded-full"
+                            :class="getReponseStatus(question.id, null) === 'question_correct' ? 'bg-green-100 text-green-700' : etudiantReponses[question.id] ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'"
+                          >{{ getQuestionResult(question.id) }}</span>
+                        </span>
                       </div>
                       <div class="ml-8">
                         <div v-if="question.type !== 'vrai_faux'" class="flex flex-wrap gap-2">
@@ -397,7 +409,16 @@
                         @click="selectedEtudiantId = p.etudiant?.id; loadEtudiantReponses()"
                       >
                         <td class="px-4 py-3">
-                          <p class="font-medium font-body text-[#1e3a2f] text-sm">{{ p.etudiant?.prenom }} {{ p.etudiant?.nom }}</p>
+                          <div class="flex items-center gap-1.5">
+                            <p class="font-medium font-body text-[#1e3a2f] text-sm">{{ p.etudiant?.prenom }} {{ p.etudiant?.nom }}</p>
+                            <span
+                              v-if="p.triche?.suspect"
+                              class="shrink-0 text-amber-600"
+                              :title="`Suspicion de triche : ${p.triche.nb_changements_onglet} changement(s) d'onglet, ${p.triche.nb_reponses_rapides} réponse(s) anormalement rapide(s)`"
+                            >
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            </span>
+                          </div>
                           <p class="text-xs font-body text-[#9b9589]">{{ p.etudiant?.email }}</p>
                         </td>
                         <td class="px-4 py-3 text-center">
@@ -517,6 +538,7 @@ const qcm                 = ref({})
 const participants        = ref([])
 const selectedEtudiantId  = ref('')
 const etudiantReponses    = ref({})
+const nbChangementsOngletSelection = ref(0)
 const newSubmissionFlash  = ref(false)
 const recentlyUpdated     = ref(new Set())
 
@@ -714,6 +736,7 @@ const loadEtudiantReponses = async () => {
       const map = {}
       if (Array.isArray(arr)) arr.forEach(r => { map[r.question_id] = r })
       etudiantReponses.value = map
+      nbChangementsOngletSelection.value = result.data?.nb_changements_onglet || 0
     } else {
       toast.error(result.message || 'Erreur chargement réponses')
     }

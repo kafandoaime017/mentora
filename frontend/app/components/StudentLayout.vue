@@ -227,6 +227,7 @@
 
       <!-- ═══ CONTENT ═══ -->
       <main :class="isParticipating ? 'flex-1' : 'flex-1 p-4 md:p-7 pb-24 md:pb-6'">
+        <AnnonceBanner v-if="!isParticipating" />
         <slot />
       </main>
     </div>

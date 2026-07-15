@@ -20,6 +20,7 @@ import { envoyerEmailNotesPubliees } from '../services/emailService'
 import PDFDocument from 'pdfkit'
 import path from 'path'
 import fs from 'fs'
+import { logAudit, getClientIp } from '../services/auditService'
 
 interface AuthRequest extends Request { user?: User }
 
@@ -41,6 +42,18 @@ const getEcoleId = (req: AuthRequest, res: Response): number | null => {
         return null
     }
     return ecoleId
+}
+
+// Raccourci pour journaliser une action directeur (audit de conformité)
+const audit = (req: AuthRequest, action: string, cibleType?: string, cibleId?: number, details?: any) => {
+    logAudit({
+        ecoleId: req.user!.ecoleId,
+        userId: req.user!.id,
+        userNom: `${req.user!.prenom} ${req.user!.nom}`,
+        userRole: req.user!.role,
+        action, cibleType, cibleId, details,
+        ip: getClientIp(req)
+    })
 }
 
 // ==================== DASHBOARD ====================
@@ -117,6 +130,7 @@ export const updateEcole = async (req: AuthRequest, res: Response, next: NextFun
         if (telephone !== undefined) ecole.telephone = telephone
 
         await ecoleRepo.save(ecole)
+        audit(req, 'modification_ecole', 'ecole', ecole.id)
         res.json({ success: true, data: ecole })
     } catch (err) { next(err) }
 }
@@ -176,6 +190,7 @@ export const createFiliere = async (req: AuthRequest, res: Response, next: NextF
 
         const filiere = filiereRepo.create({ nom, ecoleId })
         await filiereRepo.save(filiere)
+        audit(req, 'creation_filiere', 'filiere', filiere.id, { nom: filiere.nom })
         res.json({ success: true, data: filiere, message: 'Filière créée' })
     } catch (err) { next(err) }
 }
@@ -194,6 +209,7 @@ export const updateFiliere = async (req: AuthRequest, res: Response, next: NextF
         if (isActive !== undefined) filiere.isActive = isActive
 
         await filiereRepo.save(filiere)
+        audit(req, 'modification_filiere', 'filiere', filiere.id, { nom: filiere.nom })
         res.json({ success: true, data: filiere, message: 'Filière mise à jour' })
     } catch (err) { next(err) }
 }
@@ -213,6 +229,7 @@ export const deleteFiliere = async (req: AuthRequest, res: Response, next: NextF
         }
 
         await filiereRepo.delete(id)
+        audit(req, 'suppression_filiere', 'filiere', id, { nom: filiere.nom })
         res.json({ success: true, message: 'Filière supprimée' })
     } catch (err) { next(err) }
 }
@@ -261,6 +278,7 @@ export const createClasse = async (req: AuthRequest, res: Response, next: NextFu
 
         const classe = classeRepo.create({ nom, filiereId })
         await classeRepo.save(classe)
+        audit(req, 'creation_classe', 'classe', classe.id, { nom: classe.nom })
         res.json({ success: true, data: classe, message: 'Classe créée' })
     } catch (err) { next(err) }
 }
@@ -285,6 +303,7 @@ export const updateClasse = async (req: AuthRequest, res: Response, next: NextFu
         if (isActive !== undefined) classe.isActive = isActive
 
         await classeRepo.save(classe)
+        audit(req, 'modification_classe', 'classe', classe.id, { nom: classe.nom })
         res.json({ success: true, data: classe, message: 'Classe mise à jour' })
     } catch (err) { next(err) }
 }
@@ -311,6 +330,7 @@ export const deleteClasse = async (req: AuthRequest, res: Response, next: NextFu
         }
 
         await classeRepo.delete(id)
+        audit(req, 'suppression_classe', 'classe', id, { nom: classe.nom })
         res.json({ success: true, message: 'Classe supprimée' })
     } catch (err) { next(err) }
 }
@@ -399,6 +419,7 @@ export const toggleUserActive = async (req: AuthRequest, res: Response, next: Ne
 
         user.isActive = !user.isActive
         await userRepo.save(user)
+        audit(req, user.isActive ? 'activation_compte' : 'desactivation_compte', 'user', user.id, { nom: `${user.prenom} ${user.nom}`, role: user.role })
 
         res.json({
             success: true,
@@ -428,6 +449,7 @@ export const deleteUser = async (req: AuthRequest, res: Response, next: NextFunc
         }
 
         await userRepo.delete(id)
+        audit(req, 'suppression_utilisateur', 'user', id, { nom: `${user.prenom} ${user.nom}`, role: user.role })
         res.json({ success: true, message: 'Utilisateur supprimé' })
     } catch (err) { next(err) }
 }
@@ -448,6 +470,7 @@ export const activateProfesseur = async (req: AuthRequest, res: Response, next: 
         profil.user.isActive = true
         await professeurRepo.save(profil)
         await userRepo.save(profil.user)
+        audit(req, 'activation_professeur', 'user', id, { nom: `${profil.user.prenom} ${profil.user.nom}` })
 
         res.json({ success: true, message: 'Professeur activé' })
     } catch (err) { next(err) }
@@ -513,6 +536,7 @@ export const sendInvitation = async (req: AuthRequest, res: Response, next: Next
 
             const lien = `${process.env.FRONTEND_URL}/auth/invitation?token=${existingInvit.token}`
             await envoyerInvitation(email, prenom, nom, role, filiere.nom, classe?.nom || null, ecole.nom, lien, existingInvit.expiresAt)
+            audit(req, 'invitation_renouvelee', 'invitation', existingInvit.id, { email, role })
             res.json({ success: true, message: 'Invitation renouvelée', data: { token: existingInvit.token, expiresAt: existingInvit.expiresAt, lien } })
             return
         }
@@ -529,6 +553,7 @@ export const sendInvitation = async (req: AuthRequest, res: Response, next: Next
         const lien = `${process.env.FRONTEND_URL}/auth/invitation?token=${invitation.token}`
         await envoyerInvitation(email, prenom, nom, role, filiere.nom, classe?.nom || null, ecole.nom, lien, invitation.expiresAt)
 
+        audit(req, 'envoi_invitation', 'invitation', invitation.id, { email, role })
         res.json({ success: true, message: 'Invitation envoyée', data: { token: invitation.token, expiresAt: invitation.expiresAt, lien } })
     } catch (err) { next(err) }
 }
@@ -543,6 +568,7 @@ export const deleteInvitation = async (req: AuthRequest, res: Response, next: Ne
         if (!invitation) { res.status(404).json({ success: false, message: 'Invitation non trouvée' }); return }
 
         await invitationRepo.delete(id)
+        audit(req, 'suppression_invitation', 'invitation', id, { email: invitation.email })
         res.json({ success: true, message: 'Invitation supprimée' })
     } catch (err) { next(err) }
 }
@@ -878,6 +904,7 @@ export const adminDeleteSession = async (req: AuthRequest, res: Response, next: 
         if (!session) { res.status(404).json({ success: false, message: 'Session non trouvée' }); return }
 
         await sessionRepo.delete(id)
+        audit(req, 'suppression_session', 'session', id, { titre: session.titre })
         res.json({ success: true, message: 'Session supprimée' })
     } catch (err) { next(err) }
 }
@@ -959,6 +986,7 @@ export const adminStartSession = async (req: AuthRequest, res: Response, next: N
         }
 
         await sessionRepo.update(session.id, { status: SessionStatus.ACTIVE, date_debut: new Date() })
+        audit(req, 'demarrage_session', 'session', session.id, { titre: session.titre })
 
         const io = getSocketIO()
         if (io) {
@@ -1003,6 +1031,7 @@ export const adminEndSession = async (req: AuthRequest, res: Response, next: Nex
         if (!session) return
 
         await autoCloseSession(session.id)
+        audit(req, 'fin_session', 'session', session.id, { titre: session.titre })
         res.json({ success: true, message: 'Session terminée' })
     } catch (err) { next(err) }
 }
@@ -1050,6 +1079,7 @@ export const adminToggleResultatsVisibles = async (req: AuthRequest, res: Respon
 
         session.resultatsVisibles = !session.resultatsVisibles
         await sessionRepo.save(session)
+        audit(req, session.resultatsVisibles ? 'publication_notes' : 'masquage_notes', 'session', session.id, { titre: session.titre })
 
         if (session.resultatsVisibles) {
             const io = getSocketIO()

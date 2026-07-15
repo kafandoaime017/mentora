@@ -331,7 +331,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useStudent } from '~~/composables/useStudent'
 import { useToast } from '~~/composables/useToast'
@@ -339,7 +339,7 @@ import { useWebSocket } from '~~/composables/useWebSocket'
 
 const route  = useRoute()
 const router = useRouter()
-const { getSessionForStudent, submitAllReponses, submitReponseFichier } = useStudent()
+const { getSessionForStudent, submitAllReponses, submitReponseFichier, signalerChangementOnglet } = useStudent()
 const { getSocket } = useWebSocket()
 const toast  = useToast()
 
@@ -373,6 +373,14 @@ const isFullscreen      = ref(false)
 // ─── RÉPONSES : reactive() au lieu de ref({}) pour garantir la réactivité ────
 const reponses = reactive({})
 
+// ─── Détection de triche basique ───────────────────────────────────────────
+// Temps de réponse : on note quand une question s'affiche, puis le temps
+// écoulé jusqu'à la PREMIÈRE réponse (pas recalculé si l'étudiant modifie
+// son choix ensuite) — permet de repérer les réponses anormalement rapides.
+const questionShownAt = reactive({})
+const tempsReponses   = reactive({})
+let dernierSignalementOnglet = 0
+
 let timerInterval    = null
 let autoSaveInterval = null
 
@@ -395,6 +403,39 @@ const handleFullscreenChange = () => {
     logSortie('ecran')
   }
 }
+
+// ─── Détection de triche basique : changement d'onglet / sortie plein écran ──
+// Best-effort, ne bloque jamais l'étudiant — juste un signal pour le prof.
+const logSortie = (type) => {
+  if (soumissionAutoEffectuee.value || session.value?.status !== 'active') return
+  // On évite de spammer l'API si plusieurs events se déclenchent d'affilée
+  const maintenant = Date.now()
+  if (maintenant - dernierSignalementOnglet < 2000) return
+  dernierSignalementOnglet = maintenant
+  signalerChangementOnglet(sessionId).catch(() => {})
+}
+
+const handleVisibilityChange = () => {
+  if (document.hidden && !soumissionAutoEffectuee.value && session.value?.status === 'active') {
+    toast.warning('⚠️ Changement d\'onglet détecté !')
+    logSortie('onglet')
+  }
+}
+
+// ─── Suivi du temps de réponse par question ──────────────────────────────────
+const marquerAffichageQuestion = (qId) => {
+  if (qId !== undefined && questionShownAt[qId] === undefined) questionShownAt[qId] = Date.now()
+}
+
+const enregistrerTempsReponse = (qId) => {
+  if (tempsReponses[qId] === undefined && questionShownAt[qId] !== undefined) {
+    tempsReponses[qId] = Date.now() - questionShownAt[qId]
+  }
+}
+
+watch(currentIndex, () => {
+  marquerAffichageQuestion(questions.value[currentIndex.value]?.id)
+})
 // ─── Réponses ─────────────────────────────────────────────────────────────────
 const getReponse = (qId) => reponses[qId]
 
@@ -412,14 +453,17 @@ const isCheckboxChecked = (qId, optIdx) => {
 }
 
 const reponseRadio = (qId, optIdx) => {
+  enregistrerTempsReponse(qId)
   reponses[qId] = Number(optIdx)
 }
 
 const reponseVF = (qId, valeur) => {
+  enregistrerTempsReponse(qId)
   reponses[qId] = valeur ? 0 : 1
 }
 
 const reponseCheckbox = (qId, optIdx) => {
+  enregistrerTempsReponse(qId)
   const current = Array.isArray(reponses[qId]) ? [...reponses[qId]] : []
   const idx     = current.indexOf(optIdx)
   if (idx === -1) {
@@ -432,6 +476,7 @@ const reponseCheckbox = (qId, optIdx) => {
 
 // ─── Texte libre ──────────────────────────────────────────────────────────────
 const reponseTexteLibre = (qId, valeur) => {
+  enregistrerTempsReponse(qId)
   reponses[qId] = valeur
 }
 
@@ -461,6 +506,7 @@ const getAppariementValeur = (qId, gIdx) => {
 }
 
 const reponseAppariement = (qId, gIdx, valeur) => {
+  enregistrerTempsReponse(qId)
   const current = Array.isArray(reponses[qId]) ? [...reponses[qId]] : []
   current[gIdx] = valeur === '' ? null : Number(valeur)
   reponses[qId] = current
@@ -529,7 +575,8 @@ const soumettreReponses = async (auto = false) => {
 
       return {
         questionId: Number(q.id),
-        reponseIds
+        reponseIds,
+        tempsReponseMs: tempsReponses[q.id] ?? null
       }
     })
 
@@ -635,6 +682,7 @@ const loadSession = async () => {
     session.value      = result.data
     questions.value    = result.data.questions || []
     tempsRestant.value = result.data.temps_restant || 0
+    marquerAffichageQuestion(questions.value[currentIndex.value]?.id)
 
     // Fusionner les réponses existantes depuis l'API SANS écraser les réponses locales
     if (result.data.reponses_existantes) {
@@ -671,6 +719,7 @@ onMounted(() => {
   autoSaveInterval = setInterval(sauvegarderLocalement, 5000)
   setTimeout(initWebSocket, 1000)
   document.addEventListener('fullscreenchange', handleFullscreenChange)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
@@ -679,6 +728,7 @@ onUnmounted(() => {
   sauvegarderLocalement()
   exitFullscreen()
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
   const socket = getSocket()
   if (socket) socket.off('session-force-ended')
 })

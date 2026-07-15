@@ -424,6 +424,71 @@ export const useAdmin = () => {
         }
     }
 
+    // ==================== ANNONCES & SONDAGES ====================
+
+    const getAnnonces = async () => {
+        try {
+            return await $fetch('/api/admin/annonces', { headers: getAuthHeader() })
+        } catch (error) {
+            console.error('Erreur annonces:', error)
+            return error.data || { success: false, data: [] }
+        }
+    }
+
+    const createAnnonce = async (data) => {
+        try {
+            return await $fetch('/api/admin/annonces', {
+                method: 'POST', headers: getAuthHeader(), body: data
+            })
+        } catch (error) {
+            console.error('Erreur création annonce:', error)
+            return error.data || { success: false, message: 'Erreur création annonce' }
+        }
+    }
+
+    const getAnnonceResultats = async (id) => {
+        try {
+            return await $fetch(`/api/admin/annonces/${id}/resultats`, { headers: getAuthHeader() })
+        } catch (error) {
+            console.error('Erreur résultats annonce:', error)
+            return error.data || { success: false, data: null }
+        }
+    }
+
+    const toggleAnnonceActif = async (id) => {
+        try {
+            return await $fetch(`/api/admin/annonces/${id}/toggle-actif`, {
+                method: 'PATCH', headers: getAuthHeader()
+            })
+        } catch (error) {
+            console.error('Erreur toggle annonce:', error)
+            return error.data || { success: false, message: 'Erreur' }
+        }
+    }
+
+    const deleteAnnonce = async (id) => {
+        try {
+            return await $fetch(`/api/admin/annonces/${id}`, {
+                method: 'DELETE', headers: getAuthHeader()
+            })
+        } catch (error) {
+            console.error('Erreur suppression annonce:', error)
+            return error.data || { success: false, message: 'Erreur suppression annonce' }
+        }
+    }
+
+    // ==================== LOGS D'AUDIT ====================
+
+    const getAuditLogs = async (params = {}) => {
+        try {
+            const query = new URLSearchParams(params).toString()
+            return await $fetch(`/api/admin/audit-logs${query ? '?' + query : ''}`, { headers: getAuthHeader() })
+        } catch (error) {
+            console.error('Erreur logs audit:', error)
+            return error.data || { success: false, data: null }
+        }
+    }
+
     return {
         // Dashboard
         getDashboard,
@@ -438,6 +503,10 @@ export const useAdmin = () => {
         // Invitations
         getInvitations, sendInvitation, deleteInvitation, resendInvitation, revokeInvitation,
         // Sessions
-        getSessions, getSessionDetails, deleteSession
+        getSessions, getSessionDetails, deleteSession,
+        // Annonces & sondages
+        getAnnonces, createAnnonce, getAnnonceResultats, toggleAnnonceActif, deleteAnnonce,
+        // Logs d'audit
+        getAuditLogs
     }
 }

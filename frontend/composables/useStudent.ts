@@ -160,6 +160,20 @@ const submitReponseFichier = async (sessionId: number, questionId: number, file:
     }
 }
 
+    // Détection de triche basique : signale un changement d'onglet / sortie
+    // de plein écran pendant une session active. Best-effort, ne bloque rien.
+    const signalerChangementOnglet = async (sessionId: number): Promise<ApiResponse> => {
+        try {
+            const res = await $fetch<ApiResponse>(`/api/students/sessions/${sessionId}/signaler-onglet`, {
+                method: 'POST',
+                headers: getAuthHeader()
+            })
+            return res
+        } catch (error: any) {
+            return { success: false }
+        }
+    }
+
     return {
         getAvailableSessions,
         verifySessionCode,
@@ -168,6 +182,7 @@ const submitReponseFichier = async (sessionId: number, questionId: number, file:
         getHistorique,
         getSessionResult,
         submitAllReponses,
-        submitReponseFichier
+        submitReponseFichier,
+        signalerChangementOnglet
     }
 }

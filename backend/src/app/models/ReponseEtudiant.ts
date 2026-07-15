@@ -39,6 +39,10 @@ export class ReponseEtudiant {
     @Column({ type: 'boolean', default: false })
     corrige_manuellement!: boolean;
 
+    // ─── Détection de triche basique ───────────────────────────────────────
+    @Column({ type: 'int', nullable: true })
+    temps_reponse_ms!: number | null;
+
     @CreateDateColumn()
     submitted_at!: Date;
 

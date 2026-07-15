@@ -35,6 +35,10 @@ export class SessionParticipant {
     @Column({ type: 'datetime', nullable: true })
     date_completed!: Date | null;
 
+    // ─── Détection de triche basique ───────────────────────────────────────
+    @Column({ type: 'int', default: 0 })
+    nb_changements_onglet!: number;
+
     @ManyToOne(() => Session, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'session_id' })
     session!: Session;

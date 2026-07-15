@@ -686,7 +686,7 @@ export const submitSingleReponse = async (req: AuthRequest, res: Response, next:
         const sessionId = parseId(req.params.id);
         const questionId = parseId(req.params.questionId);
         const etudiantId = req.user!.id;
-        const { reponseIds, reponseTexte } = req.body;
+        const { reponseIds, reponseTexte, tempsReponseMs } = req.body;
 
         if (!sessionId || !questionId) {
             res.status(400).json({ success: false, message: 'ID invalide' });
@@ -738,6 +738,7 @@ export const submitSingleReponse = async (req: AuthRequest, res: Response, next:
             reponseExistante.reponse_ids = reponseIds;
             reponseExistante.est_correcte = estCorrecte;
             reponseExistante.submitted_at = new Date();
+            if (tempsReponseMs !== undefined) reponseExistante.temps_reponse_ms = tempsReponseMs;
             await reponseRepo.save(reponseExistante);
         } else {
             const nouvelleReponse = reponseRepo.create({
@@ -746,7 +747,8 @@ export const submitSingleReponse = async (req: AuthRequest, res: Response, next:
                 question_id: questionId,
                 reponse_ids: reponseIds,
                 est_correcte: estCorrecte,
-                submitted_at: new Date()
+                submitted_at: new Date(),
+                temps_reponse_ms: tempsReponseMs ?? null
             });
             await reponseRepo.save(nouvelleReponse);
         }
@@ -872,6 +874,7 @@ export const submitReponses = async (req: AuthRequest, res: Response, next: Next
                 reponseExistante.reponse_ids = rep.reponseIds;
                 reponseExistante.est_correcte = estCorrecte;
                 reponseExistante.submitted_at = new Date();
+                if (rep.tempsReponseMs !== undefined) reponseExistante.temps_reponse_ms = rep.tempsReponseMs;
                 await reponseRepo.save(reponseExistante);
             } else {
                 const nouvelleReponse = reponseRepo.create({
@@ -880,7 +883,8 @@ export const submitReponses = async (req: AuthRequest, res: Response, next: Next
                     question_id: rep.questionId,
                     reponse_ids: rep.reponseIds,
                     est_correcte: estCorrecte,
-                    submitted_at: new Date()
+                    submitted_at: new Date(),
+                    temps_reponse_ms: rep.tempsReponseMs ?? null
                 });
                 await reponseRepo.save(nouvelleReponse);
             }
@@ -994,6 +998,35 @@ export const submitReponseFichier = async (req: AuthRequest, res: Response, next
         }
 
         res.json({ success: true, message: 'Fichier envoyé (en attente de correction)', data: { reponse_fichier: cheminFichier } });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ==================== DÉTECTION DE TRICHE BASIQUE ====================
+// Appelé par le frontend à chaque changement d'onglet / sortie de plein
+// écran détecté pendant une session active. On incrémente simplement un
+// compteur sur la participation — pas de blocage, juste un signal pour le
+// professeur.
+export const signalerChangementOnglet = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const sessionId = parseId(req.params.id);
+        const etudiantId = req.user!.id;
+        if (!sessionId) {
+            res.status(400).json({ success: false, message: 'ID invalide' });
+            return;
+        }
+
+        const participant = await participantRepo.findOne({ where: { session_id: sessionId, etudiant_id: etudiantId } });
+        if (!participant) {
+            res.status(404).json({ success: false, message: 'Participation non trouvée' });
+            return;
+        }
+
+        participant.nb_changements_onglet = (participant.nb_changements_onglet || 0) + 1;
+        await participantRepo.save(participant);
+
+        res.json({ success: true, data: { nb_changements_onglet: participant.nb_changements_onglet } });
     } catch (err) {
         next(err);
     }

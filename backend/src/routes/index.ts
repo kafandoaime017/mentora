@@ -11,6 +11,7 @@ import totpRoutes from './totp';
 import settingsRouter from './settings';
 import superadminRouter from './superadmin';
 import stripeRouter from './stripe';
+import announcementsRouter from './announcements';
 
 const router = Router();
 
@@ -27,6 +28,7 @@ router.use('/settings', settingsRouter)
 router.use('/ref', referenceRouter);
 router.use('/superadmin', superadminRouter)
 router.use('/stripe', stripeRouter)
+router.use('/annonces', announcementsRouter)
 
 
 export default router;

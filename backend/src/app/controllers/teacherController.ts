@@ -13,11 +13,13 @@ import { createNotification } from './notificationController';
 import { NotificationType } from '../models/Notification';
 import { EtudiantProfil } from '../models/EtudiantProfil';
 import { QuestionBanque, QuestionDifficulte } from '../models/QuestionBanque';
+import { ProfesseurProfil } from '../models/ProfesseurProfil';
 import {
     envoyerEmailSessionDemarree,
     envoyerEmailNouvelleSession,
     envoyerEmailNotesPubliees
 } from '../services/emailService'
+import { logAudit, getClientIp } from '../services/auditService'
 
 
 
@@ -36,6 +38,26 @@ const filiereRepo = AppDataSource.getRepository(Filiere);
 const userRepo = AppDataSource.getRepository(User);
 const etudiantProfilRepo = AppDataSource.getRepository(EtudiantProfil);
 const banqueRepo = AppDataSource.getRepository(QuestionBanque);
+const professeurProfilRepo = AppDataSource.getRepository(ProfesseurProfil);
+
+// ─── Détection de triche basique : seuils (arbitraires, ajustables) ───────────
+const SEUIL_CHANGEMENTS_ONGLET = 3;      // nb de fois où l'étudiant a quitté l'onglet/le plein écran
+const SEUIL_TEMPS_REPONSE_MS   = 1500;   // en dessous, une réponse est jugée "trop rapide"
+const SEUIL_NB_REPONSES_RAPIDES = 2;     // nb de réponses "trop rapides" avant suspicion
+
+// Journalise une action professeur pour le log d'audit du directeur.
+// Best-effort : l'ecoleId est résolu à la volée via le profil professeur.
+const auditProf = async (req: AuthRequest, action: string, cibleType?: string, cibleId?: number, details?: any) => {
+    const profil = await professeurProfilRepo.findOne({ where: { userId: req.user!.id } })
+    logAudit({
+        ecoleId: profil?.ecoleId ?? null,
+        userId: req.user!.id,
+        userNom: `${req.user!.prenom} ${req.user!.nom}`,
+        userRole: req.user!.role,
+        action, cibleType, cibleId, details,
+        ip: getClientIp(req)
+    })
+}
 
 interface QuestionInput {
     texte: string;
@@ -270,6 +292,8 @@ export const createQCM = async (req: AuthRequest, res: Response, next: NextFunct
             where: { id: session.id },
             relations: ['questions', 'classe', 'filiere']
         });
+
+        auditProf(req, 'creation_session', 'session', session.id, { titre: session.titre })
 
         res.json({
             success: true,
@@ -562,6 +586,7 @@ export const deleteSession = async (req: AuthRequest, res: Response, next: NextF
         }
 
         await sessionRepo.delete(sessionId);
+        auditProf(req, 'suppression_session', 'session', sessionId, { titre: session.titre })
 
         res.json({
             success: true,
@@ -604,6 +629,7 @@ export const startSession = async (req: AuthRequest, res: Response, next: NextFu
             status: SessionStatus.ACTIVE,
             date_debut: new Date()
         });
+        auditProf(req, 'demarrage_session', 'session', sessionId, { titre: session.titre })
 
         // 🔴 NOTIFIER LES ÉTUDIANTS QUE LA SESSION A COMMENCÉ
         const io = getSocketIO();
@@ -677,6 +703,7 @@ export const endSession = async (req: AuthRequest, res: Response, next: NextFunc
         }
 
         await autoCloseSession(sessionId) // autoCloseSession émet déjà les deux events
+        auditProf(req, 'fin_session', 'session', sessionId)
 
         res.json({ success: true, message: 'Session terminée' })
     } catch (err) {
@@ -723,7 +750,7 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
             .innerJoinAndSelect('p.etudiant', 'e')
             .where('p.session_id = :sessionId', { sessionId })
             .select([
-                'p.id', 'p.statut', 'p.score', 'p.date_joined', 'p.date_completed',
+                'p.id', 'p.statut', 'p.score', 'p.date_joined', 'p.date_completed', 'p.nb_changements_onglet',
                 'e.id', 'e.nom', 'e.prenom', 'e.email'
             ])
             .getMany();
@@ -755,6 +782,13 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
             // Calculer la note sur 20
             const noteSur20 = totalPoints > 0 ? (calculatedScore / totalPoints) * 20 : 0;
 
+            // ─── Détection de triche basique ───────────────────────────────
+            const nbReponsesRapides = etudiantReponses.filter(
+                (r: any) => r.temps_reponse_ms != null && r.temps_reponse_ms < SEUIL_TEMPS_REPONSE_MS
+            ).length;
+            const nbChangementsOnglet = p.nb_changements_onglet || 0;
+            const suspect = nbChangementsOnglet >= SEUIL_CHANGEMENTS_ONGLET || nbReponsesRapides >= SEUIL_NB_REPONSES_RAPIDES;
+
             return {
                 id: p.id,
                 statut: p.statut,
@@ -766,6 +800,11 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
                     repondues: reponsesCount,
                     total: questionsCount,
                     pourcentage: questionsCount > 0 ? (reponsesCount / questionsCount) * 100 : 0
+                },
+                triche: {
+                    suspect,
+                    nb_changements_onglet: nbChangementsOnglet,
+                    nb_reponses_rapides: nbReponsesRapides
                 },
                 etudiant: {
                     id: p.etudiant.id,
@@ -923,6 +962,8 @@ export const getEtudiantReponses = async (req: AuthRequest, res: Response, next:
                 corrige_manuellement: reponse?.corrige_manuellement || false,
                 note_manuelle: reponse?.note_manuelle ?? null,
                 submitted_at: reponse?.submitted_at || null,
+                temps_reponse_ms: reponse?.temps_reponse_ms ?? null,
+                reponse_rapide_suspecte: reponse?.temps_reponse_ms != null && reponse.temps_reponse_ms < SEUIL_TEMPS_REPONSE_MS,
                 question: {
                     texte: question.texte,
                     type: question.type,
@@ -936,13 +977,16 @@ export const getEtudiantReponses = async (req: AuthRequest, res: Response, next:
 
         const noteSur20 = totalPoints > 0 ? (totalScore / totalPoints) * 20 : 0;
 
+        const participant = await participantRepo.findOne({ where: { session_id: sessionId, etudiant_id: etudiantId } });
+
         res.json({
             success: true,
             data: {
                 reponses: formattedReponses,
                 score: totalScore,
                 total_points: totalPoints,
-                note_sur_20: Math.round(noteSur20 * 100) / 100
+                note_sur_20: Math.round(noteSur20 * 100) / 100,
+                nb_changements_onglet: participant?.nb_changements_onglet || 0
             }
         });
     } catch (err) {
@@ -1530,6 +1574,7 @@ export const toggleResultatsVisibles = async (req: AuthRequest, res: Response, n
 
         session.resultatsVisibles = !session.resultatsVisibles
         await sessionRepo.save(session)
+        auditProf(req, session.resultatsVisibles ? 'publication_notes' : 'masquage_notes', 'session', session.id, { titre: session.titre })
 
         // ─── Notifier les étudiants si notes maintenant visibles ─────────────
         if (session.resultatsVisibles) {
