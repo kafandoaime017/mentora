@@ -1,26 +1,20 @@
-{{#> layouts/main}}
-<div style="max-width:600px;margin:0 auto;font-family:'Segoe UI',sans-serif;">
-  <div style="background:#1e3a2f;padding:32px;text-align:center;border-radius:12px 12px 0 0;">
-    <h1 style="color:#fff;margin:0;font-size:24px;font-weight:800;">Mentora</h1>
-  </div>
-  <div style="background:#fff;padding:40px 32px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;">
-    <h2 style="color:#1e3a2f;font-size:20px;margin:0 0 16px;">Bonjour {{prenom}},</h2>
-    <p style="color:#6b7280;margin:0 0 24px;line-height:1.6;">
-      Votre facture pour <strong style="color:#1e3a2f;">{{nomEcole}}</strong> — période <strong>{{periode}}</strong> est disponible.
-    </p>
-    <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:24px;margin-bottom:24px;text-align:center;">
-      <p style="color:#166534;font-size:13px;font-weight:600;margin:0 0 8px;">✅ Paiement reçu</p>
-      <p style="color:#166534;font-size:32px;font-weight:800;margin:0;">{{montant}}</p>
-    </div>
-    <div style="text-align:center;margin-bottom:32px;">
-      <a href="{{factureUrl}}" style="background:#1e3a2f;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;display:inline-block;">
-        Télécharger ma facture
-      </a>
-    </div>
-    <p style="color:#9ca3af;font-size:12px;text-align:center;">
-      Gérez votre abonnement sur <a href="{{abonnementUrl}}" style="color:#1e3a2f;">votre espace abonnement</a>
-    </p>
-  </div>
-  <p style="color:#9ca3af;font-size:11px;text-align:center;margin-top:16px;">© {{year}} Mentora. Tous droits réservés.</p>
+<h2>Bonjour {{prenom}},</h2>
+
+<p>
+  Votre facture pour <strong style="color:#054348;">{{nomEcole}}</strong> — période <strong>{{periode}}</strong> est disponible.
+</p>
+
+<div style="background:#f0fdf4; border:1px solid #86efac; border-radius:12px; padding:24px; margin-bottom:24px; text-align:center;">
+  <p style="color:#166534; font-size:13px; font-weight:600; margin:0 0 8px;">✅ Paiement reçu</p>
+  <p style="color:#166534; font-size:32px; font-weight:800; margin:0;">{{montant}}</p>
 </div>
-{{/> layouts/main}}
+
+<div style="text-align: center; margin: 28px 0 12px 0;">
+    <a href="{{factureUrl}}" class="btn-primary" style="background-color: #054348; color: white; text-decoration: none; padding: 12px 28px; border-radius: 40px; display: inline-block; font-weight: 500;">
+        Télécharger ma facture
+    </a>
+</div>
+
+<p style="color: #6c7a86; font-size: 13px; text-align: center;">
+  Gérez votre abonnement sur <a href="{{abonnementUrl}}" style="color:#054348;">votre espace abonnement</a>
+</p>

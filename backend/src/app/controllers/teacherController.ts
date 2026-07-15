@@ -117,6 +117,19 @@ export const createQCM = async (req: AuthRequest, res: Response, next: NextFunct
         const { titre, description, theme, questions, date_debut, date_fin, duree, classe_id, filiere_id } = req.body;
         const professeurId = req.user!.id;
 
+        const professeur = await userRepo.findOne({
+            where: { id: professeurId },
+            relations: ['professeurProfil']
+        });
+
+        if (professeur?.professeurProfil?.filiereId && professeur.professeurProfil.filiereId !== filiere_id) {
+            res.status(403).json({
+                success: false,
+                message: 'Vous ne pouvez créer une session que pour votre propre filière'
+            });
+            return;
+        }
+
         const classe = await classeRepo.findOne({
             where: { id: classe_id },
             relations: ['filiere']
@@ -231,6 +244,19 @@ export const createSession = async (req: AuthRequest, res: Response, next: NextF
     try {
         const { titre, description, theme, date_debut, date_fin, duree, classe_id, filiere_id } = req.body;
         const professeurId = req.user!.id;
+
+        const professeur = await userRepo.findOne({
+            where: { id: professeurId },
+            relations: ['professeurProfil']
+        });
+
+        if (professeur?.professeurProfil?.filiereId && professeur.professeurProfil.filiereId !== filiere_id) {
+            res.status(403).json({
+                success: false,
+                message: 'Vous ne pouvez créer une session que pour votre propre filière'
+            });
+            return;
+        }
 
         const classe = await classeRepo.findOne({
             where: { id: classe_id },
@@ -1076,8 +1102,17 @@ export const getFilieres = async (req: AuthRequest, res: Response, next: NextFun
 
         let filieres;
 
-        if (professeur?.professeurProfil?.ecoleId) {
-            // Si le professeur est affecté à une école, ne voir que ses filières
+        if (professeur?.professeurProfil?.filiereId) {
+            // Le professeur ne voit que SA propre filière, pour éviter toute
+            // affectation de session à une filière qu'il ne donne pas
+            filieres = await filiereRepo.find({
+                where: { id: professeur.professeurProfil.filiereId },
+                relations: ['classes'],
+                order: { nom: 'ASC' }
+            });
+        } else if (professeur?.professeurProfil?.ecoleId) {
+            // Filet de sécurité : professeur affecté à une école mais sans
+            // filière assignée pour le moment
             filieres = await filiereRepo.find({
                 where: { ecoleId: professeur.professeurProfil.ecoleId },
                 relations: ['classes'],
@@ -1110,6 +1145,23 @@ export const getFilieres = async (req: AuthRequest, res: Response, next: NextFun
 export const getClasses = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { filiereId } = req.query;
+        const professeurId = req.user!.id;
+
+        const professeur = await userRepo.findOne({
+            where: { id: professeurId },
+            relations: ['professeurProfil']
+        });
+
+        // Un professeur affecté à une filière ne peut consulter que les
+        // classes de CETTE filière (pas celles des autres filières de l'école)
+        if (
+            professeur?.professeurProfil?.filiereId &&
+            filiereId &&
+            parseInt(filiereId as string) !== professeur.professeurProfil.filiereId
+        ) {
+            res.status(403).json({ success: false, message: "Vous n'avez pas accès à cette filière" });
+            return;
+        }
 
         let classes;
 

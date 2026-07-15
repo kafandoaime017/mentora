@@ -366,6 +366,7 @@ export const getUsers = async (req: AuthRequest, res: Response, next: NextFuncti
         const formatted = users.map(u => ({
             id: u.id, nom: u.nom, prenom: u.prenom,
             email: u.email, role: u.role, isActive: u.isActive,
+            avatar: u.avatar,
             createdAt: u.createdAt,
             profil: u.role === UserRole.ETUDIANT ? {
                 classe:  u.etudiantProfil?.classe?.nom  || null,

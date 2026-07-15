@@ -54,7 +54,13 @@
                 <tr v-for="u in usersFiltres" :key="u.id" class="hover:bg-gray-50 transition">
                   <td class="px-5 py-4">
                     <div class="flex items-center gap-3">
-                      <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                      <img
+                        v-if="avatarUrl(u)"
+                        :src="avatarUrl(u)"
+                        class="w-8 h-8 rounded-full object-cover shrink-0"
+                        alt=""
+                      />
+                      <div v-else class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                         :class="roleStyle(u.role).bg + ' ' + roleStyle(u.role).text">
                         {{ u.prenom?.[0] }}{{ u.nom?.[0] }}
                       </div>
@@ -97,7 +103,13 @@
             <div v-for="u in usersFiltres" :key="u.id" class="bg-white rounded-lg border border-gray-200 p-4">
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-3">
-                  <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                  <img
+                    v-if="avatarUrl(u)"
+                    :src="avatarUrl(u)"
+                    class="w-9 h-9 rounded-full object-cover shrink-0"
+                    alt=""
+                  />
+                  <div v-else class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                     :class="roleStyle(u.role).bg + ' ' + roleStyle(u.role).text">
                     {{ u.prenom?.[0] }}{{ u.nom?.[0] }}
                   </div>
@@ -301,6 +313,13 @@ const filtres = [
   { value: 'professeur', label: 'Professeurs' },
   { value: 'etudiant',   label: 'Étudiants' }
 ]
+
+const avatarUrl = (user) => {
+  if (!user?.avatar) return ''
+  if (user.avatar.startsWith('http')) return user.avatar
+  const config = useRuntimeConfig()
+  return `${config.public.apiBase.replace(/\/api$/, '')}${user.avatar}`
+}
 
 const roleStyle = (role) => ({
   directeur:  { bg: 'bg-secondary/10', text: 'text-secondary' },

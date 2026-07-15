@@ -47,9 +47,9 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
       context: {
         ...options.context,
         year: new Date().getFullYear(),
-        logoUrl: process.env.LOGO_URL || 'https://mentora.com/images/logo-white.png',
-        websiteUrl: process.env.WEBSITE_URL || 'https://mentora.com',
-        dashboardUrl: process.env.DASHBOARD_URL || 'https://mentora.com/dashboard',
+        logoUrl: process.env.LOGO_URL || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/images/logo-blanc.png`,
+        websiteUrl: process.env.WEBSITE_URL || process.env.FRONTEND_URL || 'http://localhost:3000',
+        dashboardUrl: process.env.DASHBOARD_URL || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard`,
       },
     };
     

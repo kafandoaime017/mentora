@@ -154,13 +154,14 @@
                   <select
                     v-model="form.filiere_id"
                     @change="onFiliereChange"
-                    class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 bg-input rounded-xl focus:outline-none"
+                    class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 bg-input rounded-xl focus:outline-none disabled:opacity-70"
+                    :disabled="filieres.length <= 1"
                     required
                   >
                     <option value="">Sélectionner une filière</option>
                     <option v-for="filiere in filieres" :key="filiere.id" :value="filiere.id">{{ filiere.nom }}</option>
                   </select>
-                  <p class="text-xs text-[#9b9589] mt-1">Seules les filières de votre école sont visibles</p>
+                  <p class="text-xs text-[#9b9589] mt-1">Vous ne pouvez créer une session que pour votre propre filière</p>
                 </div>
                 <div>
                   <label class="block text-sm font-semibold text-[#1e3a2f] mb-2">Classe <span class="text-red-500">*</span></label>
@@ -696,7 +697,14 @@ const initDatePickers = () => {
 
 onMounted(async () => {
   const res = await getFilieres()
-  if (res.success) filieres.value = res.data
+  if (res.success) {
+    filieres.value = res.data
+    // Le professeur n'a accès qu'à sa propre filière : on la présélectionne
+    if (filieres.value.length === 1) {
+      form.value.filiere_id = filieres.value[0].id
+      await onFiliereChange()
+    }
+  }
   setTimeout(() => initDatePickers(), 100)
 })
 

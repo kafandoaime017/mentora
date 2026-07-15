@@ -1,29 +1,20 @@
-{{#> layouts/main}}
-<div style="max-width:600px;margin:0 auto;font-family:'Segoe UI',sans-serif;">
-  <div style="background:#1e3a2f;padding:32px;text-align:center;border-radius:12px 12px 0 0;">
-    <h1 style="color:#fff;margin:0;font-size:24px;font-weight:800;">Mentora</h1>
-  </div>
-  <div style="background:#fff;padding:40px 32px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;">
-    <h2 style="color:#1e3a2f;font-size:20px;margin:0 0 16px;">Bonjour {{prenom}},</h2>
-    <p style="color:#6b7280;margin:0 0 24px;line-height:1.6;">
-      Nous n'avons pas pu traiter votre paiement pour l'école <strong style="color:#1e3a2f;">{{nomEcole}}</strong>.
-    </p>
-    <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:24px;margin-bottom:24px;text-align:center;">
-      <p style="color:#92400e;font-size:14px;font-weight:700;margin:0 0 8px;">⚠️ Paiement échoué</p>
-      <p style="color:#92400e;font-size:28px;font-weight:800;margin:0;">{{montant}}</p>
-    </div>
-    <p style="color:#6b7280;margin:0 0 24px;line-height:1.6;">
-      Votre plan reste actif temporairement. Mettez à jour vos informations de paiement pour éviter toute interruption.
-    </p>
-    <div style="text-align:center;margin-bottom:32px;">
-      <a href="{{abonnementUrl}}" style="background:#dc2626;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;display:inline-block;">
-        Mettre à jour mon paiement
-      </a>
-    </div>
-    <p style="color:#9ca3af;font-size:12px;text-align:center;">
-      Des questions ? <a href="mailto:support@mentora.app" style="color:#1e3a2f;">support@mentora.app</a>
-    </p>
-  </div>
-  <p style="color:#9ca3af;font-size:11px;text-align:center;margin-top:16px;">© {{year}} Mentora. Tous droits réservés.</p>
+<h2>Bonjour {{prenom}},</h2>
+
+<p>Nous n'avons pas pu traiter votre paiement pour l'école <strong style="color:#054348;">{{nomEcole}}</strong>.</p>
+
+<div style="background:#fef3c7; border:1px solid #fcd34d; border-radius:12px; padding:24px; margin-bottom:24px; text-align:center;">
+  <p style="color:#92400e; font-size:14px; font-weight:700; margin:0 0 8px;">⚠️ Paiement échoué</p>
+  <p style="color:#92400e; font-size:28px; font-weight:800; margin:0;">{{montant}}</p>
 </div>
-{{/> layouts/main}}
+
+<p>Votre plan reste actif temporairement. Mettez à jour vos informations de paiement pour éviter toute interruption.</p>
+
+<div style="text-align: center; margin: 28px 0 12px 0;">
+    <a href="{{abonnementUrl}}" class="btn-primary" style="background-color: #e53e3e; color: white; text-decoration: none; padding: 12px 28px; border-radius: 40px; display: inline-block; font-weight: 500;">
+        Mettre à jour mon paiement
+    </a>
+</div>
+
+<p style="color: #6c7a86; font-size: 13px; text-align: center;">
+  Des questions ? <a href="mailto:support@mentora.app" style="color:#054348;">support@mentora.app</a>
+</p>

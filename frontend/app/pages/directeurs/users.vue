@@ -62,7 +62,13 @@
       <!-- Avatar -->
       <td class="px-4 py-3">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-xs font-bold font-body"
+          <img
+            v-if="avatarUrl(user)"
+            :src="avatarUrl(user)"
+            class="w-9 h-9 rounded-full object-cover shrink-0"
+            alt=""
+          />
+          <div v-else class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-xs font-bold font-body"
             :class="user.role === 'etudiant' ? 'bg-primary/20 text-primary' : 'bg-secondary/30 text-secondary'">
             {{ (user.prenom?.[0] || '') }}{{ (user.nom?.[0] || '') }}
           </div>
@@ -203,6 +209,13 @@ const apiFetch = async (url, options = {}) => {
     ...options,
     headers: { 'Authorization': `Bearer ${token}`, ...options.headers }
   })
+}
+
+const avatarUrl = (user) => {
+  if (!user?.avatar) return ''
+  if (user.avatar.startsWith('http')) return user.avatar
+  const config = useRuntimeConfig()
+  return `${config.public.apiBase.replace(/\/api$/, '')}${user.avatar}`
 }
 
 const users = computed(() =>

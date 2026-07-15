@@ -517,7 +517,7 @@ export const getAllUsers = async (req: AuthRequest, res: Response, next: NextFun
         { role: UserRole.PROFESSEUR },
         { role: UserRole.ETUDIANT }
       ],
-      select: ['id', 'nom', 'prenom', 'email', 'role', 'isActive', 'isVerified', 'createdAt'],
+      select: ['id', 'nom', 'prenom', 'email', 'role', 'isActive', 'isVerified', 'createdAt', 'avatar'],
       order: { createdAt: 'DESC' }
     })
     res.json({ success: true, data: users })

@@ -195,7 +195,7 @@
                     </option>
                   </select>
                   <p class="text-xs text-[#9b9589] mt-1">
-                    Seules les filières de votre école sont visibles
+                    Vous ne pouvez créer une session que pour votre propre filière
                   </p>
                 </div>
                 
