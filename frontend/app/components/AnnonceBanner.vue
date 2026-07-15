@@ -1,5 +1,5 @@
 <template>
-  <div v-if="courante" class="mb-4 rounded-xl overflow-hidden bg-amber-50">
+  <div v-if="courante" class="mb-4 rounded-xl overflow-hidden bg-amber-200">
     <div class="p-4">
       <div class="flex items-start justify-between gap-3 mb-2">
         <div class="flex items-center gap-2">
