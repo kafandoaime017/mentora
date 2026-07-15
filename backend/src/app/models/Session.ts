@@ -45,7 +45,7 @@ export class Session {
     @Column({ type: 'int' })
     duree!: number;
 
-    // Clés étrangères
+    // Cles etrangeres
     @Column({ type: 'int', unsigned: true })
     classe_id!: number;
 
@@ -55,7 +55,7 @@ export class Session {
     @Column({ type: 'int', unsigned: true })
     created_by!: number;
 
-    @Column({ type: 'enum', enum: SessionStatus, default: SessionStatus.DRAFT })
+    @Column({ type: 'simple-enum', enum: SessionStatus, default: SessionStatus.DRAFT })
     status!: SessionStatus;
 
     // Relations

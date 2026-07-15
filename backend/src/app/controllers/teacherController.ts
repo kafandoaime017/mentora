@@ -26,7 +26,7 @@ import { LIMITES_PLANS } from '../middleware/checkPlan'
 
 
 
-// Définir le type pour les requêtes authentifiées
+// Definir le type pour les requetes authentifiees
 interface AuthRequest extends Request {
     user?: User;
 }
@@ -43,13 +43,13 @@ const banqueRepo = AppDataSource.getRepository(QuestionBanque);
 const professeurProfilRepo = AppDataSource.getRepository(ProfesseurProfil);
 const ecoleRepo = AppDataSource.getRepository(Ecole);
 
-// ─── Détection de triche basique : seuils (arbitraires, ajustables) ───────────
-const SEUIL_CHANGEMENTS_ONGLET = 3;      // nb de fois où l'étudiant a quitté l'onglet/le plein écran
-const SEUIL_TEMPS_REPONSE_MS   = 1500;   // en dessous, une réponse est jugée "trop rapide"
-const SEUIL_NB_REPONSES_RAPIDES = 2;     // nb de réponses "trop rapides" avant suspicion
+// --- Detection de triche basique : seuils (arbitraires, ajustables) ---
+const SEUIL_CHANGEMENTS_ONGLET = 3;      // nb de fois ou l'etudiant a quitte l'onglet/le plein ecran
+const SEUIL_TEMPS_REPONSE_MS   = 1500;   // en dessous, une reponse est jugee "trop rapide"
+const SEUIL_NB_REPONSES_RAPIDES = 2;     // nb de reponses "trop rapides" avant suspicion
 
 // Journalise une action professeur pour le log d'audit du directeur.
-// Best-effort : l'ecoleId est résolu à la volée via le profil professeur.
+// Best-effort : l'ecoleId est resolu a la volee via le profil professeur.
 const auditProf = async (req: AuthRequest, action: string, cibleType?: string, cibleId?: number, details?: any) => {
     const profil = await professeurProfilRepo.findOne({ where: { userId: req.user!.id } })
     logAudit({
@@ -96,27 +96,27 @@ export const autoCloseSession = async (sessionId: number): Promise<void> => {
         if (io) {
             const roomName = `classe_${session.classe_id}_filiere_${session.filiere_id}`;
 
-            // Notifier le dashboard étudiant
+            // Notifier le dashboard etudiant
             io.to(roomName).emit('session-completed', {
                 sessionId: session.id,
-                message: `La session "${session.titre}" est maintenant terminée.`
+                message: `La session "${session.titre}" est maintenant terminee.`
             })
 
-            // ← Notifier les étudiants EN TRAIN de participer
+            // Notifier les etudiants EN TRAIN de participer
             io.to(roomName).emit('session-force-ended', {
                 sessionId: session.id,
-                message: `La session "${session.titre}" a été terminée par le professeur.`
+                message: `La session "${session.titre}" a ete terminee par le professeur.`
             })
 
-            console.log(`📢 Session terminée notifiée à: ${roomName}`)
+            console.log(`Session terminee notifiee a: ${roomName}`)
         }
     }
 };
 
-// Points obtenus pour UNE réponse : les types auto-corrigés (qcm/qcm_multiple/
-// vrai_faux/appariement) se basent sur est_correcte ; les types à correction
-// manuelle (texte_libre/fichier) ne comptent que si le professeur les a déjà
-// corrigés (note_manuelle), sinon 0 en attendant la correction.
+// Points obtenus pour UNE reponse : les types auto-corriges (qcm/qcm_multiple/
+// vrai_faux/appariement) se basent sur est_correcte ; les types a correction
+// manuelle (texte_libre/fichier) ne comptent que si le professeur les a deja
+// corriges (note_manuelle), sinon 0 en attendant la correction.
 const computePointsForReponse = (r: ReponseEtudiant, q: Question): number => {
     if (q.type === QuestionType.TEXTE_LIBRE || q.type === QuestionType.FICHIER) {
         return r.corrige_manuellement ? (r.note_manuelle || 0) : 0;
@@ -124,8 +124,8 @@ const computePointsForReponse = (r: ReponseEtudiant, q: Question): number => {
     return r.est_correcte ? q.points : 0;
 };
 
-// Vrai si la session contient encore des réponses texte_libre/fichier non
-// corrigées par le professeur (utilisé pour bloquer la publication des notes).
+// Vrai si la session contient encore des reponses texte_libre/fichier non
+// corrigees par le professeur (utilise pour bloquer la publication des notes).
 const hasUngradedManualReponses = async (sessionId: number): Promise<boolean> => {
     const count = await reponseRepo
         .createQueryBuilder('r')
@@ -164,20 +164,20 @@ const calculateAndUpdateScores = async (sessionId: number): Promise<void> => {
             where: { session_id: sessionId, etudiant_id: participant.etudiant_id }
         });
 
-        // ✅ Points bruts, pas pourcentage
+        // Points bruts, pas pourcentage
         const pointsObtenus = reponses.reduce((sum, r) => {
             const question = questions.find(q => q.id === r.question_id);
             return question ? sum + computePointsForReponse(r, question) : sum;
         }, 0);
 
-        participant.score = pointsObtenus; // ← points bruts
+        participant.score = pointsObtenus; // points bruts
         participant.statut = ParticipantStatus.TERMINE;
         participant.date_completed = new Date();
         await participantRepo.save(participant);
     }
 };
 
-// ==================== 1. CRÉER UN QCM ====================
+// ==================== 1. CREER UN QCM ====================
 
 export const createQCM = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -192,7 +192,7 @@ export const createQCM = async (req: AuthRequest, res: Response, next: NextFunct
         if (professeur?.professeurProfil?.filiereId && professeur.professeurProfil.filiereId !== filiere_id) {
             res.status(403).json({
                 success: false,
-                message: 'Vous ne pouvez créer une session que pour votre propre filière'
+                message: 'Vous ne pouvez creer une session que pour votre propre filiere'
             });
             return;
         }
@@ -205,7 +205,7 @@ export const createQCM = async (req: AuthRequest, res: Response, next: NextFunct
         if (!classe || classe.filiereId !== filiere_id) {
             res.status(400).json({
                 success: false,
-                message: 'Cette classe n\'appartient pas à la filière sélectionnée'
+                message: 'Cette classe n\'appartient pas a la filiere selectionnee'
             });
             return;
         }
@@ -246,7 +246,7 @@ export const createQCM = async (req: AuthRequest, res: Response, next: NextFunct
         session.qr_code = qrCodeImage;
         await sessionRepo.save(session);
 
-        // 🔴 NOTIFIER LES ÉTUDIANTS VIA WEBSOCKET
+        // NOTIFIER LES ETUDIANTS VIA WEBSOCKET
         const io = getSocketIO();
         if (io) {
             const roomName = `classe_${classe_id}_filiere_${filiere_id}`;
@@ -264,31 +264,30 @@ export const createQCM = async (req: AuthRequest, res: Response, next: NextFunct
 
             io.to(roomName).emit('new-session', {
                 session: sessionData,
-                message: `📚 Nouvelle session disponible: ${session.titre}`
+                message: `Nouvelle session disponible: ${session.titre}`
             });
 
-            // Notifier les étudiants de la classe en DB
+            // Notifier les etudiants de la classe en DB
             const etudiants = await etudiantProfilRepo.find({
                 where: { classeId: classe_id, filiereId: filiere_id }
             })
             for (const etudiant of etudiants) {
                 await createNotification(etudiant.userId, {
                     titre: 'Nouvelle session disponible',
-                    message: `La session "${session.titre}" a été créée par ${req.user!.prenom} ${req.user!.nom}`,
+                    message: `La session "${session.titre}" a ete creee par ${req.user!.prenom} ${req.user!.nom}`,
                     type: NotificationType.NEW_SESSION,
                     link: '/students',
                     sessionId: session.id
                 })
 
 
-                 // ← AJOUTE
                 const user = await userRepo.findOne({ where: { id: etudiant.userId } })
                 if (user?.notifNouvelleSession) {
                     await envoyerEmailNouvelleSession(user.email, user.prenom, session.titre)
                 }
             }
 
-            console.log(`📢 Nouvelle session notifiée à la salle: ${roomName}`);
+            console.log(`Nouvelle session notifiee a la salle: ${roomName}`);
         }
 
         const sessionWithQuestions = await sessionRepo.findOne({
@@ -300,7 +299,7 @@ export const createQCM = async (req: AuthRequest, res: Response, next: NextFunct
 
         res.json({
             success: true,
-            message: 'QCM créé avec succès',
+            message: 'QCM cree avec succes',
             data: sessionWithQuestions
         });
     } catch (err) {
@@ -323,7 +322,7 @@ export const createSession = async (req: AuthRequest, res: Response, next: NextF
         if (professeur?.professeurProfil?.filiereId && professeur.professeurProfil.filiereId !== filiere_id) {
             res.status(403).json({
                 success: false,
-                message: 'Vous ne pouvez créer une session que pour votre propre filière'
+                message: 'Vous ne pouvez creer une session que pour votre propre filiere'
             });
             return;
         }
@@ -336,7 +335,7 @@ export const createSession = async (req: AuthRequest, res: Response, next: NextF
         if (!classe || classe.filiereId !== filiere_id) {
             res.status(400).json({
                 success: false,
-                message: 'Classe invalide pour cette filière'
+                message: 'Classe invalide pour cette filiere'
             });
             return;
         }
@@ -362,7 +361,7 @@ export const createSession = async (req: AuthRequest, res: Response, next: NextF
         session.qr_code = qrCodeImage;
         await sessionRepo.save(session);
 
-        // 🔴 NOTIFIER LES ÉTUDIANTS VIA WEBSOCKET
+        // NOTIFIER LES ETUDIANTS VIA WEBSOCKET
         const io = getSocketIO();
         if (io) {
             const roomName = `classe_${classe_id}_filiere_${filiere_id}`;
@@ -380,15 +379,15 @@ export const createSession = async (req: AuthRequest, res: Response, next: NextF
 
             io.to(roomName).emit('new-session', {
                 session: sessionData,
-                message: `📚 Nouvelle session planifiée: ${session.titre}`
+                message: `Nouvelle session planifiee: ${session.titre}`
             });
 
-            console.log(`📢 Nouvelle session notifiée à la salle: ${roomName}`);
+            console.log(`Nouvelle session notifiee a la salle: ${roomName}`);
         }
 
         res.json({
             success: true,
-            message: 'Session planifiée avec succès',
+            message: 'Session planifiee avec succes',
             data: {
                 id: session.id,
                 code: session.code,
@@ -424,7 +423,7 @@ export const getSessions = async (req: AuthRequest, res: Response, next: NextFun
     }
 };
 
-// ==================== 4. DÉTAILS D'UNE SESSION ====================
+// ==================== 4. DETAILS D'UNE SESSION ====================
 
 export const getSessionDetails = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -440,7 +439,7 @@ export const getSessionDetails = async (req: AuthRequest, res: Response, next: N
         });
 
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' });
+            res.status(404).json({ success: false, message: 'Session non trouvee' });
             return;
         }
 
@@ -472,10 +471,10 @@ export const updateSession = async (req: AuthRequest, res: Response, next: NextF
 
         const { titre, description, theme, date_debut, date_fin, duree, classe_id, filiere_id, questions } = req.body;
 
-        // ID du professeur connecté
+        // ID du professeur connecte
         const professeurId = req.user!.id;
 
-        // Récupérer la session avec vérification du créateur
+        // Recuperer la session avec verification du createur
         const session = await sessionRepo.findOne({
             where: {
                 id: sessionId,
@@ -486,21 +485,21 @@ export const updateSession = async (req: AuthRequest, res: Response, next: NextF
         if (!session) {
             res.status(404).json({
                 success: false,
-                message: 'Session non trouvée ou vous n\'êtes pas autorisé à la modifier'
+                message: 'Session non trouvee ou vous n\'etes pas autorise a la modifier'
             });
             return;
         }
 
-        // Vérifier le statut
+        // Verifier le statut
         if (session.status !== SessionStatus.PENDING) {
             res.status(400).json({
                 success: false,
-                message: 'Seules les sessions en attente peuvent être modifiées'
+                message: 'Seules les sessions en attente peuvent etre modifiees'
             });
             return;
         }
 
-        // Vérifier si des réponses existent déjà (optionnel)
+        // Verifier si des reponses existent deja (optionnel)
         const hasReponses = await reponseRepo.count({
             where: { session_id: sessionId }
         });
@@ -508,12 +507,12 @@ export const updateSession = async (req: AuthRequest, res: Response, next: NextF
         if (hasReponses > 0 && questions) {
             res.status(400).json({
                 success: false,
-                message: 'Des étudiants ont déjà répondu, vous ne pouvez pas modifier les questions'
+                message: 'Des etudiants ont deja repondu, vous ne pouvez pas modifier les questions'
             });
             return;
         }
 
-        // Mettre à jour les informations de base
+        // Mettre a jour les informations de base
         session.titre = titre || session.titre;
         session.description = description !== undefined ? description : session.description;
         session.theme = theme !== undefined ? theme : session.theme;
@@ -525,12 +524,12 @@ export const updateSession = async (req: AuthRequest, res: Response, next: NextF
 
         await sessionRepo.save(session);
 
-        // Mettre à jour les questions si fournies
+        // Mettre a jour les questions si fournies
         if (questions && Array.isArray(questions)) {
             // Supprimer les anciennes questions
             await questionRepo.delete({ session_id: sessionId });
 
-            // Créer les nouvelles questions
+            // Creer les nouvelles questions
             for (let i = 0; i < questions.length; i++) {
                 const q = questions[i];
                 const question = questionRepo.create({
@@ -555,7 +554,7 @@ export const updateSession = async (req: AuthRequest, res: Response, next: NextF
 
         res.json({
             success: true,
-            message: 'Session mise à jour avec succès',
+            message: 'Session mise a jour avec succes',
             data: updatedSession
         });
     } catch (err) {
@@ -576,14 +575,14 @@ export const deleteSession = async (req: AuthRequest, res: Response, next: NextF
         const session = await sessionRepo.findOne({ where: { id: sessionId } });
 
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' });
+            res.status(404).json({ success: false, message: 'Session non trouvee' });
             return;
         }
 
         if (session.status !== SessionStatus.PENDING && session.status !== SessionStatus.DRAFT) {
             res.status(400).json({
                 success: false,
-                message: 'Seules les sessions non commencées peuvent être supprimées'
+                message: 'Seules les sessions non commencees peuvent etre supprimees'
             });
             return;
         }
@@ -593,14 +592,14 @@ export const deleteSession = async (req: AuthRequest, res: Response, next: NextF
 
         res.json({
             success: true,
-            message: 'Session supprimée'
+            message: 'Session supprimee'
         });
     } catch (err) {
         next(err);
     }
 };
 
-// ==================== 7. DÉMARRER UNE SESSION ====================
+// ==================== 7. DEMARRER UNE SESSION ====================
 
 export const startSession = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -616,14 +615,14 @@ export const startSession = async (req: AuthRequest, res: Response, next: NextFu
         });
 
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' });
+            res.status(404).json({ success: false, message: 'Session non trouvee' });
             return;
         }
 
         if (session.status !== SessionStatus.PENDING) {
             res.status(400).json({
                 success: false,
-                message: 'La session ne peut pas être démarrée'
+                message: 'La session ne peut pas etre demarree'
             });
             return;
         }
@@ -634,7 +633,7 @@ export const startSession = async (req: AuthRequest, res: Response, next: NextFu
         });
         auditProf(req, 'demarrage_session', 'session', sessionId, { titre: session.titre })
 
-        // 🔴 NOTIFIER LES ÉTUDIANTS QUE LA SESSION A COMMENCÉ
+        // NOTIFIER LES ETUDIANTS QUE LA SESSION A COMMENCE
         const io = getSocketIO();
         if (io) {
             const roomName = `classe_${session.classe_id}_filiere_${session.filiere_id}`;
@@ -655,13 +654,13 @@ export const startSession = async (req: AuthRequest, res: Response, next: NextFu
                 timestamp: new Date()
             });
 
-            // Notifier les étudiants en DB
+            // Notifier les etudiants en DB
             const etudiants = await etudiantProfilRepo.find({
                 where: { classeId: session.classe_id, filiereId: session.filiere_id }
             })
             for (const etudiant of etudiants) {
                 await createNotification(etudiant.userId, {
-                    titre: 'Session démarrée !',
+                    titre: 'Session demarree !',
                     message: `La session "${session.titre}" vient de commencer. Rejoignez maintenant !`,
                     type: NotificationType.SESSION_STARTED,
                     link: `/students/join-session?code=${session.code}`,
@@ -674,7 +673,7 @@ export const startSession = async (req: AuthRequest, res: Response, next: NextFu
                     }
                             }
 
-            console.log(`Session démarrée - Notification envoyée à la salle: ${roomName}`);
+            console.log(`Session demarree - Notification envoyee a la salle: ${roomName}`);
         }
 
         const now = new Date();
@@ -688,7 +687,7 @@ export const startSession = async (req: AuthRequest, res: Response, next: NextFu
 
         res.json({
             success: true,
-            message: 'Session démarrée'
+            message: 'Session demarree'
         });
     } catch (err) {
         next(err);
@@ -705,10 +704,10 @@ export const endSession = async (req: AuthRequest, res: Response, next: NextFunc
             return
         }
 
-        await autoCloseSession(sessionId) // autoCloseSession émet déjà les deux events
+        await autoCloseSession(sessionId) // autoCloseSession emet deja les deux events
         auditProf(req, 'fin_session', 'session', sessionId)
 
-        res.json({ success: true, message: 'Session terminée' })
+        res.json({ success: true, message: 'Session terminee' })
     } catch (err) {
         next(err)
     }
@@ -724,18 +723,18 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
             return;
         }
 
-        // Récupérer toutes les questions pour calculer le total des points
+        // Recuperer toutes les questions pour calculer le total des points
         const questions = await questionRepo.find({
             where: { session_id: sessionId }
         });
         const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
 
-        // Récupérer toutes les réponses pour calculer les scores
+        // Recuperer toutes les reponses pour calculer les scores
         const allReponses = await reponseRepo.find({
             where: { session_id: sessionId }
         });
 
-        // Créer un map des réponses par étudiant
+        // Creer un map des reponses par etudiant
         const reponsesMap = new Map<number, any[]>();
         allReponses.forEach(reponse => {
             if (!reponsesMap.has(reponse.etudiant_id)) {
@@ -744,7 +743,7 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
             reponsesMap.get(reponse.etudiant_id)!.push(reponse);
         });
 
-        // Créer un map des questions par ID pour accès rapide
+        // Creer un map des questions par ID pour acces rapide
         const questionsMap = new Map<number, any>();
         questions.forEach(q => questionsMap.set(q.id, q));
 
@@ -763,7 +762,7 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
         const participantsWithProgress = await Promise.all(participants.map(async (p) => {
             const etudiantReponses = reponsesMap.get(p.etudiant.id) || [];
 
-            // Calculer le score réel de l'étudiant
+            // Calculer le score reel de l'etudiant
             let calculatedScore = 0;
             for (const reponse of etudiantReponses) {
                 if (reponse.est_correcte) {
@@ -774,7 +773,7 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
                 }
             }
 
-            // Mettre à jour le score dans la base s'il a changé
+            // Mettre a jour le score dans la base s'il a change
             if (p.score !== calculatedScore) {
                 p.score = calculatedScore;
                 await participantRepo.save(p);
@@ -785,7 +784,7 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
             // Calculer la note sur 20
             const noteSur20 = totalPoints > 0 ? (calculatedScore / totalPoints) * 20 : 0;
 
-            // ─── Détection de triche basique ───────────────────────────────
+            // --- Detection de triche basique ---
             const nbReponsesRapides = etudiantReponses.filter(
                 (r: any) => r.temps_reponse_ms != null && r.temps_reponse_ms < SEUIL_TEMPS_REPONSE_MS
             ).length;
@@ -818,7 +817,7 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
             };
         }));
 
-        // Trier par score décroissant
+        // Trier par score decroissant
         participantsWithProgress.sort((a, b) => b.score - a.score);
 
         res.json({
@@ -914,7 +913,7 @@ export const getStatistics = async (req: AuthRequest, res: Response, next: NextF
     }
 };
 
-// ==================== 11. RÉPONSES D'UN ÉTUDIANT POUR UNE SESSION ====================
+// ==================== 11. REPONSES D'UN ETUDIANT POUR UNE SESSION ====================
 
 export const getEtudiantReponses = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -926,18 +925,18 @@ export const getEtudiantReponses = async (req: AuthRequest, res: Response, next:
             return;
         }
 
-        // Récupérer toutes les questions de la session
+        // Recuperer toutes les questions de la session
         const questions = await questionRepo.find({
             where: { session_id: sessionId },
             order: { ordre: 'ASC' }
         });
 
-        // Récupérer les réponses de l'étudiant
+        // Recuperer les reponses de l'etudiant
         const reponses = await reponseRepo.find({
             where: { session_id: sessionId, etudiant_id: etudiantId }
         });
 
-        // Créer un map des réponses par question
+        // Creer un map des reponses par question
         const reponsesMap = new Map<number, any>();
         reponses.forEach(reponse => {
             reponsesMap.set(reponse.question_id, reponse);
@@ -947,7 +946,7 @@ export const getEtudiantReponses = async (req: AuthRequest, res: Response, next:
         let totalScore = 0;
         const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
 
-        // Formater les réponses pour chaque question
+        // Formater les reponses pour chaque question
         const formattedReponses = questions.map(question => {
             const reponse = reponsesMap.get(question.id);
             const estCorrecte = reponse?.est_correcte || false;
@@ -1010,7 +1009,7 @@ export const getNotes = async (req: AuthRequest, res: Response, next: NextFuncti
 
         const session = await sessionRepo.findOne({ where: { id: sessionId } });
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' });
+            res.status(404).json({ success: false, message: 'Session non trouvee' });
             return;
         }
 
@@ -1066,14 +1065,14 @@ export const publishNotes = async (req: AuthRequest, res: Response, next: NextFu
 
         res.json({
             success: true,
-            message: 'Notes publiées avec succès'
+            message: 'Notes publiees avec succes'
         });
     } catch (err) {
         next(err);
     }
 };
 
-// ==================== 13. EXPORTER LES RÉSULTATS ====================
+// ==================== 13. EXPORTER LES RESULTATS ====================
 
 export const exportResults = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -1093,7 +1092,7 @@ export const exportResults = async (req: AuthRequest, res: Response, next: NextF
         const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
 
         const csvRows = [
-            ['Nom', 'Prénom', 'Email', 'Score', 'Note / 20', 'Statut', 'Date complétion']
+            ['Nom', 'Prenom', 'Email', 'Score', 'Note / 20', 'Statut', 'Date completion']
         ];
 
         for (const p of participants) {
@@ -1118,7 +1117,7 @@ export const exportResults = async (req: AuthRequest, res: Response, next: NextF
     }
 };
 
-// ==================== 14. GÉNÉRER QR CODE ====================
+// ==================== 14. GENERER QR CODE ====================
 
 export const generateQRCode = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -1131,7 +1130,7 @@ export const generateQRCode = async (req: AuthRequest, res: Response, next: Next
         const session = await sessionRepo.findOne({ where: { id: sessionId } });
 
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' });
+            res.status(404).json({ success: false, message: 'Session non trouvee' });
             return;
         }
 
@@ -1149,7 +1148,7 @@ export const generateQRCode = async (req: AuthRequest, res: Response, next: Next
     }
 };
 
-// ==================== 15. GÉNÉRER NOUVEAU CODE ====================
+// ==================== 15. GENERER NOUVEAU CODE ====================
 
 export const generateCode = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -1162,7 +1161,7 @@ export const generateCode = async (req: AuthRequest, res: Response, next: NextFu
         const session = await sessionRepo.findOne({ where: { id: sessionId } });
 
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' });
+            res.status(404).json({ success: false, message: 'Session non trouvee' });
             return;
         }
 
@@ -1179,16 +1178,16 @@ export const generateCode = async (req: AuthRequest, res: Response, next: NextFu
 };
 
 
-// ==================== FILIÈRES ET CLASSES ====================
+// ==================== FILIERES ET CLASSES ====================
 
 /**
- * Récupérer les filières (selon l'école du professeur)
+ * Recuperer les filieres (selon l'ecole du professeur)
  */
 export const getFilieres = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const professeurId = req.user!.id;
 
-        // Récupérer le professeur avec son école
+        // Recuperer le professeur avec son ecole
         const professeur = await userRepo.findOne({
             where: { id: professeurId },
             relations: ['professeurProfil']
@@ -1197,23 +1196,23 @@ export const getFilieres = async (req: AuthRequest, res: Response, next: NextFun
         let filieres;
 
         if (professeur?.professeurProfil?.filiereId) {
-            // Le professeur ne voit que SA propre filière, pour éviter toute
-            // affectation de session à une filière qu'il ne donne pas
+            // Le professeur ne voit que SA propre filiere, pour eviter toute
+            // affectation de session a une filiere qu'il ne donne pas
             filieres = await filiereRepo.find({
                 where: { id: professeur.professeurProfil.filiereId },
                 relations: ['classes'],
                 order: { nom: 'ASC' }
             });
         } else if (professeur?.professeurProfil?.ecoleId) {
-            // Filet de sécurité : professeur affecté à une école mais sans
-            // filière assignée pour le moment
+            // Filet de securite : professeur affecte a une ecole mais sans
+            // filiere assignee pour le moment
             filieres = await filiereRepo.find({
                 where: { ecoleId: professeur.professeurProfil.ecoleId },
                 relations: ['classes'],
                 order: { nom: 'ASC' }
             });
         } else {
-            // Sinon, voir toutes les filières (admin)
+            // Sinon, voir toutes les filieres (admin)
             filieres = await filiereRepo.find({
                 relations: ['classes'],
                 order: { nom: 'ASC' }
@@ -1225,16 +1224,16 @@ export const getFilieres = async (req: AuthRequest, res: Response, next: NextFun
             data: filieres
         });
     } catch (error) {
-        console.error('Erreur récupération filières:', error);
+        console.error('Erreur recuperation filieres:', error);
         res.status(500).json({
             success: false,
-            message: 'Erreur lors de la récupération des filières'
+            message: 'Erreur lors de la recuperation des filieres'
         });
     }
 };
 
 /**
- * Récupérer les classes (filtrées par filière)
+ * Recuperer les classes (filtrees par filiere)
  */
 export const getClasses = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -1246,14 +1245,14 @@ export const getClasses = async (req: AuthRequest, res: Response, next: NextFunc
             relations: ['professeurProfil']
         });
 
-        // Un professeur affecté à une filière ne peut consulter que les
-        // classes de CETTE filière (pas celles des autres filières de l'école)
+        // Un professeur affecte a une filiere ne peut consulter que les
+        // classes de CETTE filiere (pas celles des autres filieres de l'ecole)
         if (
             professeur?.professeurProfil?.filiereId &&
             filiereId &&
             parseInt(filiereId as string) !== professeur.professeurProfil.filiereId
         ) {
-            res.status(403).json({ success: false, message: "Vous n'avez pas accès à cette filière" });
+            res.status(403).json({ success: false, message: "Vous n'avez pas acces a cette filiere" });
             return;
         }
 
@@ -1276,10 +1275,10 @@ export const getClasses = async (req: AuthRequest, res: Response, next: NextFunc
             data: classes
         });
     } catch (error) {
-        console.error('Erreur récupération classes:', error);
+        console.error('Erreur recuperation classes:', error);
         res.status(500).json({
             success: false,
-            message: 'Erreur lors de la récupération des classes'
+            message: 'Erreur lors de la recuperation des classes'
         });
     }
 };
@@ -1287,8 +1286,8 @@ export const getClasses = async (req: AuthRequest, res: Response, next: NextFunc
 
 
 // ==================== BANQUE DE QUESTIONS ====================
-// Permet à un professeur de réutiliser des questions déjà rédigées d'une
-// session à l'autre, avec des tags thème/difficulté pour les retrouver.
+// Permet a un professeur de reutiliser des questions deja redigees d'une
+// session a l'autre, avec des tags theme/difficulte pour les retrouver.
 
 export const getBanqueQuestions = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -1300,7 +1299,7 @@ export const getBanqueQuestions = async (req: AuthRequest, res: Response, next: 
 
         const ecoleId = professeur?.professeurProfil?.ecoleId;
         if (!ecoleId) {
-            res.status(403).json({ success: false, message: "Vous n'êtes rattaché à aucune école" });
+            res.status(403).json({ success: false, message: "Vous n'etes rattache a aucune ecole" });
             return;
         }
 
@@ -1310,8 +1309,8 @@ export const getBanqueQuestions = async (req: AuthRequest, res: Response, next: 
             .where('qb.ecole_id = :ecoleId', { ecoleId })
             .orderBy('qb.created_at', 'DESC');
 
-        // Un professeur affecté à une filière ne voit que les questions
-        // générales (sans filière) ou celles de SA propre filière
+        // Un professeur affecte a une filiere ne voit que les questions
+        // generales (sans filiere) ou celles de SA propre filiere
         if (professeur?.professeurProfil?.filiereId) {
             qb.andWhere('(qb.filiere_id IS NULL OR qb.filiere_id = :filiereId)', {
                 filiereId: professeur.professeurProfil.filiereId
@@ -1340,7 +1339,7 @@ export const createBanqueQuestion = async (req: AuthRequest, res: Response, next
 
         const ecoleId = professeur?.professeurProfil?.ecoleId;
         if (!ecoleId) {
-            res.status(403).json({ success: false, message: "Vous n'êtes rattaché à aucune école" });
+            res.status(403).json({ success: false, message: "Vous n'etes rattache a aucune ecole" });
             return;
         }
 
@@ -1367,7 +1366,7 @@ export const createBanqueQuestion = async (req: AuthRequest, res: Response, next
 
         await banqueRepo.save(question);
 
-        res.json({ success: true, message: 'Question ajoutée à la banque', data: question });
+        res.json({ success: true, message: 'Question ajoutee a la banque', data: question });
     } catch (err) {
         next(err);
     }
@@ -1380,7 +1379,7 @@ export const updateBanqueQuestion = async (req: AuthRequest, res: Response, next
 
         const question = await banqueRepo.findOne({ where: { id } });
         if (!question) {
-            res.status(404).json({ success: false, message: 'Question non trouvée' });
+            res.status(404).json({ success: false, message: 'Question non trouvee' });
             return;
         }
         if (question.professeur_id !== professeurId) {
@@ -1401,7 +1400,7 @@ export const updateBanqueQuestion = async (req: AuthRequest, res: Response, next
 
         await banqueRepo.save(question);
 
-        res.json({ success: true, message: 'Question mise à jour', data: question });
+        res.json({ success: true, message: 'Question mise a jour', data: question });
     } catch (err) {
         next(err);
     }
@@ -1414,7 +1413,7 @@ export const deleteBanqueQuestion = async (req: AuthRequest, res: Response, next
 
         const question = await banqueRepo.findOne({ where: { id } });
         if (!question) {
-            res.status(404).json({ success: false, message: 'Question non trouvée' });
+            res.status(404).json({ success: false, message: 'Question non trouvee' });
             return;
         }
         if (question.professeur_id !== professeurId) {
@@ -1424,7 +1423,7 @@ export const deleteBanqueQuestion = async (req: AuthRequest, res: Response, next
 
         await banqueRepo.delete(id);
 
-        res.json({ success: true, message: 'Question supprimée de la banque' });
+        res.json({ success: true, message: 'Question supprimee de la banque' });
     } catch (err) {
         next(err);
     }
@@ -1439,7 +1438,7 @@ export const getTeacherStats = async (req: AuthRequest, res: Response, next: Nex
 if (req.user!.role !== 'professeur' && req.user!.role !== 'superadmin') {
             res.status(403).json({
                 success: false,
-                message: 'Accès non autorisé. Seuls les professeurs peuvent accéder à ces statistiques.'
+                message: 'Acces non autorise. Seuls les professeurs peuvent acceder a ces statistiques.'
             });
             return;
         }
@@ -1457,7 +1456,7 @@ if (req.user!.role !== 'professeur' && req.user!.role !== 'superadmin') {
         let enCours = 0;
         let terminees = 0;
 
-        // Liste des sessions à venir
+        // Liste des sessions a venir
         const sessionsAVenir: any[] = [];
 
         for (const session of sessions) {
@@ -1489,10 +1488,10 @@ if (req.user!.role !== 'professeur' && req.user!.role !== 'superadmin') {
             }
         }
 
-        // Trier les sessions à venir par date (plus proche d'abord)
+        // Trier les sessions a venir par date (plus proche d'abord)
         sessionsAVenir.sort((a, b) => new Date(a.date_debut).getTime() - new Date(b.date_debut).getTime());
 
-        // Calculer la moyenne générale des étudiants (uniquement pour les sessions du professeur)
+        // Calculer la moyenne generale des etudiants (uniquement pour les sessions du professeur)
         let totalScores = 0;
         let totalParticipants = 0;
         let totalPointsPossibles = 0;
@@ -1514,7 +1513,7 @@ if (req.user!.role !== 'professeur' && req.user!.role !== 'superadmin') {
         // Remplace
         const moyenneGenerale = totalParticipants > 0 ? (totalScores / totalParticipants) : 0;
         const moyenneSur20 = totalPointsPossibles > 0 ? (totalScores / totalPointsPossibles) * 20 : 0;
-        // Ces deux lignes sont déjà correctes avec des points bruts ✅
+        // Ces deux lignes sont deja correctes avec des points bruts
 
         res.json({
             success: true,
@@ -1543,7 +1542,7 @@ if (req.user!.role !== 'professeur' && req.user!.role !== 'superadmin') {
 
 
 
-// ==================== TOGGLE RÉSULTATS VISIBLES ====================
+// ==================== TOGGLE RESULTATS VISIBLES ====================
 
 export const toggleResultatsVisibles = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -1558,18 +1557,18 @@ export const toggleResultatsVisibles = async (req: AuthRequest, res: Response, n
             relations: ['classe', 'filiere']
         })
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' })
+            res.status(404).json({ success: false, message: 'Session non trouvee' })
             return
         }
 
-        // On s'apprête à publier : vérifier qu'il ne reste aucune réponse
+        // On s'apprete a publier : verifier qu'il ne reste aucune reponse
         // texte_libre/fichier en attente de correction manuelle
         if (!session.resultatsVisibles) {
             const enAttente = await hasUngradedManualReponses(sessionId)
             if (enAttente) {
                 res.status(400).json({
                     success: false,
-                    message: "Certaines réponses (texte libre / fichier) n'ont pas encore été corrigées. Corrigez-les avant de publier les notes."
+                    message: "Certaines reponses (texte libre / fichier) n'ont pas encore ete corrigees. Corrigez-les avant de publier les notes."
                 })
                 return
             }
@@ -1579,20 +1578,20 @@ export const toggleResultatsVisibles = async (req: AuthRequest, res: Response, n
         await sessionRepo.save(session)
         auditProf(req, session.resultatsVisibles ? 'publication_notes' : 'masquage_notes', 'session', session.id, { titre: session.titre })
 
-        // ─── Notifier les étudiants si notes maintenant visibles ─────────────
+        // --- Notifier les etudiants si notes maintenant visibles ---
         if (session.resultatsVisibles) {
             const io = getSocketIO()
             if (io) {
                 const roomName = `classe_${session.classe_id}_filiere_${session.filiere_id}`
 
-                // WebSocket temps réel
+                // WebSocket temps reel
                 io.to(roomName).emit('notes-publiees', {
                     sessionId: session.id,
                     titre:     session.titre,
                     message:   `Les notes de "${session.titre}" sont maintenant disponibles.`
                 })
 
-                // Notification en base pour chaque étudiant
+                // Notification en base pour chaque etudiant
                 const etudiants = await etudiantProfilRepo.find({
                     where: { classeId: session.classe_id, filiereId: session.filiere_id }
                 })
@@ -1605,14 +1604,13 @@ export const toggleResultatsVisibles = async (req: AuthRequest, res: Response, n
                         sessionId: session.id
                     })
 
-                     // ← AJOUTE
                         const user = await userRepo.findOne({ where: { id: etudiant.userId } })
                         if (user?.notifNotesPubliees) {
                             await envoyerEmailNotesPubliees(user.email, user.prenom, session.titre, session.id)
                         }
                 }
 
-                console.log(`Notes publiées notifiées à: ${roomName}`)
+                console.log(`Notes publiees notifiees a: ${roomName}`)
             }
         }
 
@@ -1624,9 +1622,9 @@ export const toggleResultatsVisibles = async (req: AuthRequest, res: Response, n
 }
 
 // ==================== CORRECTION MANUELLE (texte_libre / fichier) ====================
-// Les réponses à correction manuelle ne sont jamais auto-corrigées : le
-// professeur doit attribuer lui-même une note par réponse avant de pouvoir
-// publier les résultats de la session (voir hasUngradedManualReponses ci-dessus).
+// Les reponses a correction manuelle ne sont jamais auto-corrigees : le
+// professeur doit attribuer lui-meme une note par reponse avant de pouvoir
+// publier les resultats de la session (voir hasUngradedManualReponses ci-dessus).
 
 export const getReponsesACorreger = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -1676,19 +1674,19 @@ export const corrigerReponse = async (req: AuthRequest, res: Response, next: Nex
         const { points } = req.body;
 
         if (!reponseId || points === undefined || points === null) {
-            res.status(400).json({ success: false, message: 'Paramètres invalides' });
+            res.status(400).json({ success: false, message: 'Parametres invalides' });
             return;
         }
 
         const reponse = await reponseRepo.findOne({ where: { id: reponseId } });
         if (!reponse) {
-            res.status(404).json({ success: false, message: 'Réponse non trouvée' });
+            res.status(404).json({ success: false, message: 'Reponse non trouvee' });
             return;
         }
 
         const question = await questionRepo.findOne({ where: { id: reponse.question_id } });
         if (!question) {
-            res.status(404).json({ success: false, message: 'Question non trouvée' });
+            res.status(404).json({ success: false, message: 'Question non trouvee' });
             return;
         }
 
@@ -1701,13 +1699,13 @@ export const corrigerReponse = async (req: AuthRequest, res: Response, next: Nex
 
         await recomputerScoreParticipant(reponse.session_id, reponse.etudiant_id);
 
-        res.json({ success: true, message: 'Réponse corrigée', data: { note_manuelle: notePlafonnee } });
+        res.json({ success: true, message: 'Reponse corrigee', data: { note_manuelle: notePlafonnee } });
     } catch (err) {
         next(err);
     }
 };
 
-// ==================== PLAN DE L'ÉCOLE (pour gater la génération IA côté front) ====================
+// ==================== PLAN DE L'ECOLE (pour gater la generation IA cote front) ====================
 export const getPlanInfo = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const profil = await professeurProfilRepo.findOne({ where: { userId: req.user!.id } });

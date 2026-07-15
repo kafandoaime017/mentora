@@ -7,7 +7,7 @@ export const errorHandler = (
   next: NextFunction
 ) => {
   // Log complet côté serveur uniquement (jamais renvoyé au client)
-  console.error(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} →`, err);
+  console.error(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} ->`, err);
 
   const statusCode = err.statusCode || err.status || 500;
   const isProd = process.env.NODE_ENV === 'production';

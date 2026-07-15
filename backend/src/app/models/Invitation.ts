@@ -30,10 +30,10 @@ export class Invitation {
     @Column({ type: 'varchar', length: 255, unique: true })
     token!: string
 
-    @Column({ type: 'enum', enum: InvitationRole })
+    @Column({ type: 'simple-enum', enum: InvitationRole })
     role!: InvitationRole
 
-    // Pour étudiant seulement
+    // Pour etudiant seulement
     @Column({ type: 'int', unsigned: true, nullable: true })
     classeId!: number | null
 
@@ -41,7 +41,7 @@ export class Invitation {
     @JoinColumn({ name: 'classeId' })
     classe!: Classe | null
 
-    // Pour étudiant + professeur (absent pour un directeur, rattaché à toute l'école)
+    // Pour etudiant + professeur (absent pour un directeur, rattache a toute l'ecole)
     @Column({ type: 'int', unsigned: true, nullable: true })
     filiereId!: number | null
 
@@ -49,7 +49,7 @@ export class Invitation {
     @JoinColumn({ name: 'filiereId' })
     filiere!: Filiere | null
 
-    // Absent pour un superadmin (aucune école rattachée)
+    // Absent pour un superadmin (aucune ecole rattachee)
     @Column({ type: 'int', unsigned: true, nullable: true })
     ecoleId!: number | null
 
@@ -66,5 +66,3 @@ export class Invitation {
     @CreateDateColumn()
     createdAt!: Date
 }
-
-

@@ -24,7 +24,7 @@ export class Question {
     @Column({ type: 'text' })
     texte!: string;
 
-    @Column({ type: 'enum', enum: QuestionType, default: QuestionType.QCM })
+    @Column({ type: 'simple-enum', enum: QuestionType, default: QuestionType.QCM })
     type!: QuestionType;
 
     @Column({ type: 'int', default: 1 })
@@ -40,8 +40,8 @@ export class Question {
     @Column({ type: 'json', nullable: true })
     reponses_correctes!: number[];
 
-    // Repère indicatif pour le professeur lors de la correction manuelle
-    // d'une question de type texte_libre (n'est jamais comparé automatiquement).
+    // Repere indicatif pour le professeur lors de la correction manuelle
+    // d'une question de type texte_libre (n'est jamais compare automatiquement).
     @Column({ type: 'text', nullable: true })
     reponse_indicative!: string | null;
 

@@ -1295,7 +1295,7 @@ export const getUserById = async (req: AuthRequest, res: Response, next: NextFun
     if (!ecoleId) return
 
     const id = parseInt(req.params.id as string)
-    
+
     const user = await userRepo
       .createQueryBuilder('u')
       .leftJoinAndSelect('u.etudiantProfil', 'ep')
@@ -1307,9 +1307,9 @@ export const getUserById = async (req: AuthRequest, res: Response, next: NextFun
       .andWhere('(ep.ecoleId = :ecoleId OR pp.ecoleId = :ecoleId)', { ecoleId })
       .getOne()
 
-    if (!user) { 
-      res.status(404).json({ success: false, message: 'Utilisateur non trouvé' }); 
-      return 
+    if (!user) {
+      res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+      return
     }
 
     // Sessions selon le rôle
@@ -1329,7 +1329,7 @@ export const getUserById = async (req: AuthRequest, res: Response, next: NextFun
       sessions = participants.map(p => {
         const totalPoints = p.session.questions?.reduce((sum: number, q: any) => sum + q.points, 0) || 0
         const noteSur20 = totalPoints > 0 ? ((p.score || 0) / totalPoints) * 20 : 0
-        
+
         return {
           id: p.session.id,
           titre: p.session.titre,

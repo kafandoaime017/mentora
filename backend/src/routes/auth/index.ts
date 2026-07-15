@@ -15,21 +15,21 @@ router.post('/login', authLimiter, validerConnexion, authController.connexion);
 // Google OAuth
 router.post('/google', authController.connexionGoogle); // Connexion directe avec token (mobile/SPA)
 
-// 🆕 Routes Google OAuth avec redirection
+// Routes Google OAuth avec redirection
 router.get('/google/url', authController.getGoogleAuthUrl);
 router.get('/google/callback', authController.googleCallback);
 
-// Routes vérification email
+// Routes verification email
 router.post('/verifier-email', authLimiter, authController.verifierEmail);
 router.post('/renvoyer-code', authLimiter, authController.renvoyerCode);
 
-// 🆕 Routes réinitialisation mot de passe
+// Routes reinitialisation mot de passe
 router.post('/mot-de-passe-oublie', authLimiter, authController.envoyerLienReset);
 router.post('/reinitialiser-mot-de-passe', authLimiter, authController.reinitialiserMotDePasse);
 router.get('/verifier-token-reset/:token', authController.verifierTokenReset);
 
 
-// ─── Routes protégées (profil connecté) ──────────────────────────────────────
+// --- Routes protegees (profil connecte) ---
 router.post('/envoyer-code-mdp',     authMiddleware, authController.envoyerCodeChangementMdp)
 router.post('/changer-mot-de-passe', authMiddleware, authController.changerMotDePasse)
 

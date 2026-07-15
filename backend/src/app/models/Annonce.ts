@@ -45,18 +45,18 @@ export class Annonce {
     @Column({ type: 'text' })
     contenu!: string
 
-    @Column({ type: 'enum', enum: AnnonceType, default: AnnonceType.INFO })
+    @Column({ type: 'simple-enum', enum: AnnonceType, default: AnnonceType.INFO })
     type!: AnnonceType
 
-    // Pertinent seulement pour les sondages : bloque l'accès tant que non répondu
+    // Pertinent seulement pour les sondages : bloque l'acces tant que non repondu
     @Column({ type: 'boolean', default: false })
     obligatoire!: boolean
 
-    // Options du sondage (tableau de libellés), null si type = info
+    // Options du sondage (tableau de libelles), null si type = info
     @Column({ type: 'json', nullable: true })
     options!: string[] | null
 
-    @Column({ type: 'enum', enum: AnnonceCible, default: AnnonceCible.TOUS })
+    @Column({ type: 'simple-enum', enum: AnnonceCible, default: AnnonceCible.TOUS })
     cible_type!: AnnonceCible
 
     @Column({ type: 'int', unsigned: true, nullable: true })

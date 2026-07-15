@@ -26,7 +26,7 @@ export class ReponseEtudiant {
     @Column({ type: 'boolean', default: false })
     est_correcte!: boolean;
 
-    // ─── Correction manuelle (texte_libre / fichier) ───────────────────────
+    // --- Correction manuelle (texte_libre / fichier) ---
     @Column({ type: 'text', nullable: true })
     reponse_texte!: string | null;
 
@@ -39,7 +39,7 @@ export class ReponseEtudiant {
     @Column({ type: 'boolean', default: false })
     corrige_manuellement!: boolean;
 
-    // ─── Détection de triche basique ───────────────────────────────────────
+    // --- Detection de triche basique ---
     @Column({ type: 'int', nullable: true })
     temps_reponse_ms!: number | null;
 

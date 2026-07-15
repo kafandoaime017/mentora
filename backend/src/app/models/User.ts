@@ -31,7 +31,7 @@ export class User {
     @Column({ type: 'varchar', length: 255, nullable: true })
     motDePasse!: string | null;
 
-    @Column({ type: 'enum', enum: UserRole })
+    @Column({ type: 'simple-enum', enum: UserRole })
     role!: UserRole;
 
     @Column({ type: 'varchar', length: 255, nullable: true, unique: true })
@@ -58,14 +58,14 @@ export class User {
     @Column({ type: 'datetime', nullable: true })
     resetPasswordExpires!: Date | null;
 
-    // ─── École (pour le directeur) ────────────────────────────────────────────
+    // --- Ecole (pour le directeur) ---
     @Column({ type: 'int', unsigned: true, nullable: true })
     ecoleId!: number | null;
 
     @ManyToOne(() => Ecole, { nullable: true, onDelete: 'SET NULL' })
     @JoinColumn({ name: 'ecoleId' })
     ecole!: Ecole | null;
-    // ─────────────────────────────────────────────────────────────────────────
+    // ---
 
     @OneToOne(() => EtudiantProfil, (p) => p.user, { nullable: true, cascade: true })
     etudiantProfil!: EtudiantProfil | null;

@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { DataSource } from "typeorm";
+import { DataSource, DataSourceOptions } from "typeorm";
 import dotenv from "dotenv";
 import path from "path";
 
@@ -24,20 +24,38 @@ import { AuditLog } from "../app/models/AuditLog";
 
 dotenv.config();
 
-const AppDataSource = new DataSource({
-    type: "mysql",
-    host: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT),
-    username: process.env.DB_USER,
-    password: process.env.DB_PASS,
-    database: process.env.DB_NAME,
-    synchronize: false,
-    logging: true, // Met true pour voir les erreurs
-    entities: [EtudiantProfil, ProfesseurProfil, User, Classe, Filiere, Ecole,Question,Session,SessionParticipant,ReponseEtudiant, Notification,Invitation,QuestionBanque,Annonce,AnnonceInteraction,AuditLog],
-    // .ts pour "npm run migration:run" (execute via ts-node sur les sources),
-    // .js pour le serveur compile (dist/) en production
-    migrations: [__dirname + "/../app/migrations/*.{js,ts}"],
-    subscribers: [],
-});
+const entities = [EtudiantProfil, ProfesseurProfil, User, Classe, Filiere, Ecole, Question, Session, SessionParticipant, ReponseEtudiant, Notification, Invitation, QuestionBanque, Annonce, AnnonceInteraction, AuditLog];
+
+// En environnement de test (Jest force NODE_ENV=test), on utilise une base
+// SQLite en memoire (via sql.js, pur JS/WASM, sans compilation native) au lieu
+// de MySQL : pas besoin de service DB externe en CI, chaque suite de tests
+// demarre avec un schema vierge et isole (synchronize:true). Le comportement
+// dev/prod (MySQL) n'est jamais impacte par cette branche.
+const options: DataSourceOptions = process.env.NODE_ENV === 'test'
+    ? {
+        type: "sqljs",
+        autoSave: false,
+        dropSchema: true,
+        synchronize: true,
+        logging: false,
+        entities,
+    }
+    : {
+        type: "mysql",
+        host: process.env.DB_HOST,
+        port: Number(process.env.DB_PORT),
+        username: process.env.DB_USER,
+        password: process.env.DB_PASS,
+        database: process.env.DB_NAME,
+        synchronize: false,
+        logging: true, // Met true pour voir les erreurs
+        entities,
+        // .ts pour "npm run migration:run" (execute via ts-node sur les sources),
+        // .js pour le serveur compile (dist/) en production
+        migrations: [__dirname + "/../app/migrations/*.{js,ts}"],
+        subscribers: [],
+    };
+
+const AppDataSource = new DataSource(options);
 
 export default AppDataSource;

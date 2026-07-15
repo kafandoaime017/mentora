@@ -6,7 +6,7 @@ import { createQCM } from '../../app/controllers/teacherController';
 
 const router = Router();
 
-// Toutes les routes nécessitent authentification et rôle professeur
+// Toutes les routes necessitent authentification et role professeur
 router.use(authMiddleware);
 router.use(requireRole(['professeur']));
 
@@ -32,7 +32,7 @@ router.post('/sessions/:id/end', teacherController.endSession);
 // ==================== PARTICIPANTS ====================
 router.get('/sessions/:id/participants', teacherController.getParticipants);
 
-// ==================== RÉPONSES D'UN ÉTUDIANT ====================
+// ==================== REPONSES D'UN ETUDIANT ====================
 router.get('/sessions/:id/etudiant/:etudiantId/reponses', teacherController.getEtudiantReponses);
 
 // ==================== STATISTIQUES ====================
@@ -43,10 +43,10 @@ router.get('/sessions/:id/export', teacherController.exportResults);
 
 router.get('/stats', teacherController.getTeacherStats);
 
-// ROUTE POUR RÉCUPÉRER LES FILIÈRES
+// ROUTE POUR RECUPERER LES FILIERES
 router.get('/filieres', teacherController.getFilieres);
 
-// ROUTE POUR RÉCUPÉRER LES CLASSES
+// ROUTE POUR RECUPERER LES CLASSES
 router.get('/classes', teacherController.getClasses);
 router.patch('/sessions/:id/toggle-resultats', teacherController.toggleResultatsVisibles)
 
@@ -60,7 +60,7 @@ router.delete('/banque-questions/:id', teacherController.deleteBanqueQuestion);
 router.get('/sessions/:id/reponses-a-corriger', teacherController.getReponsesACorreger);
 router.patch('/reponses/:reponseId/corriger', teacherController.corrigerReponse);
 
-// ==================== PLAN DE L'ÉCOLE ====================
+// ==================== PLAN DE L'ECOLE ====================
 router.get('/plan', teacherController.getPlanInfo);
 
 

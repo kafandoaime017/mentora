@@ -40,12 +40,12 @@ const isDirecteur = [authMiddleware, requireRole(['directeur'])]
 // Dashboard
 router.get('/dashboard', ...isAdmin, getDashboard)
 
-// École
+// Ecole
 router.get('/ecole',    ...isAdmin, getEcole)
 router.put('/ecole',    ...isAdmin, updateEcole)
 router.post('/ecole/logo', ...isAdmin, uploadEcoleLogoMiddleware.single('logo'), uploadEcoleLogo)
 
-// Filières
+// Filieres
 router.get('/filieres',        ...isAdmin, getFilieres)
 router.post('/filieres',       ...isAdmin, createFiliere)
 router.put('/filieres/:id',    ...isAdmin, updateFiliere)
@@ -80,7 +80,7 @@ router.post('/invitations', ...isAdmin, (req, res, next) => {
 }, sendInvitation)
 router.delete('/invitations/:id', ...isAdmin, deleteInvitation)
 
-// Routes publiques (sans auth) — pour la page /auth/invitation
+// Routes publiques (sans auth) -- pour la page /auth/invitation
 router.get('/invitations/verify',   verifyInvitationToken)
 router.post('/invitations/register', registerViaInvitation)
 router.post('/invitations/:id/resend', ...isAdmin, resendInvitation)

@@ -24,7 +24,7 @@ router.post('/sessions/:id/reponses/:questionId', studentController.submitSingle
 router.post('/sessions/:id/reponses/:questionId/fichier', uploadReponseFichier.single('fichier'), studentController.submitReponseFichier);
 router.post('/sessions/:id/signaler-onglet', studentController.signalerChangementOnglet);
 
-// ==================== RÉSULTATS ====================
+// ==================== RESULTATS ====================
 router.get('/sessions/:id/resultats', studentController.getSessionResults);
 router.get('/historique', studentController.getHistorique);
 router.get('/profil', studentController.getStudentProfil);

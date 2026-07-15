@@ -36,7 +36,7 @@ export class Ecole {
   @UpdateDateColumn()
   updatedAt!: Date;
 
-  @Column({ type: 'enum', enum: ['gratuit', 'starter', 'pro'], default: 'gratuit' })
+  @Column({ type: 'simple-enum', enum: ['gratuit', 'starter', 'pro'], default: 'gratuit' })
 plan!: 'gratuit' | 'starter' | 'pro'
 
 @Column({ type: 'datetime', nullable: true })

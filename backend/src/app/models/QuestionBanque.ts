@@ -13,8 +13,8 @@ export enum QuestionDifficulte {
     DIFFICILE = 'difficile'
 }
 
-// Banque de questions réutilisable : un professeur peut y piocher des
-// questions déjà rédigées au lieu de les ressaisir à chaque session.
+// Banque de questions reutilisable : un professeur peut y piocher des
+// questions deja redigees au lieu de les ressaisir a chaque session.
 @Entity('questions_banque')
 export class QuestionBanque {
     @PrimaryGeneratedColumn({ type: 'int', unsigned: true })
@@ -32,7 +32,7 @@ export class QuestionBanque {
     @Column({ type: 'text' })
     texte!: string;
 
-    @Column({ type: 'enum', enum: QuestionType, default: QuestionType.QCM })
+    @Column({ type: 'simple-enum', enum: QuestionType, default: QuestionType.QCM })
     type!: QuestionType;
 
     @Column({ type: 'int', default: 1 })
@@ -50,7 +50,7 @@ export class QuestionBanque {
     @Column({ type: 'varchar', length: 100, nullable: true })
     theme!: string | null;
 
-    @Column({ type: 'enum', enum: QuestionDifficulte, default: QuestionDifficulte.MOYEN })
+    @Column({ type: 'simple-enum', enum: QuestionDifficulte, default: QuestionDifficulte.MOYEN })
     difficulte!: QuestionDifficulte;
 
     @ManyToOne(() => Ecole, { onDelete: 'CASCADE' })

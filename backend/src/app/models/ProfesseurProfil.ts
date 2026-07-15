@@ -17,7 +17,7 @@ export class ProfesseurProfil {
     @Column({ type: 'varchar', length: 20, nullable: true })
     telephone!: string | null;
 
-    // ─── Relation User ────────────────────────────────────────────────────────
+    // --- Relation User ---
     @Column({ type: 'int', unsigned: true, unique: true })
     userId!: number;
 
@@ -25,7 +25,7 @@ export class ProfesseurProfil {
     @JoinColumn({ name: 'userId' })
     user!: User;
 
-    // ─── École rattachée ──────────────────────────────────────────────────────
+    // --- Ecole rattachee ---
     @Column({ type: 'int', unsigned: true, nullable: true })
     ecoleId!: number | null;
 
@@ -34,7 +34,7 @@ export class ProfesseurProfil {
     ecole!: Ecole | null;
 
 
-    @Column({ type: 'enum', enum: ['pending', 'active'], default: 'pending' })
+    @Column({ type: 'simple-enum', enum: ['pending', 'active'], default: 'pending' })
     statut!: string;
 
     @Column({ type: 'int', unsigned: true, nullable: true })

@@ -15,7 +15,7 @@ const googleClient = new OAuth2Client(
 export const inscription = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await authService.inscrireEtudiant(req.body);
-    res.json(result);
+    res.status(result.success ? 200 : (result as any).status || 400).json(result);
   } catch (err) { next(err); }
 };
 
@@ -24,7 +24,7 @@ export const connexion = async (req: Request, res: Response, next: NextFunction)
     const result = await authService.connecter(req.body);
 
     // Audit : on ne journalise que les connexions pleinement abouties
-    // (pas les demandes de code TOTP, qui ne sont qu'une étape intermédiaire).
+    // (pas les demandes de code TOTP, qui ne sont qu'une etape intermediaire).
     if (result?.success && result.token && result.user) {
       let ecoleId: number | null = result.user.profil?.ecoleId ?? null
       if (result.user.role === 'professeur' && !ecoleId) {
@@ -53,7 +53,7 @@ export const connexionGoogle = async (req: Request, res: Response, next: NextFun
     const { idToken } = req.body;
     if (!idToken) { res.status(400).json({ success: false, message: 'idToken requis.' }); return; }
     const result = await authService.connecterAvecGoogle(idToken);
-    res.status(200).json({ success: true, message: 'Connexion Google réussie.', data: result });
+    res.status(200).json({ success: true, message: 'Connexion Google reussie.', data: result });
   } catch (err) { next(err); }
 };
 
@@ -72,19 +72,19 @@ export const googleCallback = async (req: Request, res: Response, next: NextFunc
   try {
     const { code } = req.query;
     if (!code) throw new Error('Code manquant');
-    
+
     const { tokens } = await googleClient.getToken(code as string);
     const idToken = tokens.id_token;
     if (!idToken) throw new Error('ID token manquant');
-    
+
     const result = await authService.connecterAvecGoogle(idToken);
-    
+
     const frontendUrl = `${process.env.FRONTEND_URL}/auth/login?token=${result.token}&user=${encodeURIComponent(JSON.stringify(result.user))}&profilIncomplet=${result.profilIncomplet || false}`;
-    
-    console.log('🔄 Redirection vers:', frontendUrl);
+
+    console.log('Redirection vers:', frontendUrl);
     res.redirect(frontendUrl);
   } catch (err) {
-    console.error('❌ Erreur callback Google:', err);
+    console.error('Erreur callback Google:', err);
     res.redirect(`${process.env.FRONTEND_URL}/auth/login?error=google_auth_failed`);
   }
 };
@@ -140,7 +140,7 @@ export const reinitialiserMotDePasse = async (req: Request, res: Response, next:
   } catch (err) { next(err); }
 };
 
-// ─── Changement mot de passe depuis le profil ─────────────────────────────────
+// --- Changement mot de passe depuis le profil ---
 export const envoyerCodeChangementMdp = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user!.id

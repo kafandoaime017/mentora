@@ -23,7 +23,7 @@ export class SessionParticipant {
     @Column({ type: 'int', unsigned: true })
     etudiant_id!: number;
 
-    @Column({ type: 'enum', enum: ParticipantStatus, default: ParticipantStatus.INSCRIT })
+    @Column({ type: 'simple-enum', enum: ParticipantStatus, default: ParticipantStatus.INSCRIT })
     statut!: ParticipantStatus;
 
     @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
@@ -35,7 +35,7 @@ export class SessionParticipant {
     @Column({ type: 'datetime', nullable: true })
     date_completed!: Date | null;
 
-    // ─── Détection de triche basique ───────────────────────────────────────
+    // --- Detection de triche basique ---
     @Column({ type: 'int', default: 0 })
     nb_changements_onglet!: number;
 

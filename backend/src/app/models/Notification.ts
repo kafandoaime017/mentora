@@ -30,7 +30,7 @@ export class Notification {
     @Column({ type: 'text' })
     message!: string
 
-    @Column({ type: 'enum', enum: NotificationType })
+    @Column({ type: 'simple-enum', enum: NotificationType })
     type!: NotificationType
 
     @Column({ type: 'boolean', default: false })
