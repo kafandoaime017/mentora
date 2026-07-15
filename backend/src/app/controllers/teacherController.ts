@@ -14,12 +14,14 @@ import { NotificationType } from '../models/Notification';
 import { EtudiantProfil } from '../models/EtudiantProfil';
 import { QuestionBanque, QuestionDifficulte } from '../models/QuestionBanque';
 import { ProfesseurProfil } from '../models/ProfesseurProfil';
+import { Ecole } from '../models/Ecole';
 import {
     envoyerEmailSessionDemarree,
     envoyerEmailNouvelleSession,
     envoyerEmailNotesPubliees
 } from '../services/emailService'
 import { logAudit, getClientIp } from '../services/auditService'
+import { LIMITES_PLANS } from '../middleware/checkPlan'
 
 
 
@@ -39,6 +41,7 @@ const userRepo = AppDataSource.getRepository(User);
 const etudiantProfilRepo = AppDataSource.getRepository(EtudiantProfil);
 const banqueRepo = AppDataSource.getRepository(QuestionBanque);
 const professeurProfilRepo = AppDataSource.getRepository(ProfesseurProfil);
+const ecoleRepo = AppDataSource.getRepository(Ecole);
 
 // ─── Détection de triche basique : seuils (arbitraires, ajustables) ───────────
 const SEUIL_CHANGEMENTS_ONGLET = 3;      // nb de fois où l'étudiant a quitté l'onglet/le plein écran
@@ -1699,6 +1702,24 @@ export const corrigerReponse = async (req: AuthRequest, res: Response, next: Nex
         await recomputerScoreParticipant(reponse.session_id, reponse.etudiant_id);
 
         res.json({ success: true, message: 'Réponse corrigée', data: { note_manuelle: notePlafonnee } });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ==================== PLAN DE L'ÉCOLE (pour gater la génération IA côté front) ====================
+export const getPlanInfo = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const profil = await professeurProfilRepo.findOne({ where: { userId: req.user!.id } });
+        if (!profil?.ecoleId) {
+            res.json({ success: true, data: { plan: 'gratuit', ia: false } });
+            return;
+        }
+
+        const ecole = await ecoleRepo.findOne({ where: { id: profil.ecoleId } });
+        const plan = ecole?.plan || 'gratuit';
+
+        res.json({ success: true, data: { plan, ia: LIMITES_PLANS[plan].ia } });
     } catch (err) {
         next(err);
     }

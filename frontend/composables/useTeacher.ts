@@ -376,6 +376,20 @@ const generateQuestionsAI = async (data: {
     }
 }
 
+/**
+ * Plan de l'école du professeur connecté (utilisé pour n'afficher la
+ * génération IA que si l'école est sur le plan Pro).
+ */
+const getPlanInfo = async () => {
+    try {
+        const res = await $fetch('/api/teacher/plan', { headers: getAuthHeader() })
+        return res
+    } catch (error: any) {
+        console.error('Erreur récupération plan:', error)
+        return error.data || { success: false, data: { plan: 'gratuit', ia: false } }
+    }
+}
+
     // ==================== BANQUE DE QUESTIONS ====================
 
     /**
@@ -486,6 +500,7 @@ const generateQuestionsAI = async (data: {
         // QCM
         createQCM,
         generateQuestionsAI,
+        getPlanInfo,
         getQCMList,
         getQCMDetails,
         updateQCM,

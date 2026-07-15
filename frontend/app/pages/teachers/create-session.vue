@@ -57,8 +57,8 @@
             </div>
           </div>
 
-          <!-- GÉNÉRATION IA -->
-          <div class="bg-white shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)] overflow-hidden rounded-lg">
+          <!-- GÉNÉRATION IA (plan Pro uniquement) -->
+          <div v-if="iaDisponible" class="bg-white shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)] overflow-hidden rounded-lg">
             <div class="border-b border-[#e2ddd4] p-4 bg-[#f5f0e8]/30 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 class="font-body text-lg font-bold text-[#1e3a2f]">Génération par IA</h3>
@@ -541,7 +541,7 @@ import flatpickr from 'flatpickr'
 import 'flatpickr/dist/flatpickr.css'
 import 'flatpickr/dist/themes/material_green.css'
 
-const { getFilieres, getClassesByFiliere, createQCM, generateQuestionsAI, getBanqueQuestions } = useTeacher()
+const { getFilieres, getClassesByFiliere, createQCM, generateQuestionsAI, getBanqueQuestions, getPlanInfo } = useTeacher()
 const toast = useToast()
 
 const loading         = ref(false)
@@ -549,6 +549,8 @@ const loadingAI       = ref(false)
 const filieres        = ref([])
 const classes         = ref([])
 const nombreQuestionsAI = ref(5)
+// Génération IA réservée au plan Pro de l'école — masquée sinon
+const iaDisponible = ref(false)
 
 const showBanqueModal = ref(false)
 const loadingBanque   = ref(false)
@@ -904,6 +906,8 @@ const initDatePickers = () => {
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
 onMounted(async () => {
+  getPlanInfo().then(res => { iaDisponible.value = !!res?.data?.ia })
+
   const res = await getFilieres()
   if (res.success) {
     filieres.value = res.data

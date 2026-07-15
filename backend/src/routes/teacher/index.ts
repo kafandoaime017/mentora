@@ -60,5 +60,8 @@ router.delete('/banque-questions/:id', teacherController.deleteBanqueQuestion);
 router.get('/sessions/:id/reponses-a-corriger', teacherController.getReponsesACorreger);
 router.patch('/reponses/:reponseId/corriger', teacherController.corrigerReponse);
 
+// ==================== PLAN DE L'ÉCOLE ====================
+router.get('/plan', teacherController.getPlanInfo);
+
 
 export default router;

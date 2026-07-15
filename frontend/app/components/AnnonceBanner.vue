@@ -1,5 +1,5 @@
 <template>
-  <div v-if="courante" class="mb-4 rounded-xl overflow-hidden border" :class="courante.type === 'sondage' ? 'border-[#4a7c5e]/30 bg-[#4a7c5e]/5' : 'border-[#054348]/20 bg-[#054348]/5'">
+  <div v-if="courante" class="mb-4 rounded-xl overflow-hidden bg-amber-50">
     <div class="p-4">
       <div class="flex items-start justify-between gap-3 mb-2">
         <div class="flex items-center gap-2">
