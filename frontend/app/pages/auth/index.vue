@@ -125,6 +125,12 @@
           </button>
 
         </form>
+
+        <p class="text-center text-[11px] text-gray-400 mt-6">
+          En vous connectant, vous acceptez nos
+          <nuxt-link to="/legal/cgu" class="text-primary hover:underline">CGU</nuxt-link> et notre
+          <nuxt-link to="/legal/politique-confidentialite" class="text-primary hover:underline">politique de confidentialité</nuxt-link>.
+        </p>
       </div>
 
       <!-- Bottom waves -->

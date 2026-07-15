@@ -1,3 +1,8 @@
+# Variante Docker SWARM (multi-réplicas, orchestration multi-nœuds).
+# NON UTILISÉE en l'état — le déploiement de référence est docker-compose.prod.yml
+# (voir README.md § Déploiement). Ce fichier est conservé comme point de départ si
+# un passage à Swarm est envisagé plus tard ; il attend les mêmes variables que
+# .env.prod (DB_ROOT_PASSWORD, DB_DATABASE, GLITCHTIP_*, UMAMI_*).
 version: "3.9"
 
 services:

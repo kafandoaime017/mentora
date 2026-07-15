@@ -4,13 +4,26 @@ import { Server as SocketServer } from "socket.io";
 import routes from "./src/routes/index";
 import AppDataSource from "./src/config/data-source";
 import cors from "cors";
+import helmet from "helmet";
 import { errorHandler } from "./src/app/middleware/errorHandler";
+import { apiLimiter } from "./src/app/middleware/rateLimiter";
 import path from "path";
 import { setupSocketIO } from "./src/socket";
 import { handleWebhook } from "./src/app/controllers/stripeController";
 
 const app = express();
 const server = createServer(app);
+
+// ============================================
+// SÉCURITÉ : EN-TÊTES HTTP (helmet)
+// ============================================
+app.use(
+  helmet({
+    // L'app sert des images (logos, uploads) consommées cross-origin par le frontend,
+    // on désactive donc la politique par défaut trop stricte pour les ressources statiques.
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 
 // ============================================
 // CONFIGURATION CORS UNIFIÉE
@@ -57,7 +70,7 @@ app.post(
 // JSON parser pour toutes les autres routes
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'src/public/uploads')));
-app.use("/api", routes);
+app.use("/api", apiLimiter, routes);
 app.use(errorHandler);
 
 // ============================================

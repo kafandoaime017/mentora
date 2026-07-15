@@ -24,4 +24,6 @@ COPY package*.json ./
 
 EXPOSE 5000
 
-CMD ["node", "dist/server.js"]
+# Applique les migrations TypeORM en attente avant de démarrer le serveur.
+# Évite qu'un déploiement démarre sur un schéma de base de données obsolète.
+CMD ["sh", "-c", "npm run migration:run && node dist/server.js"]

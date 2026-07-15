@@ -370,6 +370,18 @@
   </div>
 </section>
 
+  <!-- Footer -->
+  <footer class="bg-white border-t border-gray-200 py-8 mt-4">
+    <div class="max-w-5xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-4">
+      <p class="text-xs text-gray-500 font-body">© {{ new Date().getFullYear() }} Mentora. Tous droits réservés.</p>
+      <div class="flex items-center gap-6">
+        <nuxt-link to="/legal/cgu" class="text-xs text-gray-500 hover:text-primary font-body">CGU</nuxt-link>
+        <nuxt-link to="/legal/politique-confidentialite" class="text-xs text-gray-500 hover:text-primary font-body">Confidentialité</nuxt-link>
+        <nuxt-link to="/legal/mentions-legales" class="text-xs text-gray-500 hover:text-primary font-body">Mentions légales</nuxt-link>
+      </div>
+    </div>
+  </footer>
+
   </div>
 </template>
 
