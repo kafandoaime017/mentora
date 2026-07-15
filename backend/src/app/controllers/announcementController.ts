@@ -114,7 +114,7 @@ export const getAnnonceResultats = async (req: AuthRequest, res: Response, next:
         const ecoleId = getEcoleId(req, res)
         if (!ecoleId) return
 
-        const annonce = await annonceRepo.findOne({ where: { id: parseInt(req.params.id), ecole_id: ecoleId } })
+        const annonce = await annonceRepo.findOne({ where: { id: parseInt(req.params.id as string), ecole_id: ecoleId } })
         if (!annonce) { res.status(404).json({ success: false, message: 'Annonce introuvable' }); return }
 
         const cibles = await getUtilisateursCibles(annonce)
@@ -219,7 +219,7 @@ export const toggleAnnonceActif = async (req: AuthRequest, res: Response, next: 
         const ecoleId = getEcoleId(req, res)
         if (!ecoleId) return
 
-        const annonce = await annonceRepo.findOne({ where: { id: parseInt(req.params.id), ecole_id: ecoleId } })
+        const annonce = await annonceRepo.findOne({ where: { id: parseInt(req.params.id as string), ecole_id: ecoleId } })
         if (!annonce) { res.status(404).json({ success: false, message: 'Annonce introuvable' }); return }
 
         annonce.actif = !annonce.actif
@@ -240,14 +240,14 @@ export const deleteAnnonce = async (req: AuthRequest, res: Response, next: NextF
         const ecoleId = getEcoleId(req, res)
         if (!ecoleId) return
 
-        const annonce = await annonceRepo.findOne({ where: { id: parseInt(req.params.id), ecole_id: ecoleId } })
+        const annonce = await annonceRepo.findOne({ where: { id: parseInt(req.params.id as string), ecole_id: ecoleId } })
         if (!annonce) { res.status(404).json({ success: false, message: 'Annonce introuvable' }); return }
 
         await annonceRepo.remove(annonce)
 
         logAudit({
             ecoleId, userId: req.user!.id, userNom: `${req.user!.prenom} ${req.user!.nom}`, userRole: req.user!.role,
-            action: 'suppression_annonce', cibleType: 'annonce', cibleId: parseInt(req.params.id), ip: getClientIp(req)
+            action: 'suppression_annonce', cibleType: 'annonce', cibleId: parseInt(req.params.id as string), ip: getClientIp(req)
         })
 
         res.json({ success: true })
@@ -318,7 +318,7 @@ const getOrCreateInteraction = async (annonceId: number, userId: number): Promis
 
 export const marquerAnnonceVue = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-        const annonceId = parseInt(req.params.id)
+        const annonceId = parseInt(req.params.id as string)
         const annonce = await annonceRepo.findOne({ where: { id: annonceId } })
         if (!annonce) { res.status(404).json({ success: false, message: 'Annonce introuvable' }); return }
         if (annonce.type === AnnonceType.SONDAGE && annonce.obligatoire) {
@@ -336,7 +336,7 @@ export const marquerAnnonceVue = async (req: AuthRequest, res: Response, next: N
 
 export const repondreAnnonce = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-        const annonceId = parseInt(req.params.id)
+        const annonceId = parseInt(req.params.id as string)
         const { optionIndex } = req.body
         const annonce = await annonceRepo.findOne({ where: { id: annonceId } })
         if (!annonce) { res.status(404).json({ success: false, message: 'Annonce introuvable' }); return }
