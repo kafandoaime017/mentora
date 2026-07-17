@@ -541,6 +541,7 @@ const etudiantReponses    = ref({})
 const nbChangementsOngletSelection = ref(0)
 const newSubmissionFlash  = ref(false)
 const recentlyUpdated     = ref(new Set())
+let participantsPollInterval = null
 
 // ─── Correction manuelle (texte_libre / fichier) ──────────────────────────────
 const loadingCorrections  = ref(false)
@@ -762,11 +763,31 @@ const loadQCMDetails = async () => {
     const socket = getSocket()
     if (socket?.connected) { joinSessionRoom(); listenStudentSubmissions() }
     else setTimeout(() => { joinSessionRoom(); listenStudentSubmissions() }, 1500)
+    demarrerPollingParticipants()
   } else {
     toast.error('Erreur de chargement')
     router.back()
   }
   loading.value = false
+}
+
+// ─── Rafraîchissement périodique des participants ─────────────────────────────
+// Le socket 'student-submitted' ne met à jour que score/statut à la soumission
+// finale ; les infos de détection de triche (changements d'onglet, réponses
+// suspectes) ne sont recalculées que côté backend à chaque appel getParticipants.
+// Sans ce polling, le badge de suspicion ne s'afficherait jamais tant que le
+// professeur n'a pas rechargé la page manuellement pendant une session active.
+const demarrerPollingParticipants = () => {
+  if (participantsPollInterval) clearInterval(participantsPollInterval)
+  if (qcm.value.status !== 'active') return
+  participantsPollInterval = setInterval(() => {
+    if (qcm.value.status !== 'active') {
+      clearInterval(participantsPollInterval)
+      participantsPollInterval = null
+      return
+    }
+    loadParticipants()
+  }, 15000)
 }
 
 // ─── Correction manuelle (texte_libre / fichier) ──────────────────────────────
@@ -816,6 +837,7 @@ onMounted(() => loadQCMDetails())
 onUnmounted(() => {
   const socket = getSocket()
   if (socket) { socket.emit('leave-session-room', qcm.value.id); socket.off('student-submitted') }
+  if (participantsPollInterval) { clearInterval(participantsPollInterval); participantsPollInterval = null }
 })
 </script>
 
