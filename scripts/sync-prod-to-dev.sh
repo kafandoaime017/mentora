@@ -32,7 +32,7 @@ fi
 
 PROD_CONTAINER=mentora_db_prod
 DEV_CONTAINER=mentora_db
-PROD_DB=mentora_prod
+PROD_DB=mentora
 DEV_DB=mentora
 DEV_PASS=root   # identifiants dev, cf. docker-compose.dev.yml
 
