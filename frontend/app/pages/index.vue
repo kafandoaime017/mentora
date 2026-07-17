@@ -29,12 +29,12 @@
         </div>
         
         <div class="hidden md:flex gap-8">
-          <a 
-            href="#" 
+          <a
+            href="#fonctionnalites"
             :class="[
               'text-sm font-medium uppercase transition-colors',
-              isScrolled 
-                ? 'text-gray-600 hover:text-secondary' 
+              isScrolled
+                ? 'text-gray-600 hover:text-secondary'
                 : 'text-white/60 hover:text-white'
             ]"
           >
@@ -136,43 +136,135 @@
     </div>
 
     <!-- Features Section -->
-    <section class="bg-white py-20">
+    <section id="fonctionnalites" class="bg-white py-20 scroll-mt-24">
       <div class="max-w-7xl mx-auto px-8 md:px-16">
-        <div class="text-center mb-12">
+        <div class="text-center mb-16">
           <h2 class="text-3xl md:text-4xl font-body font-bold text-primary mb-4">
             Fonctionnalités
           </h2>
           <p class="text-gray-600 font-body text-lg max-w-2xl mx-auto">
-            Découvrez tous les outils pour réussir vos évaluations et accompagner vos étudiants
+            Une plateforme pensée pour chaque acteur de l'établissement : étudiants, professeurs et direction
           </p>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div class="bg-gray-200 rounded-xl p-8 text-center hover:shadow-xl transition-shadow">
-            <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg class="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-              </svg>
-            </div>
-            <h3 class="text-xl font-bold text-primary font-body mb-3">QCM Interactifs</h3>
-            <p class="text-gray-600 font-body">Entraînez-vous avec des centaines de questions et suivez votre progression</p>
+
+        <!-- Étudiant -->
+        <div class="flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-24">
+          <div class="flex-1 w-full">
+            <span class="inline-block px-3 py-1 bg-secondary/10 text-secondary text-xs font-bold uppercase tracking-wide rounded-full mb-4">
+              Espace étudiant
+            </span>
+            <h3 class="text-2xl md:text-3xl font-body font-bold text-primary mb-6">
+              Passez vos examens sereinement
+            </h3>
+            <ul class="space-y-4">
+              <li v-for="item in featuresEtudiant" :key="item" class="flex items-start gap-3">
+                <span class="mt-0.5 w-5 h-5 rounded-full bg-secondary/10 flex items-center justify-center shrink-0">
+                  <svg class="w-3.5 h-3.5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span class="text-gray-700 font-body">{{ item }}</span>
+              </li>
+            </ul>
           </div>
-          <div class="bg-gray-200 rounded-xl p-8 text-center hover:shadow-xl transition-shadow">
-            <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg class="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          <div class="flex-1 w-full flex justify-center">
+            <div class="w-full max-w-md aspect-square rounded-3xl bg-primary/5 flex items-center justify-center">
+              <svg viewBox="0 0 400 400" class="w-4/5 h-4/5">
+                <rect x="90" y="50" width="220" height="300" rx="24" fill="#054348"/>
+                <rect x="112" y="86" width="176" height="188" rx="10" fill="#fffcee"/>
+                <rect x="130" y="106" width="140" height="10" rx="5" fill="#054348" opacity="0.15"/>
+                <rect x="130" y="128" width="100" height="10" rx="5" fill="#054348" opacity="0.15"/>
+                <rect x="130" y="156" width="140" height="26" rx="8" fill="#709134" opacity="0.12"/>
+                <circle cx="146" cy="169" r="7" fill="#709134"/>
+                <path d="M142 169l3 3 6-6" stroke="#fffcee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                <rect x="130" y="192" width="140" height="26" rx="8" fill="#054348" opacity="0.06"/>
+                <circle cx="146" cy="205" r="7" fill="none" stroke="#054348" stroke-width="2" opacity="0.3"/>
+                <rect x="130" y="228" width="140" height="26" rx="8" fill="#054348" opacity="0.06"/>
+                <circle cx="146" cy="241" r="7" fill="none" stroke="#054348" stroke-width="2" opacity="0.3"/>
+                <rect x="150" y="296" width="100" height="30" rx="15" fill="#709134"/>
+                <rect x="176" y="308" width="48" height="6" rx="3" fill="#fffcee"/>
+                <circle cx="300" cy="90" r="34" fill="#709134"/>
+                <path d="M286 90l10 10 20-20" stroke="#fffcee" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
               </svg>
             </div>
-            <h3 class="text-xl font-body font-bold text-primary mb-3">Suivi Personnalisé</h3>
-            <p class="text-gray-600 font-body">Analysez vos résultats et identifiez vos points faibles</p>
           </div>
-          <div class="bg-gray-200 rounded-xl p-8 text-center hover:shadow-xl transition-shadow">
-            <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg class="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+        </div>
+
+        <!-- Professeur -->
+        <div class="flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-24">
+          <div class="flex-1 w-full">
+            <span class="inline-block px-3 py-1 bg-secondary/10 text-secondary text-xs font-bold uppercase tracking-wide rounded-full mb-4">
+              Espace professeur
+            </span>
+            <h3 class="text-2xl md:text-3xl font-body font-bold text-primary mb-6">
+              Créez, animez et corrigez sans effort
+            </h3>
+            <ul class="space-y-4">
+              <li v-for="item in featuresProfesseur" :key="item" class="flex items-start gap-3">
+                <span class="mt-0.5 w-5 h-5 rounded-full bg-secondary/10 flex items-center justify-center shrink-0">
+                  <svg class="w-3.5 h-3.5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span class="text-gray-700 font-body">{{ item }}</span>
+              </li>
+            </ul>
+          </div>
+          <div class="flex-1 w-full flex justify-center">
+            <div class="w-full max-w-md aspect-square rounded-3xl bg-secondary/5 flex items-center justify-center">
+              <svg viewBox="0 0 400 400" class="w-4/5 h-4/5">
+                <rect x="60" y="70" width="280" height="200" rx="16" fill="#054348"/>
+                <rect x="80" y="90" width="240" height="160" rx="8" fill="#fffcee"/>
+                <rect x="100" y="110" width="130" height="12" rx="6" fill="#054348" opacity="0.2"/>
+                <rect x="100" y="136" width="200" height="10" rx="5" fill="#054348" opacity="0.1"/>
+                <rect x="100" y="156" width="200" height="10" rx="5" fill="#054348" opacity="0.1"/>
+                <rect x="100" y="176" width="150" height="10" rx="5" fill="#054348" opacity="0.1"/>
+                <rect x="100" y="205" width="60" height="34" rx="6" fill="#709134" opacity="0.85"/>
+                <rect x="170" y="190" width="60" height="49" rx="6" fill="#709134"/>
+                <rect x="240" y="215" width="60" height="24" rx="6" fill="#709134" opacity="0.5"/>
+                <rect x="150" y="285" width="100" height="34" rx="10" fill="#054348"/>
+                <path d="M330 60l-24 60-30-14z" fill="#709134"/>
+                <circle cx="90" cy="310" r="26" fill="#709134"/>
+                <path d="M78 312l8 8 16-16" stroke="#fffcee" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
               </svg>
             </div>
-            <h3 class="text-xl font-body font-bold text-primary mb-3">Communauté Active</h3>
-            <p class="text-gray-600 font-body">Échangez avec d'autres étudiants et professeurs</p>
+          </div>
+        </div>
+
+        <!-- Directeur -->
+        <div class="flex flex-col md:flex-row items-center gap-10 md:gap-16">
+          <div class="flex-1 w-full">
+            <span class="inline-block px-3 py-1 bg-secondary/10 text-secondary text-xs font-bold uppercase tracking-wide rounded-full mb-4">
+              Espace directeur
+            </span>
+            <h3 class="text-2xl md:text-3xl font-body font-bold text-primary mb-6">
+              Pilotez tout votre établissement
+            </h3>
+            <ul class="space-y-4">
+              <li v-for="item in featuresDirecteur" :key="item" class="flex items-start gap-3">
+                <span class="mt-0.5 w-5 h-5 rounded-full bg-secondary/10 flex items-center justify-center shrink-0">
+                  <svg class="w-3.5 h-3.5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span class="text-gray-700 font-body">{{ item }}</span>
+              </li>
+            </ul>
+          </div>
+          <div class="flex-1 w-full flex justify-center">
+            <div class="w-full max-w-md aspect-square rounded-3xl bg-primary/5 flex items-center justify-center">
+              <svg viewBox="0 0 400 400" class="w-4/5 h-4/5">
+                <rect x="70" y="60" width="260" height="180" rx="14" fill="#054348"/>
+                <rect x="88" y="78" width="224" height="144" rx="8" fill="#fffcee"/>
+                <rect x="108" y="170" width="24" height="36" rx="4" fill="#709134" opacity="0.5"/>
+                <rect x="140" y="150" width="24" height="56" rx="4" fill="#709134" opacity="0.75"/>
+                <rect x="172" y="128" width="24" height="78" rx="4" fill="#709134"/>
+                <rect x="204" y="146" width="24" height="60" rx="4" fill="#709134" opacity="0.75"/>
+                <rect x="236" y="162" width="24" height="44" rx="4" fill="#709134" opacity="0.5"/>
+                <path d="M108 100 l20 -14 20 14 v0 h-40z" fill="#054348" opacity="0.15"/>
+                <rect x="112" y="96" width="32" height="6" rx="3" fill="#054348" opacity="0.3"/>
+                <circle cx="120" cy="270" r="22" fill="#709134"/>
+                <circle cx="165" cy="270" r="22" fill="#054348"/>
+                <circle cx="210" cy="270" r="22" fill="#709134" opacity="0.6"/>
+                <rect x="150" y="255" width="100" height="10" rx="5" fill="#054348" opacity="0"/>
+                <rect x="150" y="310" width="100" height="30" rx="15" fill="#054348"/>
+                <rect x="176" y="322" width="48" height="6" rx="3" fill="#fffcee"/>
+              </svg>
+            </div>
           </div>
         </div>
       </div>
@@ -390,6 +482,33 @@ import { ref, onMounted, onUnmounted } from 'vue'
 const billing = ref('monthly')
 // Scroll state
 const isScrolled = ref(false)
+
+// Checklists de la section Fonctionnalités (une par rôle)
+const featuresEtudiant = [
+  'Rejoindre une session en un clic, par code ou QR code',
+  'Répondre à des QCM variés : choix multiple, vrai/faux, texte libre, fichier, appariement',
+  'Suivre le temps restant en direct pendant l\'examen',
+  'Consulter l\'historique de ses résultats et de ses notes',
+  'Recevoir des notifications (nouvelle session, notes publiées)',
+]
+
+const featuresProfesseur = [
+  'Créer des QCM avec plusieurs types de questions en quelques minutes',
+  'Réutiliser des questions grâce à la banque de questions',
+  'Suivre les participants et les scores en temps réel',
+  'Corriger manuellement les réponses ouvertes (texte libre / fichier)',
+  'Être alerté des comportements suspects pendant une session',
+  'Consulter des statistiques détaillées par session et par étudiant',
+]
+
+const featuresDirecteur = [
+  'Gérer les utilisateurs et inviter professeurs et étudiants',
+  'Configurer l\'établissement : logo, filières, classes',
+  'Publier des annonces et sondages à toute l\'école',
+  'Consulter les logs d\'audit des actions sensibles',
+  'Exporter les résultats et historiques en PDF',
+  'Suivre le plan d\'abonnement et les limites de l\'école',
+]
 
 // Handle scroll event
 const handleScroll = () => {
