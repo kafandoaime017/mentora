@@ -138,6 +138,13 @@ export const useSuperadmin = () => {
     catch (err) { return { success: false, data: null, message: err?.data?.message || 'Erreur' } }
   }
 
+  const getAuditLogs = async (params = {}) => {
+    try {
+      const query = new URLSearchParams(params).toString()
+      return await $fetch(`/api/superadmin/audit-logs${query ? '?' + query : ''}`, { headers: getAuthHeader() })
+    } catch (err) { return { success: false, data: null, message: err?.data?.message || 'Erreur' } }
+  }
+
   // ─── Administration (gestion des comptes superadmin) ───────────────────────
   const getSuperadmins = async () => {
     try { return await $fetch('/api/superadmin/administration/superadmins', { headers: getAuthHeader() }) }
@@ -184,6 +191,7 @@ export const useSuperadmin = () => {
     getAllUsers, toggleUserActif, deleteUser, inviterUtilisateur,
     getAbonnements,
     getSuperadmins, inviterSuperadmin, toggleSuperadminActif, deleteSuperadmin,
-    resendSuperadminInvitation, revokeSuperadminInvitation
+    resendSuperadminInvitation, revokeSuperadminInvitation,
+    getAuditLogs
   }
 }

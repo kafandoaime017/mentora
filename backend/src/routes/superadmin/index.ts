@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { authMiddleware, requireRole } from '../../app/middleware/auth'
 import * as ctrl from '../../app/controllers/superadminController'
+import { getAuditLogsGlobal } from '../../app/controllers/auditLogController'
 import { uploadEcoleLogo } from '../../app/middleware/upload'
 
 const router = Router()
@@ -29,6 +30,8 @@ router.delete('/users/:id',             ...isSuperadmin, ctrl.deleteUserSuperadm
 router.post('/users/inviter',           ...isSuperadmin, ctrl.inviterUtilisateur)
 
 router.get('/abonnements',              ...isSuperadmin, ctrl.getAbonnements)
+
+router.get('/audit-logs',               ...isSuperadmin, getAuditLogsGlobal)
 
 // Administration — gestion des comptes superadmin (auto-protection : impossible
 // de se désactiver/révoquer/supprimer soi-même, appliqué dans le contrôleur)

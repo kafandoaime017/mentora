@@ -1,23 +1,29 @@
 <template>
   <div class="bg-layout font-body min-h-screen">
-    <AdminLayout>
+    <SuperadminLayout>
       <div class="max-w-8xl mx-auto">
 
         <!-- En-tête -->
         <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div>
             <h1 class="text-2xl font-extrabold font-body text-black">Logs d'audit</h1>
-            <p class="text-sm font-body text-black/60 mt-1">Historique des actions effectuées dans votre établissement (conformité).</p>
+            <p class="text-sm font-body text-black/60 mt-1">Historique de toutes les actions effectuées sur la plateforme, toutes écoles confondues.</p>
           </div>
           <span class="text-sm font-body text-black">{{ total }} log(s)</span>
         </div>
 
         <!-- Filtres -->
         <div class="flex flex-wrap gap-3 mb-4">
+          <select v-model="filtreEcole" @change="rechercher" class="px-3 py-2 bg-gray-300/80 placeholder:text-black placeholder:font-bold rounded-lg text-sm font-body focus:outline-none">
+            <option value="">Toutes les écoles</option>
+            <option v-for="e in ecoles" :key="e.id" :value="e.id">{{ e.nom }}</option>
+          </select>
+
           <select v-model="filtreAction" @change="rechercher" class="px-3 py-2 bg-gray-300/80 placeholder:text-black placeholder:font-bold rounded-lg text-sm font-body focus:outline-none">
             <option value="">Toutes les actions</option>
             <option v-for="a in actionsDisponibles" :key="a" :value="a">{{ actionLabel(a) }}</option>
           </select>
+
           <input v-model="filtreDateDebut" @change="rechercher" type="date" class="px-3 py-2 bg-gray-300/80 rounded-lg text-sm font-body focus:outline-none" />
           <input v-model="filtreDateFin" @change="rechercher" type="date" class="px-3 py-2 bg-gray-300/80 rounded-lg text-sm font-body focus:outline-none" />
         </div>
@@ -39,6 +45,7 @@
             <thead class="bg-blacky border-b border-gray-100">
               <tr>
                 <th class="px-4 py-3 uppercase font-body text-left text-xs font-bold text-white">Date</th>
+                <th class="px-4 py-3 uppercase font-body text-left text-xs font-bold text-white hidden md:table-cell">École</th>
                 <th class="px-4 py-3 uppercase font-body text-left text-xs font-bold text-white hidden md:table-cell">Utilisateur</th>
                 <th class="px-4 py-3 uppercase font-body text-left text-xs font-bold text-white">Action</th>
                 <th class="px-4 py-3 uppercase font-body text-left text-xs font-bold text-white hidden lg:table-cell">Détails</th>
@@ -51,6 +58,11 @@
                 <!-- Date -->
                 <td class="px-4 py-3 border border-gray-200">
                   <span class="text-xs font-body font-bold text-black whitespace-nowrap">{{ formatDate(log.created_at) }}</span>
+                </td>
+
+                <!-- École -->
+                <td class="px-4 py-3 hidden md:table-cell border border-gray-200">
+                  <p class="text-sm font-body text-black">{{ log.ecole_nom || '—' }}</p>
                 </td>
 
                 <!-- Utilisateur -->
@@ -96,15 +108,15 @@
         </div>
 
       </div>
-    </AdminLayout>
+    </SuperadminLayout>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useAdmin } from '~~/composables/useAdmin'
+import { useSuperadmin } from '~~/composables/useSuperadmin'
 
-const { getAuditLogs } = useAdmin()
+const { getAuditLogs } = useSuperadmin()
 
 const loading = ref(true)
 const logs = ref([])
@@ -112,7 +124,9 @@ const total = ref(0)
 const page = ref(1)
 const totalPages = ref(1)
 const actionsDisponibles = ref([])
+const ecoles = ref([])
 const filtreAction = ref('')
+const filtreEcole = ref('')
 const filtreDateDebut = ref('')
 const filtreDateFin = ref('')
 
@@ -169,6 +183,7 @@ const charger = async () => {
   try {
     const params = { page: page.value, limit: 30 }
     if (filtreAction.value) params.action = filtreAction.value
+    if (filtreEcole.value) params.ecoleId = filtreEcole.value
     if (filtreDateDebut.value) params.dateDebut = filtreDateDebut.value
     if (filtreDateFin.value) params.dateFin = filtreDateFin.value
 
@@ -178,6 +193,7 @@ const charger = async () => {
       total.value = result.data.total || 0
       totalPages.value = result.data.totalPages || 1
       actionsDisponibles.value = result.data.actionsDisponibles || []
+      ecoles.value = result.data.ecoles || []
     }
   } finally {
     loading.value = false
