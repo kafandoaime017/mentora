@@ -45,6 +45,13 @@ const corsOptions = {
 
 const app = express();
 
+// L'app tourne toujours derriere un reverse proxy (nginx) en prod, qui ajoute
+// un en-tete X-Forwarded-For. Sans "trust proxy", Express l'ignore et
+// express-rate-limit refuse de demarrer (ERR_ERL_UNEXPECTED_X_FORWARDED_FOR).
+// "1" = on fait confiance au premier hop uniquement (le nginx local), pas a
+// une chaine de proxys arbitraire fournie par le client.
+app.set('trust proxy', 1);
+
 // ============================================
 // SECURITE : EN-TETES HTTP (helmet)
 // ============================================
