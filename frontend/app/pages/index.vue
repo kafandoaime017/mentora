@@ -111,16 +111,33 @@
               </nuxt-link>
             </div>
           </div>
-          <div class="hidden md:block flex-shrink-0">
-            <PhoneMockup />
-          </div>
-          <div class="hidden md:block flex-shrink-0 w-48">
-            <div class="rounded-2xl overflow-hidden shadow-2xl transform ">
-              <img 
-                src="/images/images.webp" 
-                alt="Student studying" 
-                class="w-full h-auto object-cover"
-              />
+          <div class="flex items-end justify-center gap-4 flex-shrink-0 mt-10 md:mt-0">
+            <div class="w-36 sm:w-44 md:w-56">
+              <svg viewBox="0 0 220 440" class="w-full h-auto">
+                <rect x="10" y="10" width="200" height="420" rx="32" fill="#054348"/>
+                <rect x="22" y="40" width="176" height="360" rx="12" fill="#fffcee"/>
+                <rect x="40" y="60" width="120" height="12" rx="6" fill="#054348" opacity="0.15"/>
+                <rect x="40" y="84" width="90" height="10" rx="5" fill="#054348" opacity="0.1"/>
+                <rect x="40" y="112" width="140" height="30" rx="8" fill="#709134" opacity="0.15"/>
+                <circle cx="56" cy="127" r="8" fill="#709134"/>
+                <path d="M51 127l4 4 7-7" stroke="#fffcee" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                <rect x="40" y="152" width="140" height="30" rx="8" fill="#054348" opacity="0.06"/>
+                <circle cx="56" cy="167" r="8" fill="none" stroke="#054348" stroke-width="2" opacity="0.3"/>
+                <rect x="40" y="192" width="140" height="30" rx="8" fill="#054348" opacity="0.06"/>
+                <circle cx="56" cy="207" r="8" fill="none" stroke="#054348" stroke-width="2" opacity="0.3"/>
+                <rect x="60" y="330" width="100" height="34" rx="17" fill="#709134"/>
+                <rect x="86" y="343" width="48" height="8" rx="4" fill="#fffcee"/>
+                <circle cx="110" cy="20" r="4" fill="#fffcee" opacity="0.4"/>
+              </svg>
+            </div>
+            <div class="w-24 sm:w-32 md:w-48 flex-shrink-0">
+              <div class="rounded-2xl overflow-hidden shadow-2xl">
+                <img
+                  src="/images/images.webp"
+                  alt="Student studying"
+                  class="w-full h-auto object-cover"
+                />
+              </div>
             </div>
           </div>
         </section>
