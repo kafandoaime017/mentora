@@ -69,3 +69,7 @@ régénérer côté fournisseur, pas seulement le retirer du dépôt :
 
 - Erreurs applicatives : Glitchtip (`https://errors.mentoraapp.online` en prod).
 - Analytics d'usage (sans cookies) : Umami.
+
+
+
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --force-recreate glitchtip-web glitchtip-worker umami
