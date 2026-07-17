@@ -40,34 +40,34 @@
           >
             Fonctionnalités
           </a>
-          <a 
-            href="#" 
+          <a
+            href="#tarifs"
             :class="[
               'text-sm font-medium uppercase transition-colors',
-              isScrolled 
-                ? 'text-gray-600 hover:text-secondary' 
+              isScrolled
+                ? 'text-gray-600 hover:text-secondary'
                 : 'text-white/60 hover:text-white'
             ]"
           >
             Tarifs
           </a>
-          <a 
-            href="#" 
+          <a
+            href="#apropos"
             :class="[
               'text-sm font-medium uppercase transition-colors',
-              isScrolled 
-                ? 'text-gray-600 hover:text-secondary' 
+              isScrolled
+                ? 'text-gray-600 hover:text-secondary'
                 : 'text-white/60 hover:text-white'
             ]"
           >
             À propos
           </a>
-          <a 
-            href="#" 
+          <a
+            href="#contact"
             :class="[
               'text-sm font-medium uppercase transition-colors',
-              isScrolled 
-                ? 'text-gray-600 hover:text-secondary' 
+              isScrolled
+                ? 'text-gray-600 hover:text-secondary'
                 : 'text-white/60 hover:text-white'
             ]"
           >
@@ -188,8 +188,8 @@
           </div>
         </div>
 
-        <!-- Professeur -->
-        <div class="flex flex-col md:flex-row items-center gap-10 md:gap-16 mb-24">
+        <!-- Professeur (inversé : image à gauche, checklist à droite) -->
+        <div class="flex flex-col md:flex-row-reverse items-center gap-10 md:gap-16 mb-24">
           <div class="flex-1 w-full">
             <span class="inline-block px-3 py-1 bg-secondary/10 text-secondary text-xs font-bold uppercase tracking-wide rounded-full mb-4">
               Espace professeur
@@ -462,6 +462,146 @@
   </div>
 </section>
 
+    <!-- À propos -->
+    <section id="apropos" class="bg-white py-20 scroll-mt-24">
+      <div class="max-w-7xl mx-auto px-8 md:px-16">
+        <div class="text-center mb-16">
+          <h2 class="text-3xl md:text-4xl font-body font-bold text-primary mb-4">
+            À propos de Mentora
+          </h2>
+          <p class="text-gray-600 font-body text-lg max-w-2xl mx-auto">
+            Mentora est né d'un constat simple : créer, faire passer et corriger des évaluations prend trop de
+            temps aux équipes pédagogiques. Nous construisons l'outil qui leur rend ce temps.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center mb-16">
+          <div>
+            <h3 class="text-2xl font-body font-bold text-primary mb-4">Notre mission</h3>
+            <p class="text-gray-600 font-body leading-relaxed mb-4">
+              Donner à chaque établissement scolaire — de la petite structure à l'école multi-filières — une
+              plateforme unique pour créer des QCM, faire passer des examens en toute sécurité et suivre la
+              progression des étudiants, sans complexité technique.
+            </p>
+            <p class="text-gray-600 font-body leading-relaxed">
+              De l'étudiant qui passe son examen au directeur qui pilote son établissement, chaque rôle dispose
+              des outils adaptés à ses besoins, sur une seule et même plateforme.
+            </p>
+          </div>
+          <div class="flex justify-center">
+            <div class="w-full max-w-md aspect-[4/3] rounded-3xl bg-primary/5 flex items-center justify-center">
+              <svg viewBox="0 0 400 300" class="w-4/5 h-4/5">
+                <circle cx="200" cy="150" r="110" fill="#054348" opacity="0.06"/>
+                <rect x="110" y="90" width="180" height="130" rx="14" fill="#054348"/>
+                <rect x="128" y="108" width="144" height="94" rx="8" fill="#fffcee"/>
+                <circle cx="160" cy="140" r="16" fill="#709134"/>
+                <rect x="184" y="132" width="70" height="8" rx="4" fill="#054348" opacity="0.2"/>
+                <rect x="184" y="148" width="50" height="8" rx="4" fill="#054348" opacity="0.15"/>
+                <circle cx="160" cy="182" r="16" fill="#054348" opacity="0.15"/>
+                <rect x="184" y="174" width="70" height="8" rx="4" fill="#054348" opacity="0.2"/>
+                <rect x="184" y="190" width="50" height="8" rx="4" fill="#054348" opacity="0.15"/>
+                <circle cx="90" cy="70" r="22" fill="#709134"/>
+                <path d="M78 71l8 8 16-16" stroke="#fffcee" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                <circle cx="316" cy="230" r="18" fill="#709134" opacity="0.7"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div v-for="valeur in valeurs" :key="valeur.titre" class="bg-layout rounded-2xl p-6 text-center">
+            <div class="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg class="w-6 h-6 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24" v-html="valeur.icone"></svg>
+            </div>
+            <h4 class="font-body font-bold text-primary mb-2">{{ valeur.titre }}</h4>
+            <p class="text-gray-600 font-body text-sm">{{ valeur.description }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact -->
+    <section id="contact" class="bg-gray-50 py-20 scroll-mt-24">
+      <div class="max-w-5xl mx-auto px-8 md:px-16">
+        <div class="text-center mb-12">
+          <h2 class="text-3xl md:text-4xl font-body font-bold text-primary mb-4">
+            Contactez-nous
+          </h2>
+          <p class="text-gray-600 font-body text-lg max-w-2xl mx-auto">
+            Une question, une démo, un besoin spécifique pour votre établissement ? Écrivez-nous.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-8 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <!-- Infos de contact -->
+          <div class="md:col-span-2 bg-primary p-8 flex flex-col justify-between">
+            <div>
+              <h3 class="text-white font-body font-bold text-xl mb-6">Nos coordonnées</h3>
+              <div class="space-y-5">
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-secondary shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                  <div>
+                    <p class="text-white/60 font-body text-xs uppercase tracking-wide">Email</p>
+                    <a href="mailto:contact@mentoraapp.online" class="text-white font-body hover:text-secondary transition-colors">contact@mentoraapp.online</a>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-secondary shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <div>
+                    <p class="text-white/60 font-body text-xs uppercase tracking-wide">Délai de réponse</p>
+                    <p class="text-white font-body">Sous 24 à 48h ouvrées</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="text-white/50 font-body text-xs mt-8">
+              Réservé aux établissements scolaires. Pour toute question relative à un compte existant, connectez-vous puis utilisez votre espace dédié.
+            </p>
+          </div>
+
+          <!-- Formulaire -->
+          <form class="md:col-span-3 p-8 space-y-4" @submit.prevent="envoyerContact">
+            <div>
+              <label class="block text-sm font-body font-medium text-gray-700 mb-1">Nom</label>
+              <input
+                v-model="contactForm.nom"
+                type="text"
+                required
+                class="w-full px-4 py-2.5 border border-gray-200 rounded-lg font-body text-sm focus:outline-none focus:ring-2 focus:ring-secondary/40"
+                placeholder="Votre nom"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-body font-medium text-gray-700 mb-1">Email</label>
+              <input
+                v-model="contactForm.email"
+                type="email"
+                required
+                class="w-full px-4 py-2.5 border border-gray-200 rounded-lg font-body text-sm focus:outline-none focus:ring-2 focus:ring-secondary/40"
+                placeholder="vous@ecole.com"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-body font-medium text-gray-700 mb-1">Message</label>
+              <textarea
+                v-model="contactForm.message"
+                required
+                rows="4"
+                class="w-full px-4 py-2.5 border border-gray-200 rounded-lg font-body text-sm focus:outline-none focus:ring-2 focus:ring-secondary/40 resize-none"
+                placeholder="Décrivez votre besoin..."
+              ></textarea>
+            </div>
+            <button
+              type="submit"
+              class="w-full bg-secondary text-white font-body font-bold py-3 rounded-lg hover:bg-secondary/90 transition-colors"
+            >
+              Envoyer le message
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
   <!-- Footer -->
   <footer class="bg-white border-t border-gray-200 py-8 mt-4">
     <div class="max-w-5xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -509,6 +649,41 @@ const featuresDirecteur = [
   'Exporter les résultats et historiques en PDF',
   'Suivre le plan d\'abonnement et les limites de l\'école',
 ]
+
+// Valeurs de la section À propos
+const valeurs = [
+  {
+    titre: 'Simplicité',
+    description: 'Une prise en main immédiate, sans formation, pour tous les rôles de l\'établissement.',
+    icone: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>',
+  },
+  {
+    titre: 'Sécurité',
+    description: 'Détection de triche, données chiffrées et accès strictement limités par rôle.',
+    icone: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+  },
+  {
+    titre: 'Accompagnement',
+    description: 'Une équipe réactive pour répondre aux besoins spécifiques de chaque école.',
+    icone: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-4.13a4 4 0 11-8 0 4 4 0 018 0zm6 4a4 4 0 11-8 0 4 4 0 018 0z"/>',
+  },
+  {
+    titre: 'Amélioration continue',
+    description: 'Une plateforme qui évolue avec les retours réels des étudiants, professeurs et directeurs.',
+    icone: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>',
+  },
+]
+
+// Formulaire de contact (pas de backend dédié : ouverture d'un mail pré-rempli)
+const contactForm = ref({ nom: '', email: '', message: '' })
+
+const envoyerContact = () => {
+  const sujet = encodeURIComponent(`Contact Mentora - ${contactForm.value.nom}`)
+  const corps = encodeURIComponent(
+    `${contactForm.value.message}\n\n---\nDe : ${contactForm.value.nom} (${contactForm.value.email})`
+  )
+  window.location.href = `mailto:contact@mentoraapp.online?subject=${sujet}&body=${corps}`
+}
 
 // Handle scroll event
 const handleScroll = () => {
