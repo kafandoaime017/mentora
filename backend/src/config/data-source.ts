@@ -47,7 +47,11 @@ const options: DataSourceOptions = process.env.NODE_ENV === 'test'
         username: process.env.DB_USER,
         password: process.env.DB_PASS,
         database: process.env.DB_NAME,
-        synchronize: false,
+        // DB_SYNCHRONIZE=true : uniquement pour bootstrap ponctuel d'un schéma
+        // vide (aucune migration de ce projet ne crée le schéma de base — la
+        // toute première ne fait que des ALTER sur des tables supposées déjà
+        // exister). Ne jamais laisser cette variable active en usage normal.
+        synchronize: process.env.DB_SYNCHRONIZE === 'true',
         logging: true, // Met true pour voir les erreurs
         entities,
         // .ts pour "npm run migration:run" (execute via ts-node sur les sources),
