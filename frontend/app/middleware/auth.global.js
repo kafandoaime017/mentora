@@ -16,7 +16,10 @@ export default defineNuxtRouteMiddleware((to) => {
       '/auth/reinitialisation-password',
       '/auth/invitation',
       '/auth/verify-invitation',
-      '/auth/totp'
+      '/auth/totp',
+      '/legal/cgu',
+      '/legal/politique-confidentialite',
+      '/legal/mentions-legales'
     ]
 
     if (publicRoutes.includes(to.path)) {
