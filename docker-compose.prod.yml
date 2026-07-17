@@ -126,8 +126,9 @@ services:
       - "8001:8000"  # <- change de 8000 a 8001 (optionnel)
     networks:
       - mentora-net-prod
-    command: >
-      sh -c "./manage.py migrate && ./manage.py runserver 0.0.0.0:8000"
+    # Pas de "command:" ici : on laisse l'image lancer son script de démarrage
+    # par défaut (migrate + uWSGI), au lieu du serveur de dev Django utilisé
+    # avant (manage.py runserver = mono-thread, fragile, jamais fait pour la prod).
     logging:
       driver: "json-file"
       options:
@@ -158,50 +159,6 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  umami-db:
-    image: postgres:15-alpine
-    container_name: umami_db_prod
-    restart: always
-    environment:
-      POSTGRES_USER: umami
-      POSTGRES_PASSWORD: ${UMAMI_DB_PASSWORD}
-      POSTGRES_DB: umami
-    volumes:
-      - umami_postgres_data_prod:/var/lib/postgresql/data
-    networks:
-      - mentora-net-prod
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U umami"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
-  umami:
-    image: ghcr.io/umami-software/umami:postgresql-latest
-    container_name: umami_prod
-    restart: always
-    environment:
-      DATABASE_URL: postgresql://umami:${UMAMI_DB_PASSWORD}@umami-db:5432/umami
-      DATABASE_TYPE: postgresql
-      HASH_SALT: ${UMAMI_HASH_SALT}
-      APP_SECRET: ${UMAMI_APP_SECRET}
-      ENABLE_CUSTOM_DOMAINS: "false"
-    depends_on:
-      umami-db:
-        condition: service_healthy
-    ports:
-      - "3002:3000"  # <- change de 3001 a 3002 (optionnel)
-    networks:
-      - mentora-net-prod
-    volumes:
-      - umami_data_prod:/app/.umami
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
 networks:
   mentora-net-prod:
     driver: bridge
@@ -210,5 +167,3 @@ volumes:
   mentora_data_prod:
   glitchtip_postgres_data_prod:
   glitchtip_valkey_data_prod:
-  umami_postgres_data_prod:
-  umami_data_prod:
