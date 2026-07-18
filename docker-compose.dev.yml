@@ -68,8 +68,10 @@ services:
 
 networks:
   default:
+    external: true
     name: mentora_default
 
 volumes:
   mentora_data:
+    external: true
     name: mentora_mentora_data

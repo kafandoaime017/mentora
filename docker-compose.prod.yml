@@ -169,13 +169,16 @@ services:
 
 networks:
   mentora-net-prod:
-    driver: bridge
+    external: true
     name: mentora_mentora-net-prod
 
 volumes:
   mentora_data_prod:
+    external: true
     name: mentora_mentora_data_prod
   glitchtip_postgres_data_prod:
+    external: true
     name: mentora_glitchtip_postgres_data_prod
   glitchtip_valkey_data_prod:
+    external: true
     name: mentora_glitchtip_valkey_data_prod

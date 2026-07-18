@@ -4,7 +4,7 @@
   "main": "server.js",
   "scripts": {
     "dev": "nodemon --legacy-watch --ext ts --exec ts-node server.ts",
-    "build": "tsc",
+    "build": "tsc && node scripts/copy-assets.js",
     "start": "node dist/server.js",
     "test": "jest",
     "test:watch": "jest --watch",
