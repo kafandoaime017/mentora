@@ -6,14 +6,14 @@
         <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
           <h1 class="text-2xl font-extrabold text-black font-body">Invitations</h1>
           <div class="flex items-center gap-2">
-            <!-- Import CSV -->
-            <!-- <label class="flex items-center gap-2 bg-white border border-gray-300 text-black px-4 py-2 rounded-lg text-sm font-body font-semibold hover:bg-gray-50 transition-colors cursor-pointer">
+            <!-- Import CSV/Excel -->
+            <label class="flex items-center gap-2 bg-white border border-gray-300 text-black px-4 py-2 rounded-lg text-sm font-body font-semibold hover:bg-gray-50 transition-colors cursor-pointer">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
               </svg>
               Importer CSV/Excel
               <input type="file" accept=".csv,.xlsx,.xls" class="hidden" @change="handleFileImport" />
-            </label> -->
+            </label>
             <!-- Nouvelle invitation -->
             <button
               @click="showForm = true"
@@ -524,18 +524,30 @@ const sendBulkInvitations = async () => {
   const validRows = importRows.value.filter(r => !r.error)
   if (!validRows.length) return
   sendingBulk.value = true
-  let success = 0, failed = 0
+  let success = 0, failed = 0, echecsEmail = 0
+  let limiteAtteinte = null
   for (const row of validRows) {
+    // Une fois la limite du plan atteinte, inutile de continuer à envoyer -
+    // chaque ligne suivante échouerait pour la même raison.
+    if (limiteAtteinte) { failed++; continue }
     try {
-      await apiFetch('/admin/invitations', { method: 'POST', body: { prenom: row.prenom, nom: row.nom, email: row.email, role: row.role, filiereId: row.filiereId, classeId: row.classeId || null } })
+      const res = await apiFetch('/admin/invitations', { method: 'POST', body: { prenom: row.prenom, nom: row.nom, email: row.email, role: row.role, filiereId: row.filiereId, classeId: row.classeId || null } })
+      if (res?.data?.emailEnvoye === false) echecsEmail++
       success++
-    } catch { failed++ }
+    } catch (err) {
+      if (err?.data?.code === 'LIMITE_ETUDIANTS' || err?.data?.code === 'LIMITE_PROFESSEURS') {
+        limiteAtteinte = err.data.message
+      }
+      failed++
+    }
   }
   sendingBulk.value = false
   showImportModal.value = false
   importRows.value = []
   if (success > 0) toast.success(`${success} invitation(s) envoyée(s)`)
-  if (failed  > 0) toast.error(`${failed} échec(s)`)
+  if (echecsEmail > 0) toast.error(`${echecsEmail} invitation(s) créée(s) mais l'email n'a pas pu être envoyé — pensez à copier les liens manuellement.`)
+  if (limiteAtteinte) toast.error(limiteAtteinte)
+  else if (failed > 0) toast.error(`${failed} échec(s)`)
   await loadData()
 }
 

@@ -161,6 +161,16 @@
                       Détails
                     </NuxtLink>
                     <button
+                      @click="duplicateSession(s)"
+                      :disabled="duplicatingId === s.id"
+                      class="inline-flex items-center gap-1 text-xs font-body font-semibold px-2.5 py-1.5 rounded-lg bg-gray-100 text-black hover:bg-gray-200 transition-colors disabled:opacity-50"
+                    >
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                      </svg>
+                      Dupliquer
+                    </button>
+                    <button
                       @click="deleteSession(s)"
                       class="inline-flex items-center gap-1 text-xs font-body font-semibold px-2.5 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
                     >
@@ -244,6 +254,25 @@ const loadData = async () => {
     if (clsRes.success)  classes.value  = clsRes.data
   } finally {
     loading.value = false
+  }
+}
+
+const duplicatingId = ref(null)
+
+const duplicateSession = async (session) => {
+  duplicatingId.value = session.id
+  try {
+    const result = await apiFetch(`/admin/sessions/${session.id}/dupliquer`, { method: 'POST' })
+    if (result.success) {
+      toast.success(result.message || 'Session dupliquée')
+      await navigateTo(`/directeurs/sessions/${result.data.id}`)
+    } else {
+      toast.error(result.message || 'Erreur lors de la duplication')
+    }
+  } catch (err) {
+    toast.error(err?.data?.message || 'Erreur lors de la duplication')
+  } finally {
+    duplicatingId.value = null
   }
 }
 

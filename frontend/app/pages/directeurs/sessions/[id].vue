@@ -174,6 +174,17 @@
               <p class="text-sm font-body text-black">Aucune action disponible pour cette session.</p>
             </div>
 
+            <!-- Dupliquer (toujours disponible, quel que soit le statut) -->
+            <div class="mt-3 pt-3 border-t border-gray-100">
+              <button
+                @click="duplicateSession"
+                :disabled="duplicating"
+                class="text-sm font-body font-semibold px-4 py-2 bg-gray-100 text-black rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                {{ duplicating ? 'Duplication...' : 'Dupliquer comme modèle' }}
+              </button>
+            </div>
+
             <!-- Formulaire de modification -->
             <div v-if="editing" class="mt-5 pt-5 border-t border-gray-100 space-y-4">
               <div>
@@ -324,6 +335,7 @@ const editing  = ref(false)
 const saving   = ref(false)
 const acting   = ref(false)
 const downloading = ref(false)
+const duplicating = ref(false)
 const filieres = ref([])
 const classes   = ref([])
 
@@ -500,6 +512,23 @@ const downloadPdf = async () => {
     toast.error('Erreur lors du téléchargement du PDF')
   } finally {
     downloading.value = false
+  }
+}
+
+const duplicateSession = async () => {
+  duplicating.value = true
+  try {
+    const result = await apiFetch(`/admin/sessions/${route.params.id}/dupliquer`, { method: 'POST' })
+    if (result.success) {
+      toast.success(result.message || 'Session dupliquée')
+      await router.push(`/directeurs/sessions/${result.data.id}`)
+    } else {
+      toast.error(result.message || 'Erreur lors de la duplication')
+    }
+  } catch (err) {
+    toast.error(err?.data?.message || 'Erreur lors de la duplication')
+  } finally {
+    duplicating.value = false
   }
 }
 

@@ -17,6 +17,7 @@ router.get('/qcm', teacherController.getSessions);
 router.get('/qcm/:id', teacherController.getSessionDetails);
 router.put('/qcm/:id', teacherController.updateSession);
 router.delete('/qcm/:id', teacherController.deleteSession);
+router.post('/qcm/:id/dupliquer', checkLimiteSessions, teacherController.duplicateSession);
 
 // ==================== SESSIONS ====================
 router.post('/sessions', checkLimiteSessions, teacherController.createSession);
@@ -52,6 +53,7 @@ router.patch('/sessions/:id/toggle-resultats', teacherController.toggleResultats
 // ==================== BANQUE DE QUESTIONS ====================
 router.get('/banque-questions', teacherController.getBanqueQuestions);
 router.post('/banque-questions', teacherController.createBanqueQuestion);
+router.post('/banque-questions/bulk', teacherController.createBanqueQuestionsBulk);
 router.put('/banque-questions/:id', teacherController.updateBanqueQuestion);
 router.delete('/banque-questions/:id', teacherController.deleteBanqueQuestion);
 

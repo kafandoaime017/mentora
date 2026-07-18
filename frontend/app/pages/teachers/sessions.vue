@@ -217,8 +217,21 @@
                     </svg>
                   </button>
                   
+                  <!-- Bouton Dupliquer -->
+                  <button
+                    @click.stop="duplicateQCMHandler(qcm.id)"
+                    :disabled="duplicatingId === qcm.id"
+                    class="p-2 text-[#4a7c5e] bg-[#e2ddd4] hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                    title="Dupliquer comme modèle"
+                  >
+                    <div v-if="duplicatingId === qcm.id" class="animate-spin rounded-full h-4 w-4 border-2 border-[#4a7c5e] border-t-transparent"/>
+                    <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                  </button>
+
                   <!-- Bouton Supprimer (pending seulement) -->
-                  <button 
+                  <button
                     v-if="qcm.status === 'pending'"
                     @click.stop="deleteQCMHandler(qcm.id)"
                     class="p-2 text-red-500 bg-[#e2ddd4] hover:bg-red-50 rounded-lg transition-colors"
@@ -292,8 +305,21 @@
                     </svg>
                   </button>
                   
+                  <!-- Bouton Dupliquer (desktop) -->
+                  <button
+                    @click.stop="duplicateQCMHandler(qcm.id)"
+                    :disabled="duplicatingId === qcm.id"
+                    class="p-2 text-[#4a7c5e] hover:bg-green-50 bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+                    title="Dupliquer comme modèle"
+                  >
+                    <div v-if="duplicatingId === qcm.id" class="animate-spin rounded-full h-4 w-4 border-2 border-[#4a7c5e] border-t-transparent"/>
+                    <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                  </button>
+
                   <!-- Bouton Supprimer (pending seulement) -->
-                  <button 
+                  <button
                     v-if="qcm.status === 'pending'"
                     @click.stop="deleteQCMHandler(qcm.id)"
                     class="p-2 text-red-500 hover:bg-red-50 bg-gray-200 rounded-lg transition-colors"
@@ -402,7 +428,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useTeacher } from '../../../composables/useTeacher'
 import { useToast } from '../../../composables/useToast'
 
-const { getQCMList, deleteQCM, startSession, endSession } = useTeacher()
+const { getQCMList, deleteQCM, startSession, endSession, duplicateQCM } = useTeacher()
 const toast = useToast()
 
 const loading = ref(true)
@@ -412,6 +438,7 @@ const filterStatus = ref('all')
 const deleteModalVisible = ref(false)
 const deleting = ref(false)
 const qcmToDelete = ref(null)
+const duplicatingId = ref(null)
 
 // QR Code modal
 const qrModalVisible = ref(false)
@@ -535,6 +562,21 @@ const endSessionHandler = async (id) => {
 const deleteQCMHandler = (id) => {
   qcmToDelete.value = id
   deleteModalVisible.value = true
+}
+
+const duplicateQCMHandler = async (id) => {
+  duplicatingId.value = id
+  const result = await duplicateQCM(id)
+  duplicatingId.value = null
+  if (result.success) {
+    toast.success(result.message || 'Session dupliquée')
+    await loadQCMs()
+    if (result.data?.id) {
+      await navigateTo(`/teachers/qcm/${result.data.id}/edit`)
+    }
+  } else {
+    toast.error(result.message || 'Erreur lors de la duplication')
+  }
 }
 
 const confirmDelete = async () => {

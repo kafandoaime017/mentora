@@ -1037,6 +1037,56 @@ export const adminDeleteSession = async (req: AuthRequest, res: Response, next: 
     } catch (err) { next(err) }
 }
 
+export const duplicateSessionAdmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const id = parseInt(req.params.id as string)
+        const original = await sessionRepo
+            .createQueryBuilder('s')
+            .leftJoinAndSelect('s.questions', 'q')
+            .innerJoin('s.filiere', 'f')
+            .where('s.id = :id', { id })
+            .andWhere('f.ecoleId = :ecoleId', { ecoleId })
+            .getOne()
+
+        if (!original) { res.status(404).json({ success: false, message: 'Session non trouvée' }); return }
+
+        const dateDebut = new Date(Date.now() + 24 * 60 * 60 * 1000)
+        const dateFin   = new Date(dateDebut.getTime() + (original.duree || 30) * 60 * 1000)
+
+        const copie = sessionRepo.create({
+            titre: `${original.titre} (copie)`,
+            description: original.description,
+            theme: original.theme,
+            code: Math.random().toString(36).substring(2, 8).toUpperCase(),
+            date_debut: dateDebut,
+            date_fin: dateFin,
+            duree: original.duree,
+            classe_id: original.classe_id,
+            filiere_id: original.filiere_id,
+            created_by: original.created_by,
+            status: SessionStatus.PENDING
+        })
+        await sessionRepo.save(copie)
+
+        const questionsOriginales = [...(original.questions || [])].sort((a, b) => a.ordre - b.ordre)
+        for (let i = 0; i < questionsOriginales.length; i++) {
+            const q = questionsOriginales[i]
+            await questionRepo.save(questionRepo.create({
+                session_id: copie.id, texte: q.texte, type: q.type, points: q.points,
+                ordre: i + 1, options: q.options, reponses_correctes: q.reponses_correctes,
+                reponse_indicative: q.reponse_indicative
+            }))
+        }
+
+        audit(req, 'duplication_session', 'session', copie.id, { titre: copie.titre, sourceId: original.id })
+
+        res.json({ success: true, message: 'Session dupliquée - pensez à redéfinir les dates avant de la démarrer', data: { id: copie.id } })
+    } catch (err) { next(err) }
+}
+
 // Récupère une session en vérifiant qu'elle appartient bien à l'école du
 // directeur connecté (via sa filière). Retourne null + réponse 404/400 sinon.
 const getEcoleScopedSession = async (req: AuthRequest, res: Response): Promise<Session | null> => {

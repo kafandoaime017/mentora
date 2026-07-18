@@ -6,12 +6,21 @@
         <!-- En-tête -->
         <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
           <h2 class="font-body text-2xl font-extrabold text-[#1e3a2f]">Banque de questions</h2>
-          <button
-            @click="ouvrirCreation"
-            class="px-4 py-2.5 bg-[#4a7c5e] text-white text-sm font-body font-semibold rounded-lg hover:bg-[#1e3a2f] transition-colors"
-          >
-            + Nouvelle question
-          </button>
+          <div class="flex items-center gap-2">
+            <label class="flex items-center gap-2 bg-white border border-[#e2ddd4] text-[#1e3a2f] px-4 py-2.5 rounded-lg text-sm font-body font-semibold hover:bg-gray-50 transition-colors cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+              </svg>
+              Importer CSV/Excel
+              <input type="file" accept=".csv,.xlsx,.xls" class="hidden" @change="handleFileImport" />
+            </label>
+            <button
+              @click="ouvrirCreation"
+              class="px-4 py-2.5 bg-[#4a7c5e] text-white text-sm font-body font-semibold rounded-lg hover:bg-[#1e3a2f] transition-colors"
+            >
+              + Nouvelle question
+            </button>
+          </div>
         </div>
 
         <p class="text-sm text-[#9b9589] mb-4">
@@ -222,16 +231,83 @@
           </div>
         </div>
       </div>
+
+      <!-- Modal import CSV/Excel -->
+      <div v-if="showImportModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="showImportModal = false">
+        <div class="bg-white rounded-lg w-full max-w-3xl p-6 max-h-[85vh] flex flex-col">
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="font-extrabold text-[#1e3a2f] text-xl font-body">Importer des questions</h3>
+            <button @click="showImportModal = false" class="text-[#9b9589] hover:text-[#1e3a2f]">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <p class="text-xs text-[#9b9589] mb-4">
+            <span class="text-green-600 font-semibold">{{ importRows.filter(r => !r.error).length }} valide(s)</span>
+            <span v-if="importRows.filter(r => r.error).length > 0" class="text-red-500 font-semibold ml-2">{{ importRows.filter(r => r.error).length }} erreur(s)</span>
+          </p>
+
+          <div class="overflow-auto flex-1 border border-[#e2ddd4] rounded-lg mb-4">
+            <table class="w-full text-xs">
+              <thead class="bg-[#f5f0e8] sticky top-0 border-b border-[#e2ddd4]">
+                <tr>
+                  <th class="px-3 py-2 text-left font-semibold text-[#1e3a2f]">#</th>
+                  <th class="px-3 py-2 text-left font-semibold text-[#1e3a2f]">Texte</th>
+                  <th class="px-3 py-2 text-left font-semibold text-[#1e3a2f]">Type</th>
+                  <th class="px-3 py-2 text-left font-semibold text-[#1e3a2f]">Points</th>
+                  <th class="px-3 py-2 text-left font-semibold text-[#1e3a2f]">Thème</th>
+                  <th class="px-3 py-2 text-center font-semibold text-[#1e3a2f]">Statut</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr v-for="(row, idx) in importRows" :key="idx" :class="row.error ? 'bg-red-50' : 'hover:bg-[#f5f0e8]/40'">
+                  <td class="px-3 py-2 text-[#1e3a2f]">{{ idx + 1 }}</td>
+                  <td class="px-3 py-2 text-[#1e3a2f] max-w-xs truncate">{{ row.texte }}</td>
+                  <td class="px-3 py-2">
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-200 text-gray-700">{{ getTypeLabel(row.type) }}</span>
+                  </td>
+                  <td class="px-3 py-2 text-[#1e3a2f]">{{ row.points }}</td>
+                  <td class="px-3 py-2 text-[#1e3a2f]">{{ row.theme || '—' }}</td>
+                  <td class="px-3 py-2 text-center">
+                    <span v-if="row.error" class="text-red-500 text-[10px] font-semibold" :title="row.error">❌ {{ row.error }}</span>
+                    <span v-else class="text-green-600 text-[10px] font-semibold">✓ OK</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="bg-[#f5f0e8]/50 rounded-lg px-4 py-3 mb-4 shrink-0">
+            <p class="text-xs font-semibold text-[#1e3a2f] mb-1">Format attendu (types appariement/fichier non pris en charge par l'import) :</p>
+            <code class="text-[10px] text-[#1e3a2f] block">texte, type (qcm/qcm_multiple/vrai_faux/texte_libre), points, option1, option2, option3, option4, reponses_correctes (index séparés par point-virgule, ex: 0 ou 0;2 — ou "vrai"/"faux" pour ce type), theme, difficulte</code>
+            <button @click="downloadTemplate" class="mt-2 text-xs text-[#4a7c5e] hover:underline">↓ Télécharger le modèle CSV</button>
+          </div>
+
+          <div class="flex gap-3 shrink-0">
+            <button @click="showImportModal = false" class="flex-1 py-2.5 bg-gray-200 hover:bg-gray-300 text-[#1e3a2f] rounded-lg text-sm font-body font-semibold">Annuler</button>
+            <button
+              @click="sendBulkImport"
+              :disabled="sendingBulk || importRows.filter(r => !r.error).length === 0"
+              class="flex-1 py-2.5 bg-[#4a7c5e] hover:bg-[#1e3a2f] text-white rounded-lg text-sm font-body font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <div v-if="sendingBulk" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"/>
+              {{ sendingBulk ? 'Import...' : `Importer ${importRows.filter(r => !r.error).length} question(s)` }}
+            </button>
+          </div>
+        </div>
+      </div>
     </TeacherLayout>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import * as XLSX from 'xlsx'
 import { useTeacher } from '~~/composables/useTeacher'
 import { useToast } from '~~/composables/useToast'
 
-const { getBanqueQuestions, createBanqueQuestion, updateBanqueQuestion, deleteBanqueQuestion } = useTeacher()
+const { getBanqueQuestions, createBanqueQuestion, createBanqueQuestionsBulk, updateBanqueQuestion, deleteBanqueQuestion } = useTeacher()
 const toast = useToast()
 
 const loading = ref(true)
@@ -239,6 +315,11 @@ const saving  = ref(false)
 const questions = ref([])
 const filtres = ref({ theme: '', difficulte: '', type: '' })
 const showModal = ref(false)
+
+// Import CSV/Excel
+const showImportModal = ref(false)
+const importRows       = ref([])
+const sendingBulk      = ref(false)
 
 const videEdition = () => ({
   id: null,
@@ -347,6 +428,136 @@ const supprimer = async (q) => {
   } else {
     toast.error(result.message || 'Erreur lors de la suppression')
   }
+}
+
+// ─── Import CSV/Excel ─────────────────────────────────────────────────────────
+
+const TYPES_IMPORTABLES = ['qcm', 'qcm_multiple', 'vrai_faux', 'texte_libre']
+
+const handleFileImport = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    try {
+      let rows = []
+      if (file.name.endsWith('.csv')) {
+        const text  = e.target.result
+        const lines = text.split('\n').filter(l => l.trim())
+        if (lines.length < 2) { toast.error('Fichier vide'); return }
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''))
+        rows = lines.slice(1).map(line => {
+          const values = line.split(',').map(v => v.trim().replace(/['"]/g, ''))
+          const obj = {}
+          headers.forEach((h, i) => obj[h] = values[i] || '')
+          return obj
+        })
+      } else {
+        const data     = new Uint8Array(e.target.result)
+        const workbook = XLSX.read(data, { type: 'array' })
+        const sheet    = workbook.Sheets[workbook.SheetNames[0]]
+        const raw      = XLSX.utils.sheet_to_json(sheet, { defval: '' })
+        rows = raw.map(row => {
+          const n = {}
+          Object.keys(row).forEach(k => n[k.toLowerCase().trim()] = String(row[k]).trim())
+          return n
+        })
+      }
+
+      const validated = rows
+        .filter(row => Object.values(row).some(v => v))
+        .map(row => {
+          const texte      = row.texte || ''
+          const type       = (row.type || '').toLowerCase().trim()
+          const points     = parseInt(row.points) || 1
+          const theme      = row.theme || ''
+          const difficulte = (row.difficulte || row['difficulté'] || 'moyen').toLowerCase().trim()
+          const options    = [row.option1, row.option2, row.option3, row.option4].filter(o => o && o.trim())
+          const repBrut    = (row.reponses_correctes || '').toLowerCase().trim()
+
+          let error = ''
+          let reponses_correctes = []
+          let optionsFinales = options
+
+          if (!texte) error = 'Texte manquant'
+          else if (!TYPES_IMPORTABLES.includes(type)) error = `Type "${type}" invalide ou non pris en charge par l'import`
+          else if (!['facile', 'moyen', 'difficile'].includes(difficulte)) error = `Difficulté "${difficulte}" invalide`
+
+          if (!error && type === 'vrai_faux') {
+            optionsFinales = ['Vrai', 'Faux']
+            if (repBrut === 'vrai') reponses_correctes = [0]
+            else if (repBrut === 'faux') reponses_correctes = [1]
+            else if (repBrut === '0' || repBrut === '1') reponses_correctes = [parseInt(repBrut)]
+            else error = 'reponses_correctes doit être "vrai", "faux", 0 ou 1'
+          } else if (!error && type === 'texte_libre') {
+            optionsFinales = []
+            reponses_correctes = []
+          } else if (!error) {
+            // qcm / qcm_multiple - separateur ";" (pas ",") : un fichier CSV
+            // decoupe deja les colonnes sur la virgule, une valeur du type
+            // "0,2" y serait incorrectement coupee en deux colonnes.
+            if (options.length < 2) error = 'Au moins 2 options requises'
+            else {
+              reponses_correctes = repBrut.split(';').map(v => parseInt(v.trim())).filter(n => !isNaN(n))
+              if (reponses_correctes.length === 0) error = 'reponses_correctes manquant (index séparés par point-virgule)'
+              else if (reponses_correctes.some(i => i < 0 || i >= options.length)) error = 'reponses_correctes contient un index hors limites'
+              else if (type === 'qcm' && reponses_correctes.length !== 1) error = 'Le type qcm ne doit avoir qu\'une seule bonne réponse'
+            }
+          }
+
+          return {
+            texte, type, points, theme: theme || null, difficulte,
+            options: optionsFinales, reponses_correctes, reponse_indicative: null,
+            error
+          }
+        })
+
+      importRows.value = validated
+      showImportModal.value = true
+    } catch {
+      toast.error('Erreur lors de la lecture du fichier')
+    }
+  }
+
+  file.name.endsWith('.csv') ? reader.readAsText(file, 'UTF-8') : reader.readAsArrayBuffer(file)
+  event.target.value = ''
+}
+
+const sendBulkImport = async () => {
+  const validRows = importRows.value.filter(r => !r.error)
+  if (!validRows.length) return
+  sendingBulk.value = true
+
+  const result = await createBanqueQuestionsBulk(validRows.map(r => ({
+    texte: r.texte, type: r.type, points: r.points,
+    options: r.options, reponses_correctes: r.reponses_correctes,
+    reponse_indicative: r.reponse_indicative, theme: r.theme, difficulte: r.difficulte
+  })))
+
+  sendingBulk.value = false
+  showImportModal.value = false
+  importRows.value = []
+
+  if (result.success) {
+    toast.success(result.message || 'Questions importées')
+    await charger()
+  } else {
+    toast.error(result.message || 'Erreur lors de l\'import')
+  }
+}
+
+const downloadTemplate = () => {
+  const csv  = 'texte,type,points,option1,option2,option3,option4,reponses_correctes,theme,difficulte\n' +
+    '"Quelle est la capitale de la France ?",qcm,2,Paris,Lyon,Marseille,Nice,0,Géographie,facile\n' +
+    '"Quels langages sont orientés objet ?",qcm_multiple,3,Java,HTML,Python,CSS,0;2,Informatique,moyen\n' +
+    '"Le soleil est une étoile.",vrai_faux,1,,,,,vrai,Sciences,facile\n' +
+    '"Citez deux gaz à effet de serre.",texte_libre,3,,,,,,"Environnement",moyen'
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href = url; a.download = 'modele_questions.csv'; a.click()
+  URL.revokeObjectURL(url)
 }
 
 onMounted(charger)

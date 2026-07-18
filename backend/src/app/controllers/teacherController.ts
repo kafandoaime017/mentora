@@ -461,6 +461,74 @@ export const getSessionDetails = async (req: AuthRequest, res: Response, next: N
     }
 };
 
+// ==================== DUPLIQUER UNE SESSION (MODELE) ====================
+// Recopie une session (questions incluses) pour eviter de tout ressaisir a
+// chaque examen. La copie repart en PENDING avec des dates provisoires
+// (demain, a l'heure actuelle) - le professeur est renvoye vers l'edition
+// pour les redefinir avant de la demarrer.
+export const duplicateSession = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const sessionId = parseId(req.params.id);
+        const professeurId = req.user!.id;
+        if (!sessionId) {
+            res.status(400).json({ success: false, message: 'ID invalide' });
+            return;
+        }
+
+        const original = await sessionRepo.findOne({
+            where: { id: sessionId, created_by: professeurId },
+            relations: ['questions']
+        });
+        if (!original) {
+            res.status(404).json({ success: false, message: 'Session non trouvee' });
+            return;
+        }
+
+        const dateDebut = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const dateFin   = new Date(dateDebut.getTime() + (original.duree || 30) * 60 * 1000);
+
+        const copie = sessionRepo.create({
+            titre: `${original.titre} (copie)`,
+            description: original.description,
+            theme: original.theme,
+            code: generateUniqueCode(),
+            date_debut: dateDebut,
+            date_fin: dateFin,
+            duree: original.duree,
+            classe_id: original.classe_id,
+            filiere_id: original.filiere_id,
+            created_by: professeurId,
+            status: SessionStatus.PENDING
+        });
+        await sessionRepo.save(copie);
+
+        const questionsOriginales = [...original.questions].sort((a, b) => a.ordre - b.ordre);
+        for (let i = 0; i < questionsOriginales.length; i++) {
+            const q = questionsOriginales[i];
+            await questionRepo.save(questionRepo.create({
+                session_id: copie.id,
+                texte: q.texte,
+                type: q.type,
+                points: q.points,
+                ordre: i + 1,
+                options: q.options,
+                reponses_correctes: q.reponses_correctes,
+                reponse_indicative: q.reponse_indicative
+            }));
+        }
+
+        auditProf(req, 'duplication_session', 'session', copie.id, { titre: copie.titre, sourceId: original.id });
+
+        res.json({
+            success: true,
+            message: 'Session dupliquee - pensez a redefinir les dates avant de la demarrer',
+            data: { id: copie.id }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const updateSession = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const sessionId = parseId(req.params.id);
@@ -1351,6 +1419,58 @@ export const createBanqueQuestion = async (req: AuthRequest, res: Response, next
         await banqueRepo.save(question);
 
         res.json({ success: true, message: 'Question ajoutee a la banque', data: question });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Import en masse (CSV/Excel parse cote frontend, on ne recoit ici qu'un
+// tableau de questions deja structurees). Ne gere pas les types
+// appariement/fichier - pas de format tabulaire simple pour ceux-la, ils
+// restent a ajouter manuellement.
+export const createBanqueQuestionsBulk = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const professeurId = req.user!.id;
+        const professeur = await userRepo.findOne({
+            where: { id: professeurId },
+            relations: ['professeurProfil']
+        });
+
+        const ecoleId = professeur?.professeurProfil?.ecoleId;
+        if (!ecoleId) {
+            res.status(403).json({ success: false, message: "Vous n'etes rattache a aucune ecole" });
+            return;
+        }
+
+        const { questions } = req.body;
+        if (!Array.isArray(questions) || questions.length === 0) {
+            res.status(400).json({ success: false, message: 'Aucune question a importer' });
+            return;
+        }
+
+        const filiereId = professeur?.professeurProfil?.filiereId || null;
+        let importees = 0;
+
+        for (const q of questions) {
+            if (!q?.texte || !q?.type) continue;
+            const question = banqueRepo.create({
+                ecole_id: ecoleId,
+                professeur_id: professeurId,
+                filiere_id: filiereId,
+                texte: q.texte,
+                type: q.type,
+                points: q.points || 1,
+                options: q.options || null,
+                reponses_correctes: q.reponses_correctes || null,
+                reponse_indicative: q.reponse_indicative || null,
+                theme: q.theme || null,
+                difficulte: q.difficulte || QuestionDifficulte.MOYEN
+            });
+            await banqueRepo.save(question);
+            importees++;
+        }
+
+        res.json({ success: true, message: `${importees} question(s) importee(s)`, data: { importees } });
     } catch (err) {
         next(err);
     }

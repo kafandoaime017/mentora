@@ -24,7 +24,8 @@ import {
     adminToggleResultatsVisibles,
     adminExportResultsPdf,
     adminExportUserHistoryPdf,
-    createSessionUrgence
+    createSessionUrgence,
+    duplicateSessionAdmin
 } from '../../app/controllers/adminController'
 import {
     getAnnonces, createAnnonce, getAnnonceResultats, toggleAnnonceActif, deleteAnnonce
@@ -95,6 +96,7 @@ router.get('/sessions',        ...isAdmin, getAllSessions)
 router.get('/sessions/:id',    ...isAdmin, getAdminSessionDetails)
 router.put('/sessions/:id',    ...isAdmin, adminUpdateSession)
 router.delete('/sessions/:id', ...isAdmin, adminDeleteSession)
+router.post('/sessions/:id/dupliquer', ...isAdmin, checkLimiteSessions, duplicateSessionAdmin)
 
 router.post('/sessions/:id/start', ...isAdmin, adminStartSession)
 router.post('/sessions/:id/end',   ...isAdmin, adminEndSession)

@@ -42,6 +42,23 @@ export const useTeacher = () => {
     }
 
     /**
+     * Dupliquer un QCM (session) comme modèle - questions incluses,
+     * dates provisoires a redefinir ensuite.
+     */
+    const duplicateQCM = async (id: number) => {
+        try {
+            const res = await $fetch(`/api/teacher/qcm/${id}/dupliquer`, {
+                method: 'POST',
+                headers: getAuthHeader()
+            })
+            return res
+        } catch (error: any) {
+            console.error('Erreur duplication QCM:', error)
+            return error?.data || { success: false, message: 'Erreur lors de la duplication' }
+        }
+    }
+
+    /**
      * Récupérer la liste des QCM
      */
     const getQCMList = async () => {
@@ -413,6 +430,20 @@ const getPlanInfo = async () => {
         }
     }
 
+    const createBanqueQuestionsBulk = async (questions: any[]) => {
+        try {
+            const res = await $fetch('/api/teacher/banque-questions/bulk', {
+                method: 'POST',
+                body: { questions },
+                headers: getAuthHeader()
+            })
+            return res
+        } catch (error: any) {
+            console.error('Erreur import banque:', error)
+            return error.data || { success: false, message: 'Erreur lors de l\'import' }
+        }
+    }
+
     /**
      * Modifier une question de la banque
      */
@@ -497,6 +528,7 @@ const getPlanInfo = async () => {
         getStatistics,
         getNotes,
         exportResults,
+        duplicateQCM,
         getEtudiantReponses,
         // Données pour formulaires
         getFilieres,
@@ -512,6 +544,7 @@ const getPlanInfo = async () => {
         // Banque de questions
         getBanqueQuestions,
         createBanqueQuestion,
+        createBanqueQuestionsBulk,
         updateBanqueQuestion,
         deleteBanqueQuestion,
 
