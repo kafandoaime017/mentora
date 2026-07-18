@@ -7,6 +7,7 @@ import AppDataSource from '../../config/data-source';
 import { User, UserRole } from '../models/User';
 import { EtudiantProfil } from '../models/EtudiantProfil';
 import { envoyerCodeVerification, envoyerBienvenue, envoyerResetPassword, envoyerConfirmationResetPassword } from './emailService';
+import { AppError } from '../utils/AppError';
 
 const userRepo     = () => AppDataSource.getRepository(User);
 const profilRepo   = () => AppDataSource.getRepository(EtudiantProfil);
@@ -255,17 +256,17 @@ export const connecter = async (data: ConnexionPayload) => {
   const user = await userRepo().findOne({ where: { email: data.email } })
 
   if (!user || !user.motDePasse)
-    throw new Error('Email ou mot de passe incorrect.')
+    throw new AppError('Email ou mot de passe incorrect.', 401)
 
   if (!user.isActive)
-    throw new Error('Ce compte a été désactivé. Contactez un administrateur.')
+    throw new AppError('Ce compte a été désactivé. Contactez un administrateur.', 403)
 
   const valide = await bcrypt.compare(data.motDePasse, user.motDePasse)
   if (!valide)
-    throw new Error('Email ou mot de passe incorrect.')
+    throw new AppError('Email ou mot de passe incorrect.', 401)
 
   if (!user.isVerified)
-    throw new Error('Veuillez vérifier votre email avant de vous connecter.')
+    throw new AppError('Veuillez vérifier votre email avant de vous connecter.', 403)
 
   // ─── TOTP : si activé, ne pas donner le vrai token ───────────────────────
   if (user.totpEnabled) {
@@ -419,7 +420,7 @@ export const connecterAvecGoogle = async (idToken: string) => {
   });
 
   const payload = ticket.getPayload();
-  if (!payload?.email) throw new Error('Token Google invalide.');
+  if (!payload?.email) throw new AppError('Token Google invalide.', 401);
 
   const { sub: googleId, email, given_name, family_name, picture } = payload;
   const repo = userRepo();
@@ -431,7 +432,7 @@ export const connecterAvecGoogle = async (idToken: string) => {
 
     if (user) {
       // Lier Google à un compte existant
-      if (!user.isActive) throw new Error('Ce compte a été désactivé.');
+      if (!user.isActive) throw new AppError('Ce compte a été désactivé.', 403);
       user.googleId = googleId;
       user.avatar   = user.avatar ?? picture ?? null;
       await repo.save(user);
@@ -457,7 +458,7 @@ export const connecterAvecGoogle = async (idToken: string) => {
     }
   }
 
-  if (!user!.isActive) throw new Error('Ce compte a été désactivé.');
+  if (!user!.isActive) throw new AppError('Ce compte a été désactivé.', 403);
 
   const profil = await profilRepo().findOne({ where: { userId: user!.id } });
 

@@ -1,6 +1,14 @@
 
 # Environnement de DEVELOPPEMENT
 # Lancer avec : docker compose -f docker-compose.dev.yml up --build
+#
+# "name:" isole ce stack de celui de prod (docker-compose.prod.yml) : sans ça,
+# les deux fichiers partagent le meme nom de projet Compose implicite (deduit
+# du dossier), ce qui fait que Compose melange les conteneurs dev/prod dans ses
+# messages "orphan containers" et peut recreer l'un en manipulant l'autre.
+# Le reseau/volume ci-dessous sont epingles a leur nom Docker physique actuel
+# (name:) pour que ce changement ne deplace ni ne recree rien.
+name: mentora-dev
 
 services:
   db:
@@ -58,5 +66,10 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true  # 🔥 important pour Docker
 
+networks:
+  default:
+    name: mentora_default
+
 volumes:
   mentora_data:
+    name: mentora_mentora_data
