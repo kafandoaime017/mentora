@@ -19,7 +19,7 @@ router.put('/qcm/:id', teacherController.updateSession);
 router.delete('/qcm/:id', teacherController.deleteSession);
 
 // ==================== SESSIONS ====================
-router.post('/sessions', teacherController.createSession);
+router.post('/sessions', checkLimiteSessions, teacherController.createSession);
 router.get('/sessions', teacherController.getSessions);
 router.get('/sessions/:id', teacherController.getSessionDetails);
 router.put('/sessions/:id', teacherController.updateSession);
@@ -38,7 +38,6 @@ router.get('/sessions/:id/etudiant/:etudiantId/reponses', teacherController.getE
 // ==================== STATISTIQUES ====================
 router.get('/sessions/:id/statistiques', teacherController.getStatistics);
 router.get('/sessions/:id/notes', teacherController.getNotes);
-router.post('/sessions/:id/notes/publier', teacherController.publishNotes);
 router.get('/sessions/:id/export', teacherController.exportResults);
 
 router.get('/stats', teacherController.getTeacherStats);

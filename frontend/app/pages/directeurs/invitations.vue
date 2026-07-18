@@ -379,7 +379,7 @@ const sendInvitation = async () => {
   }
   sendingInvitation.value = true
   try {
-    await apiFetch('/admin/invitations', {
+    const res = await apiFetch('/admin/invitations', {
       method: 'POST',
       body: {
         prenom:    form.value.prenom,
@@ -390,7 +390,11 @@ const sendInvitation = async () => {
         classeId:  form.value.classeId || null
       }
     })
-    toast.success('Invitation envoyée !')
+    if (res?.data?.emailEnvoye === false) {
+      toast.error("Invitation créée, mais l'email n'a pas pu être envoyé. Copiez le lien manuellement.")
+    } else {
+      toast.success('Invitation envoyée !')
+    }
     showForm.value = false
     form.value = { prenom: '', nom: '', email: '', role: '', filiereId: '', classeId: '' }
     await loadData()
@@ -412,8 +416,12 @@ const copyLink = async (inv) => {
 const resendInvitation = async (inv) => {
   resendingId.value = inv.id
   try {
-    await apiFetch(`/admin/invitations/${inv.id}/resend`, { method: 'POST' })
-    toast.success(`Invitation renvoyée à ${inv.email}`)
+    const res = await apiFetch(`/admin/invitations/${inv.id}/resend`, { method: 'POST' })
+    if (res?.data?.emailEnvoye === false) {
+      toast.error(`Lien régénéré, mais l'email n'a pas pu être envoyé à ${inv.email}. Copiez le lien manuellement.`)
+    } else {
+      toast.success(`Invitation renvoyée à ${inv.email}`)
+    }
     await loadData()
   } catch (err) {
     toast.error(err?.data?.message || 'Erreur lors du renvoi')

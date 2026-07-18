@@ -81,18 +81,26 @@ export const checkLimiteProfesseurs = async (req: AuthRequest, res: Response, ne
   } catch (err) { next(err) }
 }
 
+// Resout l'ecoleId de l'utilisateur courant, que ce soit un professeur (via
+// son ProfesseurProfil) ou un directeur (ecoleId directement sur le User) -
+// necessaire depuis que le directeur peut lui aussi creer des sessions/
+// generer des questions IA (cas d'urgence, cf. createSessionUrgence).
+const resoudreEcoleId = async (req: AuthRequest): Promise<number | null> => {
+  if (req.user!.ecoleId) return req.user!.ecoleId
+
+  const { ProfesseurProfil } = await import('../models/ProfesseurProfil')
+  const profRepo = AppDataSource.getRepository(ProfesseurProfil)
+  const profil = await profRepo.findOne({ where: { userId: req.user!.id } })
+  return profil?.ecoleId ?? null
+}
+
 // Vérifie si l'école peut créer des sessions ce mois
 export const checkLimiteSessions = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user!.id
-    if (!userId) { next(); return }
+    const ecoleId = await resoudreEcoleId(req)
+    if (!ecoleId) { next(); return }
 
-    const { ProfesseurProfil } = await import('../models/ProfesseurProfil')
-    const profRepo = AppDataSource.getRepository(ProfesseurProfil)
-    const profil = await profRepo.findOne({ where: { userId } })
-    if (!profil?.ecoleId) { next(); return }
-
-    const ecole = await ecoleRepo.findOne({ where: { id: profil.ecoleId } })
+    const ecole = await ecoleRepo.findOne({ where: { id: ecoleId } })
     if (!ecole) { next(); return }
 
     const limites = LIMITES_PLANS[ecole.plan]
@@ -108,7 +116,7 @@ export const checkLimiteSessions = async (req: AuthRequest, res: Response, next:
     const count = await sessionRepo
       .createQueryBuilder('s')
       .innerJoin('s.filiere', 'f')
-      .where('f.ecoleId = :ecoleId', { ecoleId: profil.ecoleId })
+      .where('f.ecoleId = :ecoleId', { ecoleId })
       .andWhere('s.created_at >= :debut', { debut: debutMois })
       .getCount()
 
@@ -129,12 +137,10 @@ export const checkLimiteSessions = async (req: AuthRequest, res: Response, next:
 // Vérifie si l'IA est disponible pour ce plan
 export const checkPlanIA = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { ProfesseurProfil } = await import('../models/ProfesseurProfil')
-    const profRepo = AppDataSource.getRepository(ProfesseurProfil)
-    const profil = await profRepo.findOne({ where: { userId: req.user!.id } })
-    if (!profil?.ecoleId) { next(); return }
+    const ecoleId = await resoudreEcoleId(req)
+    if (!ecoleId) { next(); return }
 
-    const ecole = await ecoleRepo.findOne({ where: { id: profil.ecoleId } })
+    const ecole = await ecoleRepo.findOne({ where: { id: ecoleId } })
     if (!ecole) { next(); return }
 
     if (!LIMITES_PLANS[ecole.plan].ia) {

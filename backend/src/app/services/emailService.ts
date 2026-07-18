@@ -54,10 +54,14 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
     };
     
     await transporter.sendMail(mailOptions);
-    console.log(`✅ Email envoyé à ${options.to}`);
+    console.log(`✅ Email envoyé à ${options.to} (template: ${options.template})`);
     return true;
   } catch (error) {
-    console.error('❌ Erreur lors de l\'envoi de l\'email:', error);
+    // Ce log doit rester facilement grep-able (ex: `docker logs ... | grep EMAIL_ECHEC`) :
+    // sendMail() ne relance jamais l'erreur, donc c'est la SEULE trace qu'un email a
+    // échoué. Sans le destinataire/template ici, un échec SMTP est indiscernable dans
+    // les logs - c'est ce qui a rendu le bug d'invitation difficile à diagnostiquer.
+    console.error(`❌ EMAIL_ECHEC destinataire=${options.to} template=${options.template} :`, error);
     return false;
   }
 };

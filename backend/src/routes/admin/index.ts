@@ -23,13 +23,14 @@ import {
     adminGetNotes,
     adminToggleResultatsVisibles,
     adminExportResultsPdf,
-    adminExportUserHistoryPdf
+    adminExportUserHistoryPdf,
+    createSessionUrgence
 } from '../../app/controllers/adminController'
 import {
     getAnnonces, createAnnonce, getAnnonceResultats, toggleAnnonceActif, deleteAnnonce
 } from '../../app/controllers/announcementController'
 import { getAuditLogs } from '../../app/controllers/auditLogController'
-import { checkLimiteEtudiants, checkLimiteProfesseurs } from '../../app/middleware/checkPlan'
+import { checkLimiteEtudiants, checkLimiteProfesseurs, checkLimiteSessions } from '../../app/middleware/checkPlan'
 import { uploadEcoleLogo as uploadEcoleLogoMiddleware } from '../../app/middleware/upload'
 
 const router = Router()
@@ -89,6 +90,7 @@ router.patch('/invitations/:id/revoke', ...isAdmin, revokeInvitation)
 
 
 // Sessions
+router.post('/sessions',       ...isAdmin, checkLimiteSessions, createSessionUrgence)
 router.get('/sessions',        ...isAdmin, getAllSessions)
 router.get('/sessions/:id',    ...isAdmin, getAdminSessionDetails)
 router.put('/sessions/:id',    ...isAdmin, adminUpdateSession)

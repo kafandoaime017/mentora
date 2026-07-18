@@ -195,22 +195,6 @@ export const useTeacher = () => {
     }
 
     /**
-     * Publier les notes
-     */
-    const publishNotes = async (sessionId: number) => {
-        try {
-            const res = await $fetch(`/api/teacher/sessions/${sessionId}/notes/publier`, {
-                method: 'POST',
-                headers: getAuthHeader()
-            })
-            return res
-        } catch (error: any) {
-            console.error('Erreur publication notes:', error)
-            return error.data || { success: false, message: 'Erreur lors de la publication' }
-        }
-    }
-
-    /**
      * Exporter les résultats en CSV
      */
     const exportResults = async (sessionId: number) => {
@@ -512,7 +496,6 @@ const getPlanInfo = async () => {
         getParticipants,
         getStatistics,
         getNotes,
-        publishNotes,
         exportResults,
         getEtudiantReponses,
         // Données pour formulaires

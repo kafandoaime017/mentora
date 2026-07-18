@@ -69,7 +69,56 @@ const updateEtudiantScore = async (sessionId: number, etudiantId: number): Promi
     );
 };
 
+// Verifications communes avant d'accepter une reponse (autosave, upload ou
+// soumission finale) : session active, etudiant bien inscrit, pas deja
+// termine, temps non ecoule. Ecrit directement la reponse HTTP et renvoie
+// `null` si une verification echoue - l'appelant doit alors simplement
+// `return` sans rien faire de plus.
+const verifierSessionEcrivable = async (
+    sessionId: number,
+    etudiantId: number,
+    res: Response
+): Promise<{ session: Session; participant: SessionParticipant } | null> => {
+    const session = await sessionRepo.findOne({
+        where: { id: sessionId, status: SessionStatus.ACTIVE }
+    });
+    if (!session) {
+        res.status(404).json({ success: false, message: 'Session non trouvee ou terminee' });
+        return null;
+    }
 
+    const participant = await participantRepo.findOne({
+        where: { session_id: sessionId, etudiant_id: etudiantId }
+    });
+    if (!participant) {
+        res.status(403).json({ success: false, message: 'Vous devez d\'abord rejoindre la session' });
+        return null;
+    }
+
+    if (participant.statut === ParticipantStatus.TERMINE) {
+        res.status(403).json({
+            success: false,
+            message: 'Vous avez deja termine cette session. Vous ne pouvez plus modifier vos reponses.'
+        });
+        return null;
+    }
+
+    const maintenant = new Date();
+    const dateFin = new Date(session.date_fin);
+    if (maintenant > dateFin) {
+        await participantRepo.update(
+            { session_id: sessionId, etudiant_id: etudiantId },
+            { statut: ParticipantStatus.TERMINE, date_completed: new Date() }
+        );
+        res.status(403).json({
+            success: false,
+            message: 'Temps ecoule ! Session terminee automatiquement.'
+        });
+        return null;
+    }
+
+    return { session, participant };
+};
 
 // ==================== RECUPERER UNE SESSION (ADAPTEE AU STATUT) ====================
 
@@ -645,6 +694,8 @@ export const submitSingleReponse = async (req: AuthRequest, res: Response, next:
             return;
         }
 
+        if (!(await verifierSessionEcrivable(sessionId, etudiantId, res))) return;
+
         const question = await questionRepo.findOne({ where: { id: questionId } });
         if (!question) {
             res.status(404).json({ success: false, message: 'Question non trouvee' });
@@ -919,6 +970,8 @@ export const submitReponseFichier = async (req: AuthRequest, res: Response, next
             res.status(400).json({ success: false, message: 'Aucun fichier recu' });
             return;
         }
+
+        if (!(await verifierSessionEcrivable(sessionId, etudiantId, res))) return;
 
         const question = await questionRepo.findOne({ where: { id: questionId } });
         if (!question || question.type !== QuestionType.FICHIER) {

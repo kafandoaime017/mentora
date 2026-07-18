@@ -404,6 +404,22 @@ export const useAdmin = () => {
         }
     }
 
+    const createSession = async (data) => {
+        try {
+            return await $fetch('/api/admin/sessions', {
+                method: 'POST', headers: getAuthHeader(), body: data
+            })
+        } catch (error) {
+            console.error('Erreur création session:', error)
+            const message = error?.data?.message || 'Erreur lors de la création de la session'
+            const code    = error?.data?.code
+            if (code === 'LIMITE_SESSIONS') {
+                return { success: false, message, code, redirect: '/directeurs/abonnement' }
+            }
+            return { success: false, message }
+        }
+    }
+
     const getSessionDetails = async (id) => {
         try {
             return await $fetch(`/api/admin/sessions/${id}`, { headers: getAuthHeader() })
@@ -503,7 +519,7 @@ export const useAdmin = () => {
         // Invitations
         getInvitations, sendInvitation, deleteInvitation, resendInvitation, revokeInvitation,
         // Sessions
-        getSessions, getSessionDetails, deleteSession,
+        getSessions, getSessionDetails, deleteSession, createSession,
         // Annonces & sondages
         getAnnonces, createAnnonce, getAnnonceResultats, toggleAnnonceActif, deleteAnnonce,
         // Logs d'audit

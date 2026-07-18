@@ -16,11 +16,12 @@ import { createNotification } from './notificationController'
 import { NotificationType } from '../models/Notification'
 import { getSocketIO } from '../../socket'
 import { autoCloseSession } from './teacherController'
-import { envoyerEmailNotesPubliees } from '../services/emailService'
+import { envoyerEmailNotesPubliees, envoyerEmailNouvelleSession } from '../services/emailService'
 import PDFDocument from 'pdfkit'
 import path from 'path'
 import fs from 'fs'
 import { logAudit, getClientIp } from '../services/auditService'
+import QRCode from 'qrcode'
 
 interface AuthRequest extends Request { user?: User }
 
@@ -535,9 +536,10 @@ export const sendInvitation = async (req: AuthRequest, res: Response, next: Next
             await invitationRepo.save(existingInvit)
 
             const lien = `${process.env.FRONTEND_URL}/auth/invitation?token=${existingInvit.token}`
-            await envoyerInvitation(email, prenom, nom, role, filiere.nom, classe?.nom || null, ecole.nom, lien, existingInvit.expiresAt)
+            const emailEnvoye = await envoyerInvitation(email, prenom, nom, role, filiere.nom, classe?.nom || null, ecole.nom, lien, existingInvit.expiresAt)
             audit(req, 'invitation_renouvelee', 'invitation', existingInvit.id, { email, role })
-            res.json({ success: true, message: 'Invitation renouvelée', data: { token: existingInvit.token, expiresAt: existingInvit.expiresAt, lien } })
+            if (!emailEnvoye) audit(req, 'invitation_email_echec', 'invitation', existingInvit.id, { email, role })
+            res.json({ success: true, message: 'Invitation renouvelée', data: { token: existingInvit.token, expiresAt: existingInvit.expiresAt, lien, emailEnvoye } })
             return
         }
 
@@ -551,10 +553,11 @@ export const sendInvitation = async (req: AuthRequest, res: Response, next: Next
         await invitationRepo.save(invitation)
 
         const lien = `${process.env.FRONTEND_URL}/auth/invitation?token=${invitation.token}`
-        await envoyerInvitation(email, prenom, nom, role, filiere.nom, classe?.nom || null, ecole.nom, lien, invitation.expiresAt)
+        const emailEnvoye = await envoyerInvitation(email, prenom, nom, role, filiere.nom, classe?.nom || null, ecole.nom, lien, invitation.expiresAt)
 
         audit(req, 'envoi_invitation', 'invitation', invitation.id, { email, role })
-        res.json({ success: true, message: 'Invitation envoyée', data: { token: invitation.token, expiresAt: invitation.expiresAt, lien } })
+        if (!emailEnvoye) audit(req, 'invitation_email_echec', 'invitation', invitation.id, { email, role })
+        res.json({ success: true, message: 'Invitation envoyée', data: { token: invitation.token, expiresAt: invitation.expiresAt, lien, emailEnvoye } })
     } catch (err) { next(err) }
 }
 
@@ -613,73 +616,87 @@ export const registerViaInvitation = async (req: Request, res: Response, next: N
         const existingUser = await userRepo.findOne({ where: { email: invitation.email } })
         if (existingUser) { res.status(400).json({ success: false, message: 'Un compte existe déjà avec cet email' }); return }
 
-        const verificationCode    = Math.floor(100000 + Math.random() * 900000).toString()
-        const verificationExpires = new Date(Date.now() + 10 * 60 * 1000)
-        const hashedPassword      = await bcrypt.hash(password, 10)
-
-        const user = userRepo.create({
-            nom: invitation.nom, prenom: invitation.prenom,
-            email: invitation.email, motDePasse: hashedPassword,
-            role: invitation.role as any,
-            isVerified: false, isActive: true,
-            // Un directeur est rattaché directement à l'école (pas de filière/classe)
-            ecoleId: invitation.role === InvitationRole.DIRECTEUR ? invitation.ecoleId : null,
-            verificationCode, verificationCodeExpires: verificationExpires
-        })
-        await userRepo.save(user)
-
-        if (invitation.role === InvitationRole.ETUDIANT) {
-            const profil = etudiantRepo.create({
-                userId: user.id, classeId: invitation.classeId,
-                filiereId: invitation.filiereId, ecoleId: invitation.ecoleId
-            })
-            await etudiantRepo.save(profil)
-        } else if (invitation.role === InvitationRole.PROFESSEUR) {
-            const profil = professeurRepo.create({
-                userId: user.id, filiereId: invitation.filiereId,
-                ecoleId: invitation.ecoleId, statut: 'active'
-            })
-            await professeurRepo.save(profil)
-        }
-        // InvitationRole.DIRECTEUR : rien de plus à créer, ecoleId suffit sur le User
-
-        invitation.used = true
-        await invitationRepo.save(invitation)
-
-        // Notifier les superadmins qu'un nouveau directeur (ou superadmin) vient de rejoindre
-        if (invitation.role === InvitationRole.DIRECTEUR) {
-            const ecoleNom = invitation.ecole?.nom || (await ecoleRepo.findOne({ where: { id: invitation.ecoleId! } }))?.nom || 'une école'
-            const superadmins = await userRepo.find({ where: { role: UserRole.SUPERADMIN } })
-            for (const sa of superadmins) {
-                await createNotification(sa.id, {
-                    titre: 'Nouveau directeur inscrit',
-                    message: `${invitation.prenom} ${invitation.nom} a rejoint en tant que directeur de ${ecoleNom}.`,
-                    type: NotificationType.NEW_SESSION,
-                    link: '/superadmin/directeurs'
-                })
-            }
-        } else if (invitation.role === InvitationRole.SUPERADMIN) {
-            const superadmins = await userRepo.find({ where: { role: UserRole.SUPERADMIN } })
-            for (const sa of superadmins) {
-                if (sa.id === user.id) continue
-                await createNotification(sa.id, {
-                    titre: 'Nouveau superadmin',
-                    message: `${invitation.prenom} ${invitation.nom} a rejoint l'équipe en tant que superadministrateur.`,
-                    type: NotificationType.NEW_SESSION,
-                    link: '/superadmin/administration'
-                })
-            }
+        // Reclamer l'invitation de facon atomique (WHERE used = false) AVANT de creer le
+        // compte : sans ca, deux requetes quasi simultanees avec le meme token passent
+        // toutes les deux la verification "!invitation.used" ci-dessus et creent chacune
+        // un compte. Le UPDATE conditionnel ferme cette fenetre de course.
+        const claim = await invitationRepo.update({ id: invitation.id, used: false }, { used: true })
+        if (!claim.affected) {
+            res.status(400).json({ success: false, message: 'Invitation invalide ou déjà utilisée' })
+            return
         }
 
-        const { envoyerVerificationInvitation } = require('../services/emailService')
-        const verificationUrl = `${process.env.FRONTEND_URL}/auth/verify-invitation?code=${verificationCode}&email=${encodeURIComponent(invitation.email)}`
-        await envoyerVerificationInvitation(invitation.email, invitation.prenom, verificationUrl)
+        try {
+            const verificationCode    = Math.floor(100000 + Math.random() * 900000).toString()
+            const verificationExpires = new Date(Date.now() + 10 * 60 * 1000)
+            const hashedPassword      = await bcrypt.hash(password, 10)
 
-        res.json({
-            success: true,
-            message: 'Compte créé. Un code de vérification a été envoyé à votre email.',
-            data: { email: invitation.email, requiresVerification: true }
-        })
+            const user = userRepo.create({
+                nom: invitation.nom, prenom: invitation.prenom,
+                email: invitation.email, motDePasse: hashedPassword,
+                role: invitation.role as any,
+                isVerified: false, isActive: true,
+                // Un directeur est rattaché directement à l'école (pas de filière/classe)
+                ecoleId: invitation.role === InvitationRole.DIRECTEUR ? invitation.ecoleId : null,
+                verificationCode, verificationCodeExpires: verificationExpires
+            })
+            await userRepo.save(user)
+
+            if (invitation.role === InvitationRole.ETUDIANT) {
+                const profil = etudiantRepo.create({
+                    userId: user.id, classeId: invitation.classeId,
+                    filiereId: invitation.filiereId, ecoleId: invitation.ecoleId
+                })
+                await etudiantRepo.save(profil)
+            } else if (invitation.role === InvitationRole.PROFESSEUR) {
+                const profil = professeurRepo.create({
+                    userId: user.id, filiereId: invitation.filiereId,
+                    ecoleId: invitation.ecoleId, statut: 'active'
+                })
+                await professeurRepo.save(profil)
+            }
+            // InvitationRole.DIRECTEUR : rien de plus à créer, ecoleId suffit sur le User
+
+            // Notifier les superadmins qu'un nouveau directeur (ou superadmin) vient de rejoindre
+            if (invitation.role === InvitationRole.DIRECTEUR) {
+                const ecoleNom = invitation.ecole?.nom || (await ecoleRepo.findOne({ where: { id: invitation.ecoleId! } }))?.nom || 'une école'
+                const superadmins = await userRepo.find({ where: { role: UserRole.SUPERADMIN } })
+                for (const sa of superadmins) {
+                    await createNotification(sa.id, {
+                        titre: 'Nouveau directeur inscrit',
+                        message: `${invitation.prenom} ${invitation.nom} a rejoint en tant que directeur de ${ecoleNom}.`,
+                        type: NotificationType.NEW_SESSION,
+                        link: '/superadmin/directeurs'
+                    })
+                }
+            } else if (invitation.role === InvitationRole.SUPERADMIN) {
+                const superadmins = await userRepo.find({ where: { role: UserRole.SUPERADMIN } })
+                for (const sa of superadmins) {
+                    if (sa.id === user.id) continue
+                    await createNotification(sa.id, {
+                        titre: 'Nouveau superadmin',
+                        message: `${invitation.prenom} ${invitation.nom} a rejoint l'équipe en tant que superadministrateur.`,
+                        type: NotificationType.NEW_SESSION,
+                        link: '/superadmin/administration'
+                    })
+                }
+            }
+
+            const { envoyerVerificationInvitation } = require('../services/emailService')
+            const verificationUrl = `${process.env.FRONTEND_URL}/auth/verify-invitation?code=${verificationCode}&email=${encodeURIComponent(invitation.email)}`
+            await envoyerVerificationInvitation(invitation.email, invitation.prenom, verificationUrl)
+
+            res.json({
+                success: true,
+                message: 'Compte créé. Un code de vérification a été envoyé à votre email.',
+                data: { email: invitation.email, requiresVerification: true }
+            })
+        } catch (innerErr) {
+            // La creation du compte a echoue apres avoir reclame l'invitation : on la
+            // "rend" (used = false) pour qu'elle reste utilisable plutot que perdue.
+            await invitationRepo.update({ id: invitation.id }, { used: false })
+            throw innerErr
+        }
     } catch (err) { next(err) }
 }
 
@@ -765,9 +782,10 @@ export const resendInvitation = async (req: AuthRequest, res: Response, next: Ne
         await invitationRepo.save(invitation)
 
         const lien = `${process.env.FRONTEND_URL}/auth/invitation?token=${invitation.token}`
-        await envoyerInvitation(invitation.email, invitation.prenom, invitation.nom, invitation.role, invitation.filiere?.nom || '', invitation.classe?.nom || null, invitation.ecole?.nom || '', lien, invitation.expiresAt)
+        const emailEnvoye = await envoyerInvitation(invitation.email, invitation.prenom, invitation.nom, invitation.role, invitation.filiere?.nom || '', invitation.classe?.nom || null, invitation.ecole?.nom || '', lien, invitation.expiresAt)
+        if (!emailEnvoye) audit(req, 'invitation_email_echec', 'invitation', invitation.id, { email: invitation.email })
 
-        res.json({ success: true, message: 'Invitation renvoyée', data: { lien } })
+        res.json({ success: true, message: 'Invitation renvoyée', data: { lien, emailEnvoye } })
     } catch (err) { next(err) }
 }
 
@@ -789,6 +807,116 @@ export const revokeInvitation = async (req: AuthRequest, res: Response, next: Ne
 }
 
 // ==================== SESSIONS ====================
+
+// Creation d'une session par le DIRECTEUR pour le compte d'un professeur de
+// son ecole - reservee aux cas d'urgence (professeur absent/indisponible).
+// Contrairement a createQCM (teacherController), le directeur choisit
+// explicitement le professeur, et n'est pas limite a une seule filiere.
+// La session est rattachee au professeur choisi (created_by), pas au
+// directeur, pour qu'elle apparaisse normalement dans son espace.
+export const createSessionUrgence = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const ecoleId = getEcoleId(req, res)
+        if (!ecoleId) return
+
+        const { titre, description, theme, questions, date_debut, date_fin, duree, classe_id, filiere_id, professeur_id } = req.body
+
+        if (!titre || !date_debut || !date_fin || !classe_id || !filiere_id || !professeur_id || !questions?.length) {
+            res.status(400).json({ success: false, message: 'Champs manquants (titre, dates, filière, classe, professeur, questions)' })
+            return
+        }
+
+        const professeur = await userRepo.findOne({
+            where: { id: professeur_id, role: UserRole.PROFESSEUR },
+            relations: ['professeurProfil']
+        })
+        if (!professeur || professeur.professeurProfil?.ecoleId !== ecoleId) {
+            res.status(400).json({ success: false, message: "Ce professeur n'appartient pas à votre école" })
+            return
+        }
+
+        const filiere = await filiereRepo.findOne({ where: { id: filiere_id, ecoleId } })
+        if (!filiere) { res.status(400).json({ success: false, message: 'Filière invalide' }); return }
+
+        const classe = await classeRepo.findOne({ where: { id: classe_id }, relations: ['filiere'] })
+        if (!classe || classe.filiereId !== filiere_id) {
+            res.status(400).json({ success: false, message: "Cette classe n'appartient pas à la filière sélectionnée" })
+            return
+        }
+
+        const session = sessionRepo.create({
+            titre, description, theme,
+            code: Math.random().toString(36).substring(2, 8).toUpperCase(),
+            date_debut: new Date(date_debut),
+            date_fin: new Date(date_fin),
+            duree,
+            classe_id, filiere_id,
+            created_by: professeur.id,
+            status: SessionStatus.PENDING
+        })
+        await sessionRepo.save(session)
+
+        for (let i = 0; i < questions.length; i++) {
+            const q = questions[i]
+            await questionRepo.save(questionRepo.create({
+                session_id: session.id,
+                texte: q.texte,
+                type: q.type,
+                points: q.points || 1,
+                ordre: i + 1,
+                options: q.options || [],
+                reponses_correctes: q.reponses_correctes,
+                reponse_indicative: q.reponse_indicative || null
+            }))
+        }
+
+        const qrData = JSON.stringify({ sessionId: session.id, code: session.code })
+        session.qr_code = await QRCode.toDataURL(qrData)
+        await sessionRepo.save(session)
+
+        // Notifier les etudiants de la classe, comme pour une creation normale
+        const io = getSocketIO()
+        if (io) {
+            const roomName = `classe_${classe_id}_filiere_${filiere_id}`
+            io.to(roomName).emit('new-session', {
+                session: {
+                    id: session.id, titre: session.titre, theme: session.theme,
+                    date_debut: session.date_debut, duree: session.duree,
+                    status: session.status, code: session.code,
+                    professeur: `${professeur.prenom} ${professeur.nom}`
+                },
+                message: `Nouvelle session disponible : ${session.titre}`
+            })
+
+            const etudiants = await etudiantRepo.find({ where: { classeId: classe_id, filiereId: filiere_id } })
+            for (const etudiant of etudiants) {
+                await createNotification(etudiant.userId, {
+                    titre: 'Nouvelle session disponible',
+                    message: `La session "${session.titre}" a été créée (${professeur.prenom} ${professeur.nom})`,
+                    type: NotificationType.NEW_SESSION,
+                    link: '/students',
+                    sessionId: session.id
+                })
+                const user = await userRepo.findOne({ where: { id: etudiant.userId } })
+                if (user?.notifNouvelleSession) {
+                    await envoyerEmailNouvelleSession(user.email, user.prenom, session.titre)
+                }
+            }
+        }
+
+        const sessionWithQuestions = await sessionRepo.findOne({
+            where: { id: session.id },
+            relations: ['questions', 'classe', 'filiere']
+        })
+
+        // Tracabilite : action sensible faite par le directeur au nom d'un professeur
+        audit(req, 'creation_session_urgence', 'session', session.id, {
+            titre: session.titre, professeur: `${professeur.prenom} ${professeur.nom}`, professeurId: professeur.id
+        })
+
+        res.json({ success: true, message: 'Session créée avec succès', data: sessionWithQuestions })
+    } catch (err) { next(err) }
+}
 
 export const getAllSessions = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {

@@ -369,6 +369,10 @@
                   <h3 class="font-body text-lg font-bold text-[#1e3a2f]">
                     Résultats
                     <span class="ml-2 text-xs font-normal text-gray-400">({{ participants.length }} participant{{ participants.length > 1 ? 's' : '' }})</span>
+                    <span v-if="nbSuspects > 0" class="ml-2 inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full align-middle">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                      {{ nbSuspects }} suspect{{ nbSuspects > 1 ? 's' : '' }} de triche
+                    </span>
                   </h3>
                   <transition name="fade">
                     <span v-if="newSubmissionFlash" class="text-xs font-body text-green-700 flex items-center gap-1">
@@ -395,6 +399,7 @@
                       <tr>
                         <th class="px-4 font-body py-3 text-left text-xs font-semibold text-[#1e3a2f]">Étudiant</th>
                         <th class="px-4 font-body py-3 text-center text-xs font-semibold text-[#1e3a2f]">Score</th>
+                        <th class="px-4 font-body py-3 text-center text-xs font-semibold text-[#1e3a2f]">Intégrité</th>
                         <th class="px-4 font-body py-3 text-center text-xs font-semibold text-[#1e3a2f]">Actions</th>
                       </tr>
                     </thead>
@@ -404,25 +409,31 @@
                         class="hover:bg-[#f5f0e8]/30 cursor-pointer transition-all duration-300"
                         :class="[
                           selectedEtudiantId === p.etudiant?.id ? 'bg-[#f5f0e8]/50' : '',
-                          recentlyUpdated.has(p.etudiant?.id) ? 'bg-green-50' : ''
+                          recentlyUpdated.has(p.etudiant?.id) ? 'bg-green-50' : '',
+                          p.triche?.suspect ? 'border-l-4 border-l-amber-400' : ''
                         ]"
                         @click="selectedEtudiantId = p.etudiant?.id; loadEtudiantReponses()"
                       >
                         <td class="px-4 py-3">
-                          <div class="flex items-center gap-1.5">
-                            <p class="font-medium font-body text-[#1e3a2f] text-sm">{{ p.etudiant?.prenom }} {{ p.etudiant?.nom }}</p>
-                            <span
-                              v-if="p.triche?.suspect"
-                              class="shrink-0 text-amber-600"
-                              :title="`Suspicion de triche : ${p.triche.nb_changements_onglet} changement(s) d'onglet, ${p.triche.nb_reponses_rapides} réponse(s) anormalement rapide(s)`"
-                            >
-                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                            </span>
-                          </div>
+                          <p class="font-medium font-body text-[#1e3a2f] text-sm">{{ p.etudiant?.prenom }} {{ p.etudiant?.nom }}</p>
                           <p class="text-xs font-body text-[#9b9589]">{{ p.etudiant?.email }}</p>
                         </td>
                         <td class="px-4 py-3 text-center">
                           <span class="font-semibold text-[#1e3a2f] font-body text-sm">{{ p.score || 0 }}/{{ totalPoints }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                          <span
+                            v-if="p.triche?.suspect"
+                            class="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-1 rounded-full"
+                            :title="`${p.triche.nb_changements_onglet} changement(s) d'onglet, ${p.triche.nb_reponses_rapides} réponse(s) anormalement rapide(s)`"
+                          >
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            Suspect
+                          </span>
+                          <span v-else class="inline-flex items-center gap-1 text-xs font-medium text-green-700">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            RAS
+                          </span>
                         </td>
                         <td class="px-4 py-3 text-center">
                           <button
@@ -485,6 +496,7 @@
                     <th style="padding: 10px 12px; text-align: center;">Score</th>
                     <th style="padding: 10px 12px; text-align: center;">Note /20</th>
                     <th style="padding: 10px 12px; text-align: center;">Résultat</th>
+                    <th style="padding: 10px 12px; text-align: center;">Intégrité</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -496,6 +508,10 @@
                     <td style="padding: 9px 12px; text-align: center; font-weight: 700;" :style="{ color: getNoteColor(p.score) }">{{ totalPoints ? ((p.score || 0) / totalPoints * 20).toFixed(2) : '0.00' }}/20</td>
                     <td style="padding: 9px 12px; text-align: center;">
                       <span :style="{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', background: getNoteBackground(p.score), color: getNoteColorText(p.score) }">{{ getNoteLabel(p.score) }}</span>
+                    </td>
+                    <td style="padding: 9px 12px; text-align: center;">
+                      <span v-if="p.triche?.suspect" style="padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; background: #fef3c7; color: #92400e;">Suspect</span>
+                      <span v-else style="padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; background: #dcfce7; color: #166534;">RAS</span>
                     </td>
                   </tr>
                 </tbody>
@@ -553,6 +569,8 @@ const correctionEnCours   = ref(null)
 const totalPoints = computed(() => qcm.value.questions?.reduce((sum, q) => sum + q.points, 0) || 0)
 
 const participantsSorted = computed(() => [...participants.value].sort((a, b) => (b.score || 0) - (a.score || 0)))
+
+const nbSuspects = computed(() => participants.value.filter(p => p.triche?.suspect).length)
 
 const moyenneScore = computed(() => {
   const scores = participants.value.filter(p => p.score !== null).map(p => p.score || 0)

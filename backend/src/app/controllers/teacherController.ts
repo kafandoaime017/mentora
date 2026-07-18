@@ -1053,24 +1053,8 @@ export const getNotes = async (req: AuthRequest, res: Response, next: NextFuncti
     }
 };
 
-// ==================== 12. PUBLIER LES NOTES ====================
-
-export const publishNotes = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
-    try {
-        const sessionId = parseId(req.params.id);
-        if (!sessionId) {
-            res.status(400).json({ success: false, message: 'ID invalide' });
-            return;
-        }
-
-        res.json({
-            success: true,
-            message: 'Notes publiees avec succes'
-        });
-    } catch (err) {
-        next(err);
-    }
-};
+// (La publication reelle des notes se fait via toggleResultatsVisibles,
+// cf. plus bas - cet endpoint etait un stub mort qui ne faisait rien.)
 
 // ==================== 13. EXPORTER LES RESULTATS ====================
 
