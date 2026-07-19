@@ -38,7 +38,7 @@
                 <button
                   type="button"
                   @click="randomizeGrid"
-                  class="font-body text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1"
+                  class="font-body text-xs font-semibold text-primary hover:text-secondary transition-colors flex items-center gap-1"
                 >
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
@@ -54,7 +54,7 @@
                   @click="selectGenerated(seed)"
                   class="aspect-square rounded-full overflow-hidden border-2 transition-all"
                   :class="selectedSource === 'generated' && selectedSeed === seed
-                    ? 'border-indigo-500 ring-2 ring-indigo-200'
+                    ? 'border-primary ring-2 ring-primary/20'
                     : 'border-gray-200 hover:border-gray-300'"
                 >
                   <img :src="dicebearUrl(seed)" :alt="'Avatar ' + seed" class="w-full h-full object-cover bg-gray-50" />
@@ -109,7 +109,7 @@
                 type="button"
                 @click="confirmSelection"
                 :disabled="saving || !hasSelection"
-                class="px-4 py-2 text-sm font-body font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                class="px-4 py-2 text-sm font-body font-semibold rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <div v-if="saving" class="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"/>
                 {{ saving ? 'Enregistrement...' : confirmLabel }}
@@ -144,7 +144,9 @@ const emit = defineEmits(['update:modelValue', 'done', 'select'])
 const { updateAvatarUrl, updateAvatar } = useAuth()
 
 const STYLE = 'avataaars'
-const BG_COLORS = ['b6e3f4', 'c0aede', 'd1d4f9', 'ffd5dc', 'ffdfbf', 'c9f2d1']
+// Teintes pastel dérivées de la palette Mentora (teal/olive/or/terracotta) -
+// on évite le bleu/violet qui sort de l'identité visuelle de l'app.
+const BG_COLORS = ['a8d5c4', 'd4dba0', 'e8d4a0', 'e8b9a0', 'c9f2d1', 'ffdfbf']
 
 function randomSeed() {
   return `${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`
