@@ -4,6 +4,11 @@ import * as authService from '../services/authService';
 import { OAuth2Client } from 'google-auth-library';
 import AppDataSource from '../../config/data-source';
 import { ProfesseurProfil } from '../models/ProfesseurProfil';
+import { User, UserRole } from '../models/User';
+import { Ecole } from '../models/Ecole';
+import { envoyerVerificationInvitation } from '../services/emailService';
+import { createNotification } from './notificationController';
+import { NotificationType } from '../models/Notification';
 import { logAudit, getClientIp } from '../services/auditService';
 
 // Le redirect_uri DOIT pointer vers le backend (seul lui possède le client secret
@@ -15,7 +20,7 @@ import { logAudit, getClientIp } from '../services/auditService';
 const googleClient = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  `${process.env.API_URL}/api/auth/google/callback`
+  `${process.env.API_URL || 'http://localhost:5000'}/api/auth/google/callback`
 );
 
 export const inscription = async (req: Request, res: Response, next: NextFunction) => {
@@ -53,6 +58,99 @@ export const connexion = async (req: Request, res: Response, next: NextFunction)
     next(err);
   }
 };
+
+// ==================== INSCRIPTION SELF-SERVICE D'UNE ÉCOLE ====================
+// Depuis la landing page, un directeur peut créer lui-même son école (sans passer
+// par une invitation superadmin). L'école est toujours créée en plan 'gratuit' :
+// si un plan payant a été choisi, c'est le frontend qui enchaîne ensuite sur
+// /stripe/checkout une fois le directeur connecté (essai de 30 jours, cf.
+// stripeController). Le compte suit exactement le meme circuit de verification
+// (code a 6 chiffres + lien email + polling) que registerViaInvitation.
+export const inscrireEcole = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { ecole: ecoleData, directeur, plan } = req.body
+
+    if (!ecoleData?.nom || !directeur?.nom || !directeur?.prenom || !directeur?.email || !directeur?.password) {
+      res.status(400).json({ success: false, message: "Nom de l'école, nom, prénom, email et mot de passe du directeur sont requis." })
+      return
+    }
+
+    if (directeur.password.length < 8) {
+      res.status(400).json({ success: false, message: 'Le mot de passe doit contenir au moins 8 caractères.' })
+      return
+    }
+
+    if (plan && !['gratuit', 'starter', 'pro'].includes(plan)) {
+      res.status(400).json({ success: false, message: 'Plan invalide.' })
+      return
+    }
+
+    const userRepo  = AppDataSource.getRepository(User)
+    const ecoleRepo = AppDataSource.getRepository(Ecole)
+
+    const existingUser = await userRepo.findOne({ where: { email: directeur.email } })
+    if (existingUser) {
+      res.status(400).json({ success: false, message: 'Un compte existe déjà avec cet email.' })
+      return
+    }
+
+    const existingEcole = await ecoleRepo.findOne({ where: { nom: ecoleData.nom } })
+    if (existingEcole) {
+      res.status(400).json({ success: false, message: "Une école avec ce nom existe déjà. Essayez par exemple d'y ajouter votre ville." })
+      return
+    }
+
+    const ecole = ecoleRepo.create({
+      nom:       ecoleData.nom,
+      ville:     ecoleData.ville || null,
+      adresse:   ecoleData.adresse || null,
+      telephone: ecoleData.telephone || null
+    })
+    await ecoleRepo.save(ecole)
+
+    try {
+      const bcrypt = require('bcrypt')
+      const verificationCode    = Math.floor(100000 + Math.random() * 900000).toString()
+      const verificationExpires = new Date(Date.now() + 10 * 60 * 1000)
+      const hashedPassword      = await bcrypt.hash(directeur.password, 10)
+
+      const user = userRepo.create({
+        nom: directeur.nom, prenom: directeur.prenom,
+        email: directeur.email, motDePasse: hashedPassword,
+        role: UserRole.DIRECTEUR,
+        isVerified: false, isActive: true,
+        ecoleId: ecole.id,
+        verificationCode, verificationCodeExpires: verificationExpires
+      })
+      await userRepo.save(user)
+
+      // Notifier les superadmins qu'une nouvelle école vient de s'auto-inscrire
+      const superadmins = await userRepo.find({ where: { role: UserRole.SUPERADMIN } })
+      for (const sa of superadmins) {
+        await createNotification(sa.id, {
+          titre: 'Nouvelle école inscrite',
+          message: `${directeur.prenom} ${directeur.nom} vient de créer l'école "${ecole.nom}" (plan souhaité : ${plan || 'gratuit'}).`,
+          type: NotificationType.NEW_SESSION,
+          link: '/superadmin/ecoles'
+        })
+      }
+
+      const verificationUrl = `${process.env.FRONTEND_URL}/auth/verify-invitation?code=${verificationCode}&email=${encodeURIComponent(directeur.email)}`
+      await envoyerVerificationInvitation(directeur.email, directeur.prenom, verificationUrl)
+
+      res.json({
+        success: true,
+        message: 'Compte créé. Un code de vérification a été envoyé à votre email.',
+        data: { email: directeur.email, requiresVerification: true, ecoleId: ecole.id }
+      })
+    } catch (innerErr) {
+      // Le compte n'a pas pu être créé après la création de l'école : on supprime
+      // l'école orpheline pour ne pas bloquer son nom pour un futur essai.
+      await ecoleRepo.delete(ecole.id)
+      throw innerErr
+    }
+  } catch (err) { next(err) }
+}
 
 export const connexionGoogle = async (req: Request, res: Response, next: NextFunction) => {
   try {

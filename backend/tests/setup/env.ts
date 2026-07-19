@@ -17,6 +17,7 @@ process.env.EMAIL_PASS = 'dummy';
 
 process.env.GOOGLE_CLIENT_ID = 'dummy-google-client-id';
 process.env.GOOGLE_CLIENT_SECRET = 'dummy-google-client-secret';
+process.env.API_URL = 'http://localhost:5000';
 
 process.env.STRIPE_SECRET_KEY = 'sk_test_dummykeyfortestsonly';
 process.env.STRIPE_WEBHOOK_SECRET = 'whsec_dummy';

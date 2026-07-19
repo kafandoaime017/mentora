@@ -11,6 +11,9 @@ const router = Router();
 router.post('/register', authLimiter, validerInscription, authController.inscription);
 router.post('/login', authLimiter, validerConnexion, authController.connexion);
 
+// Inscription self-service d'une école (depuis la landing page /#tarifs)
+router.post('/ecole/inscription', authLimiter, authController.inscrireEcole);
+
 
 // Google OAuth
 router.post('/google', authController.connexionGoogle); // Connexion directe avec token (mobile/SPA)

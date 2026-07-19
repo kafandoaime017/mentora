@@ -357,7 +357,7 @@
             Génération IA
           </li>
         </ul>
-        <nuxt-link to="/auth"
+        <nuxt-link :to="`/inscription-ecole?plan=gratuit`"
           class="block w-full text-center bg-gray-100 text-gray-700 font-body font-bold py-3 rounded-xl hover:bg-gray-200 transition-colors"
         >
           Commencer gratuitement
@@ -404,7 +404,7 @@
             Génération IA
           </li>
         </ul>
-        <nuxt-link to="/auth"
+        <nuxt-link :to="`/inscription-ecole?plan=starter&billing=${billing}`"
           class="block w-full text-center bg-primary text-white font-body font-bold py-3 rounded-xl hover:bg-primary/90 transition-colors"
         >
           Essayer 30 jours gratuits
@@ -460,7 +460,7 @@
             Support <strong>prioritaire</strong>
           </li>
         </ul>
-        <nuxt-link to="/auth"
+        <nuxt-link :to="`/inscription-ecole?plan=pro&billing=${billing}`"
           class="block w-full text-center bg-secondary text-white font-body font-bold py-3 rounded-xl hover:bg-secondary/90 transition-colors"
         >
           Essayer 30 jours gratuits
