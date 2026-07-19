@@ -295,12 +295,6 @@
                   <span class="text-[11px] font-medium text-center leading-tight">{{ item.label }}</span>
                 </nuxt-link>
               </div>
-              <div class="border-t border-gray-100 px-3 py-3">
-                <button @click="showMobileMore = false; handleLogoutClick()" class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-red-100 text-red-600 font-body font-semibold text-sm">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                  Déconnexion
-                </button>
-              </div>
             </div>
           </Transition>
         </div>

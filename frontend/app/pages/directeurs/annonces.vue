@@ -76,107 +76,139 @@
       </div>
 
       <!-- Modal création -->
-      <div v-if="showCreate" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="showCreate = false">
-        <div class="bg-white rounded-lg w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-          <h3 class="font-body font-bold text-black mb-4 text-lg">Nouvelle annonce</h3>
+      <Teleport to="body">
+        <Transition name="annonce-backdrop">
+          <div v-if="showCreate" class="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/50" @click.self="showCreate = false">
+            <Transition name="annonce-pop" appear>
+              <div v-if="showCreate" class="bg-white rounded-lg border border-gray-200 shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto flex flex-col">
+                <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 shrink-0">
+                  <h3 class="font-body font-extrabold text-black text-base">Nouvelle annonce</h3>
+                  <button @click="showCreate = false" class="text-black/40 hover:text-black transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
 
-          <div class="space-y-4">
-            <div>
-              <label class="block text-xs font-body font-semibold text-black/60 mb-1">Type</label>
-              <div class="flex gap-2">
-                <button @click="form.type = 'info'" class="flex-1 py-2 rounded-lg text-sm font-body font-semibold transition-colors" :class="form.type === 'info' ? 'bg-blacky text-white' : 'bg-gray-100 text-black'">Annonce</button>
-                <button @click="form.type = 'sondage'" class="flex-1 py-2 rounded-lg text-sm font-body font-semibold transition-colors" :class="form.type === 'sondage' ? 'bg-secondary text-white' : 'bg-gray-100 text-black'">Sondage</button>
-              </div>
-            </div>
+                <div class="p-5 space-y-4 overflow-y-auto">
+                  <div>
+                    <label class="block text-xs font-body font-semibold text-black/60 mb-1">Type</label>
+                    <div class="flex gap-2">
+                      <button @click="form.type = 'info'" class="flex-1 py-2 rounded-lg text-sm font-body font-semibold transition-colors" :class="form.type === 'info' ? 'bg-blacky text-white' : 'bg-gray-100 text-black'">Annonce</button>
+                      <button @click="form.type = 'sondage'" class="flex-1 py-2 rounded-lg text-sm font-body font-semibold transition-colors" :class="form.type === 'sondage' ? 'bg-secondary text-white' : 'bg-gray-100 text-black'">Sondage</button>
+                    </div>
+                  </div>
 
-            <div>
-              <label class="block text-xs font-body font-semibold text-black/60 mb-1">Titre</label>
-              <input v-model="form.titre" type="text" placeholder="Ex: Réunion parents-professeurs" class="w-full px-4 py-2.5 bg-input rounded-lg font-body text-sm focus:outline-none" />
-            </div>
+                  <div>
+                    <label class="block text-xs font-body font-semibold text-black/60 mb-1">Titre</label>
+                    <input v-model="form.titre" type="text" placeholder="Ex: Réunion parents-professeurs" class="w-full px-4 py-2.5 bg-input rounded-lg font-body text-sm focus:outline-none" />
+                  </div>
 
-            <div>
-              <label class="block text-xs font-body font-semibold text-black/60 mb-1">{{ form.type === 'sondage' ? 'Question' : 'Contenu' }}</label>
-              <textarea v-model="form.contenu" rows="3" placeholder="Détails..." class="w-full px-4 py-2.5 bg-input rounded-lg font-body text-sm focus:outline-none"/>
-            </div>
+                  <div>
+                    <label class="block text-xs font-body font-semibold text-black/60 mb-1">{{ form.type === 'sondage' ? 'Question' : 'Contenu' }}</label>
+                    <textarea v-model="form.contenu" rows="3" placeholder="Détails..." class="w-full px-4 py-2.5 bg-input rounded-lg font-body text-sm focus:outline-none"/>
+                  </div>
 
-            <div v-if="form.type === 'sondage'">
-              <label class="block text-xs font-body font-semibold text-black/60 mb-1">Options</label>
-              <div class="space-y-2">
-                <div v-for="(opt, idx) in form.options" :key="idx" class="flex items-center gap-2">
-                  <input v-model="form.options[idx]" type="text" :placeholder="`Option ${idx + 1}`" class="flex-1 px-3 py-2 bg-input rounded-lg font-body text-sm focus:outline-none" />
-                  <button v-if="form.options.length > 2" @click="form.options.splice(idx, 1)" class="w-8 h-8 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center shrink-0">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  <div v-if="form.type === 'sondage'" class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <label class="block text-xs font-body font-semibold text-black/60 mb-2">Options</label>
+                    <div class="space-y-2">
+                      <div v-for="(opt, idx) in form.options" :key="idx" class="flex items-center gap-2">
+                        <input v-model="form.options[idx]" type="text" :placeholder="`Option ${idx + 1}`" class="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg font-body text-sm focus:outline-none" />
+                        <button v-if="form.options.length > 2" @click="form.options.splice(idx, 1)" class="w-8 h-8 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center shrink-0 transition-colors">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                    <button @click="form.options.push('')" class="mt-2 text-xs font-body font-semibold text-blacky hover:underline">+ Ajouter une option</button>
+
+                    <label class="flex items-center gap-2 mt-3 cursor-pointer">
+                      <input v-model="form.obligatoire" type="checkbox" class="w-4 h-4" />
+                      <span class="text-sm font-body text-black">Réponse obligatoire (bloque l'accès tant que non répondu)</span>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label class="block text-xs font-body font-semibold text-black/60 mb-1">Destinataires</label>
+                    <select v-model="form.cible_type" class="w-full px-4 py-2.5 bg-input rounded-lg font-body text-sm focus:outline-none">
+                      <option value="tous">Tout le monde</option>
+                      <option value="professeurs">Les professeurs</option>
+                      <option value="filiere">Les étudiants d'une filière</option>
+                      <option value="classe">Les étudiants d'une classe</option>
+                    </select>
+                  </div>
+
+                  <div v-if="form.cible_type === 'filiere'">
+                    <label class="block text-xs font-body font-semibold text-black/60 mb-1">Filière</label>
+                    <select v-model="form.cible_filiere_id" class="w-full px-4 py-2.5 bg-input rounded-lg font-body text-sm focus:outline-none">
+                      <option value="">-- Sélectionner --</option>
+                      <option v-for="f in filieres" :key="f.id" :value="f.id">{{ f.nom }}</option>
+                    </select>
+                  </div>
+
+                  <div v-if="form.cible_type === 'classe'">
+                    <label class="block text-xs font-body font-semibold text-black/60 mb-1">Classe</label>
+                    <select v-model="form.cible_classe_id" class="w-full px-4 py-2.5 bg-input rounded-lg font-body text-sm focus:outline-none">
+                      <option value="">-- Sélectionner --</option>
+                      <option v-for="c in classes" :key="c.id" :value="c.id">{{ c.nom }} ({{ c.filiere }})</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 px-5 py-3 bg-gray-50 border-t border-gray-200 shrink-0">
+                  <button @click="showCreate = false" :disabled="creerEnCours" class="px-4 py-2 text-sm font-body font-semibold rounded-lg bg-white border border-gray-200 text-black hover:bg-gray-100 transition-colors disabled:opacity-50">
+                    Annuler
+                  </button>
+                  <button @click="creer" :disabled="creerEnCours" class="px-4 py-2 text-sm font-body font-semibold rounded-lg bg-blacky text-white hover:bg-[#024864] transition-colors disabled:opacity-50 flex items-center gap-2">
+                    <div v-if="creerEnCours" class="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"/>
+                    {{ creerEnCours ? 'Publication...' : 'Publier' }}
                   </button>
                 </div>
               </div>
-              <button @click="form.options.push('')" class="mt-2 text-xs font-body font-semibold text-blacky hover:underline">+ Ajouter une option</button>
-
-              <label class="flex items-center gap-2 mt-3 cursor-pointer">
-                <input v-model="form.obligatoire" type="checkbox" class="w-4 h-4" />
-                <span class="text-sm font-body text-black">Réponse obligatoire (bloque l'accès tant que non répondu)</span>
-              </label>
-            </div>
-
-            <div>
-              <label class="block text-xs font-body font-semibold text-black/60 mb-1">Destinataires</label>
-              <select v-model="form.cible_type" class="w-full px-4 py-2.5 bg-input rounded-lg font-body text-sm focus:outline-none">
-                <option value="tous">Tout le monde</option>
-                <option value="professeurs">Les professeurs</option>
-                <option value="filiere">Les étudiants d'une filière</option>
-                <option value="classe">Les étudiants d'une classe</option>
-              </select>
-            </div>
-
-            <div v-if="form.cible_type === 'filiere'">
-              <label class="block text-xs font-body font-semibold text-black/60 mb-1">Filière</label>
-              <select v-model="form.cible_filiere_id" class="w-full px-4 py-2.5 bg-input rounded-lg font-body text-sm focus:outline-none">
-                <option value="">-- Sélectionner --</option>
-                <option v-for="f in filieres" :key="f.id" :value="f.id">{{ f.nom }}</option>
-              </select>
-            </div>
-
-            <div v-if="form.cible_type === 'classe'">
-              <label class="block text-xs font-body font-semibold text-black/60 mb-1">Classe</label>
-              <select v-model="form.cible_classe_id" class="w-full px-4 py-2.5 bg-input rounded-lg font-body text-sm focus:outline-none">
-                <option value="">-- Sélectionner --</option>
-                <option v-for="c in classes" :key="c.id" :value="c.id">{{ c.nom }} ({{ c.filiere }})</option>
-              </select>
-            </div>
+            </Transition>
           </div>
-
-          <div class="flex gap-3 mt-6">
-            <button @click="showCreate = false" class="flex-1 py-2.5 bg-gray-100 text-black rounded-lg text-sm font-body font-semibold">Annuler</button>
-            <button @click="creer" :disabled="creerEnCours" class="flex-1 py-2.5 bg-blacky text-white rounded-lg text-sm font-body font-semibold disabled:opacity-50">
-              {{ creerEnCours ? 'Publication...' : 'Publier' }}
-            </button>
-          </div>
-        </div>
-      </div>
+        </Transition>
+      </Teleport>
 
       <!-- Modal résultats -->
-      <div v-if="resultats" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="resultats = null">
-        <div class="bg-white rounded-lg w-full max-w-md p-6">
-          <h3 class="font-body font-bold text-black mb-1 text-lg">{{ resultats.titre }}</h3>
-          <p class="text-xs font-body text-black/50 mb-4">
-            Audience : {{ resultats.audience }} · Vus : {{ resultats.nb_vus }} · Réponses : {{ resultats.nb_reponses }}
-          </p>
+      <Teleport to="body">
+        <Transition name="annonce-backdrop">
+          <div v-if="resultats" class="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/50" @click.self="resultats = null">
+            <Transition name="annonce-pop" appear>
+              <div v-if="resultats" class="bg-white rounded-lg border border-gray-200 shadow-xl w-full max-w-md overflow-hidden">
+                <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+                  <h3 class="font-body font-extrabold text-black text-base">{{ resultats.titre }}</h3>
+                  <button @click="resultats = null" class="text-black/40 hover:text-black transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
 
-          <div v-if="resultats.resultats_options" class="space-y-2">
-            <div v-for="(opt, idx) in resultats.resultats_options" :key="idx">
-              <div class="flex justify-between text-xs font-body text-black mb-1">
-                <span>{{ opt.texte }}</span>
-                <span class="font-semibold">{{ opt.nb }}</span>
+                <div class="p-5">
+                  <p class="text-xs font-body text-black/50 mb-4">
+                    Audience : {{ resultats.audience }} · Vus : {{ resultats.nb_vus }} · Réponses : {{ resultats.nb_reponses }}
+                  </p>
+
+                  <div v-if="resultats.resultats_options" class="space-y-3">
+                    <div v-for="(opt, idx) in resultats.resultats_options" :key="idx">
+                      <div class="flex justify-between text-xs font-body text-black mb-1">
+                        <span>{{ opt.texte }}</span>
+                        <span class="font-semibold">{{ opt.nb }}</span>
+                      </div>
+                      <div class="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-secondary rounded-full transition-all" :style="{ width: pourcentage(opt.nb) + '%' }"/>
+                      </div>
+                    </div>
+                  </div>
+                  <p v-else class="text-sm font-body text-black/60">Ceci est une annonce simple (pas de sondage).</p>
+                </div>
+
+                <div class="flex items-center justify-end px-5 py-3 bg-gray-50 border-t border-gray-200">
+                  <button @click="resultats = null" class="px-4 py-2 text-sm font-body font-semibold rounded-lg bg-white border border-gray-200 text-black hover:bg-gray-100 transition-colors">
+                    Fermer
+                  </button>
+                </div>
               </div>
-              <div class="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div class="h-full bg-secondary rounded-full" :style="{ width: pourcentage(opt.nb) + '%' }"/>
-              </div>
-            </div>
+            </Transition>
           </div>
-          <p v-else class="text-sm font-body text-black/60">Ceci est une annonce simple (pas de sondage).</p>
-
-          <button @click="resultats = null" class="w-full mt-6 py-2.5 bg-gray-100 text-black rounded-lg text-sm font-body font-semibold">Fermer</button>
-        </div>
-      </div>
+        </Transition>
+      </Teleport>
 
     </AdminLayout>
   </div>
@@ -186,8 +218,10 @@
 import { ref, onMounted } from 'vue'
 import { useToast } from '~~/composables/useToast'
 import { useAdmin } from '~~/composables/useAdmin'
+import { useConfirm } from '~~/composables/useConfirm'
 
 const toast = useToast()
+const { confirm } = useConfirm()
 const {
   getAnnonces, createAnnonce, getAnnonceResultats, toggleAnnonceActif, deleteAnnonce,
   getFilieres, getClasses
@@ -292,7 +326,14 @@ const toggleActif = async (a) => {
 }
 
 const supprimer = async (a) => {
-  if (!confirm(`Supprimer "${a.titre}" ?`)) return
+  const ok = await confirm({
+    title: 'Supprimer l\'annonce',
+    message: `Supprimer "${a.titre}" ? Cette action est irréversible.`,
+    confirmLabel: 'Supprimer',
+    danger: true
+  })
+  if (!ok) return
+
   const result = await deleteAnnonce(a.id)
   if (result.success) {
     toast.success('Supprimée')
@@ -304,3 +345,29 @@ const supprimer = async (a) => {
 
 onMounted(() => charger())
 </script>
+
+<style scoped>
+.annonce-backdrop-enter-active,
+.annonce-backdrop-leave-active {
+  transition: opacity 0.2s ease;
+}
+.annonce-backdrop-enter-from,
+.annonce-backdrop-leave-to {
+  opacity: 0;
+}
+
+.annonce-pop-enter-active {
+  transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.annonce-pop-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.annonce-pop-enter-from {
+  opacity: 0;
+  transform: scale(0.92) translateY(12px);
+}
+.annonce-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.96) translateY(4px);
+}
+</style>

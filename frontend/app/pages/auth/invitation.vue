@@ -175,7 +175,7 @@
 
           <!-- Bouton -->
           <button
-            @click="registerViaInvitation"
+            @click="openAvatarStep"
             :disabled="registering || !password || password !== passwordConfirm || password.length < 8"
             class="w-full mt-5 bg-primary text-white font-semibold py-2.5 rounded-xl hover:bg-primary/80 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2"
           >
@@ -205,17 +205,21 @@
 
     <AvatarPicker
       v-model="showAvatarPicker"
+      mode="select"
       :allow-skip="true"
+      confirm-label="Continuer"
+      skip-label="Plus tard"
       title="Choisis ton avatar"
-      subtitle="Sélectionne un avatar ou passe pour qu'on t'en attribue un au hasard."
-      @done="onAvatarDone"
+      subtitle="Sélectionne un avatar, ou clique sur « Plus tard » pour qu'on t'en attribue un au hasard."
+      @select="onAvatarSelect"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useAuth } from '../../../composables/useAuth'
 
 definePageMeta({ layout: false })
 
@@ -234,8 +238,10 @@ const showPwd         = ref(false)
 const registering     = ref(false)
 
 const showAvatarPicker = ref(false)
-const redirectRole     = ref(null)
-let navigatedAfterAvatar = false
+const pendingAvatarUrl  = ref(null)
+const pendingAvatarFile = ref(null)
+
+const { updateAvatarUrl, updateAvatar } = useAuth()
 
 const apiFetch = async (url, options = {}) => {
   const config = useRuntimeConfig()
@@ -283,10 +289,13 @@ const startPolling = (email) => {
         tokenCookie.value = result.data.token
         localStorage.setItem('user', JSON.stringify(result.data.user))
         emailVerified.value = true
-        redirectRole.value = result.data.user?.role
+
+        // Applique l'avatar choisi avant l'inscription (ou l'avatar aléatoire si
+        // l'utilisateur a cliqué sur "Plus tard"), maintenant qu'on a un token valide.
+        await applyPendingAvatar()
 
         setTimeout(() => {
-          showAvatarPicker.value = true
+          navigateTo(dashboardParRole[result.data.user?.role] || '/auth')
         }, 1200)
       }
     } catch {
@@ -295,19 +304,29 @@ const startPolling = (email) => {
   }, 4000)
 }
 
-const goToDashboard = () => {
-  if (navigatedAfterAvatar) return
-  navigatedAfterAvatar = true
-  navigateTo(dashboardParRole[redirectRole.value] || '/auth')
+const applyPendingAvatar = async () => {
+  try {
+    if (pendingAvatarFile.value) {
+      await updateAvatar(pendingAvatarFile.value)
+    } else if (pendingAvatarUrl.value) {
+      await updateAvatarUrl(pendingAvatarUrl.value)
+    }
+  } catch {
+    // Non bloquant : l'utilisateur pourra toujours changer son avatar depuis son profil.
+  }
 }
 
-const onAvatarDone = () => goToDashboard()
+// Étape avatar avant l'envoi de l'email de vérification
+const openAvatarStep = () => {
+  if (registering.value || !password.value || password.value !== passwordConfirm.value || password.value.length < 8) return
+  showAvatarPicker.value = true
+}
 
-// Filet de sécurité : si l'utilisateur ferme la fenêtre d'avatar sans choisir
-// (clic sur le fond), on le redirige quand même vers son espace.
-watch(showAvatarPicker, (isOpen, wasOpen) => {
-  if (wasOpen && !isOpen) goToDashboard()
-})
+const onAvatarSelect = ({ avatarUrl, file }) => {
+  pendingAvatarUrl.value = avatarUrl
+  pendingAvatarFile.value = file
+  registerViaInvitation()
+}
 
 const registerViaInvitation = async () => {
   if (password.value.length < 8 || password.value !== passwordConfirm.value) return

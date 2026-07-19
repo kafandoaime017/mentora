@@ -94,7 +94,7 @@
                 :disabled="saving"
                 class="px-4 py-2 text-sm font-body font-semibold rounded-lg bg-white border border-gray-200 text-black hover:bg-gray-100 transition-colors disabled:opacity-50"
               >
-                Passer (aléatoire)
+                {{ skipLabel }}
               </button>
               <button
                 v-else
@@ -112,7 +112,7 @@
                 class="px-4 py-2 text-sm font-body font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <div v-if="saving" class="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"/>
-                {{ saving ? 'Enregistrement...' : 'Confirmer' }}
+                {{ saving ? 'Enregistrement...' : confirmLabel }}
               </button>
             </div>
           </div>
@@ -131,10 +131,15 @@ const props = defineProps({
   currentAvatar: { type: String, default: null },
   allowSkip:     { type: Boolean, default: false },
   title:         { type: String, default: 'Choisis ton avatar' },
-  subtitle:      { type: String, default: 'Sélectionne un avatar généré ou importe ta propre photo.' }
+  subtitle:      { type: String, default: 'Sélectionne un avatar généré ou importe ta propre photo.' },
+  // 'save'   : enregistre directement via l'API (compte déjà existant, ex: page profil)
+  // 'select' : se contente d'émettre la sélection sans appeler l'API (ex: avant création du compte)
+  mode:          { type: String, default: 'save' },
+  confirmLabel:  { type: String, default: 'Confirmer' },
+  skipLabel:     { type: String, default: 'Passer (aléatoire)' }
 })
 
-const emit = defineEmits(['update:modelValue', 'done'])
+const emit = defineEmits(['update:modelValue', 'done', 'select'])
 
 const { updateAvatarUrl, updateAvatar } = useAuth()
 
@@ -207,6 +212,20 @@ function onFileChange(event) {
 
 async function confirmSelection() {
   errorMessage.value = ''
+
+  // Mode 'select' : pas de compte/token disponible pour l'instant, on se contente
+  // de remonter le choix au parent qui l'appliquera plus tard.
+  if (props.mode === 'select') {
+    if (selectedSource.value === 'generated' && selectedSeed.value) {
+      emit('select', { avatarUrl: dicebearUrl(selectedSeed.value), file: null })
+      close()
+    } else if (selectedSource.value === 'file' && selectedFile.value) {
+      emit('select', { avatarUrl: null, file: selectedFile.value })
+      close()
+    }
+    return
+  }
+
   saving.value = true
   try {
     if (selectedSource.value === 'generated' && selectedSeed.value) {
@@ -233,9 +252,16 @@ async function confirmSelection() {
 
 async function skipWithRandom() {
   errorMessage.value = ''
+  const seed = gridSeeds.value[Math.floor(Math.random() * gridSeeds.value.length)] || randomSeed()
+
+  if (props.mode === 'select') {
+    emit('select', { avatarUrl: dicebearUrl(seed), file: null })
+    close()
+    return
+  }
+
   saving.value = true
   try {
-    const seed = gridSeeds.value[Math.floor(Math.random() * gridSeeds.value.length)] || randomSeed()
     const result = await updateAvatarUrl(dicebearUrl(seed))
     if (result.success) {
       emit('done', result.user.avatar)

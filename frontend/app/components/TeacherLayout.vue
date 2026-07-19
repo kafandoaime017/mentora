@@ -310,12 +310,6 @@
                   <span class="text-[11px] font-medium text-center leading-tight">{{ item.label }}</span>
                 </nuxt-link>
               </div>
-              <div class="border-t border-gray-100 px-3 py-3">
-                <button @click="showMobileMore = false; handleLogoutClick()" class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-red-100 text-red-600 font-body font-semibold text-sm">
-                  <IconLogout class="w-4 h-4" />
-                  Déconnexion
-                </button>
-              </div>
             </div>
           </Transition>
         </div>

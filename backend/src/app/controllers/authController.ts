@@ -6,10 +6,16 @@ import AppDataSource from '../../config/data-source';
 import { ProfesseurProfil } from '../models/ProfesseurProfil';
 import { logAudit, getClientIp } from '../services/auditService';
 
+// Le redirect_uri DOIT pointer vers le backend (seul lui possède le client secret
+// pour échanger le "code" contre un token) - PAS vers le frontend. C'est ce backend
+// qui, une fois l'échange fait, redirige ensuite vers la page frontend dédiée
+// (/auth/google-callback) avec le token applicatif en query string.
+// Important : cette URL doit être enregistrée telle quelle dans "Authorized redirect URIs"
+// sur la Google Cloud Console, sinon Google refusera avec "redirect_uri_mismatch".
 const googleClient = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  `${process.env.FRONTEND_URL}/auth/google-callback`
+  `${process.env.API_URL}/api/auth/google/callback`
 );
 
 export const inscription = async (req: Request, res: Response, next: NextFunction) => {
@@ -79,7 +85,10 @@ export const googleCallback = async (req: Request, res: Response, next: NextFunc
 
     const result = await authService.connecterAvecGoogle(idToken);
 
-    const frontendUrl = `${process.env.FRONTEND_URL}/auth/login?token=${result.token}&user=${encodeURIComponent(JSON.stringify(result.user))}&profilIncomplet=${result.profilIncomplet || false}`;
+    // Redirige vers la page frontend dédiée (auth/google-callback.vue), qui lit
+    // token/user/profilIncomplet en query string, stocke la session, puis redirige
+    // vers le bon dashboard.
+    const frontendUrl = `${process.env.FRONTEND_URL}/auth/google-callback?token=${result.token}&user=${encodeURIComponent(JSON.stringify(result.user))}&profilIncomplet=${result.profilIncomplet || false}`;
 
     console.log('Redirection vers:', frontendUrl);
     res.redirect(frontendUrl);
