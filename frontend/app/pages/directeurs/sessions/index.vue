@@ -161,6 +161,16 @@
                       Détails
                     </NuxtLink>
                     <button
+                      v-if="s.status === 'completed'"
+                      @click="openStats(s)"
+                      class="inline-flex items-center gap-1 text-xs font-body font-semibold px-2.5 py-1.5 rounded-lg bg-secondary/90 text-white hover:bg-secondary transition-colors"
+                    >
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                      </svg>
+                      Stats
+                    </button>
+                    <button
                       @click="duplicateSession(s)"
                       :disabled="duplicatingId === s.id"
                       class="inline-flex items-center gap-1 text-xs font-body font-semibold px-2.5 py-1.5 rounded-lg bg-gray-100 text-black hover:bg-gray-200 transition-colors disabled:opacity-50"
@@ -187,6 +197,51 @@
           </table>
         </div>
       </div>
+
+      <!-- Modal Stats -->
+      <Teleport to="body">
+        <Transition name="stats-backdrop">
+          <div v-if="showStatsModal" class="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/50" @click.self="showStatsModal = false">
+            <Transition name="stats-pop" appear>
+              <div v-if="showStatsModal" class="bg-white rounded-lg border border-gray-200 shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+                  <div class="min-w-0">
+                    <h3 class="font-body font-extrabold text-black text-base truncate">{{ statsSession?.titre }}</h3>
+                    <p v-if="!statsSession?.loading" class="font-body text-xs text-black/50 mt-0.5">
+                      {{ statsSession?.participantsCount }} résultat(s) · moyenne {{ statsSession?.moyenneSur20 }}/20
+                    </p>
+                  </div>
+                  <button @click="showStatsModal = false" class="shrink-0 text-black/40 hover:text-black transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+
+                <div class="p-5">
+                  <div v-if="statsSession?.loading" class="flex justify-center py-12">
+                    <div class="animate-spin rounded-full h-6 w-6 border-2 border-blacky border-t-transparent"/>
+                  </div>
+                  <div v-else-if="!statsSession?.participantsCount" class="py-8 text-center">
+                    <p class="font-body text-sm text-black/50">Aucun résultat pour cette session.</p>
+                  </div>
+                  <StatsBarChart
+                    v-else
+                    title="Répartition des notes"
+                    subtitle="Nombre d'étudiants par tranche de note (/20)"
+                    :items="statsSession.distributionItems"
+                    :min-height="220"
+                  />
+                </div>
+
+                <div class="flex items-center justify-end px-5 py-3 bg-gray-50 border-t border-gray-200">
+                  <button @click="showStatsModal = false" class="px-4 py-2 text-sm font-body font-semibold rounded-lg bg-white border border-gray-200 text-black hover:bg-gray-100 transition-colors">
+                    Fermer
+                  </button>
+                </div>
+              </div>
+            </Transition>
+          </div>
+        </Transition>
+      </Teleport>
 
     </AdminLayout>
   </div>
@@ -302,5 +357,77 @@ const deleteSession = async (session) => {
   }
 }
 
+// ─── Modal Stats ──────────────────────────────────────────────────────────────
+const showStatsModal = ref(false)
+const statsSession    = ref(null)
+
+const distributionColors = ['#d97757', '#c9a95c', '#4a7c5e', '#054348']
+const distributionLabels = ['0-5', '5-10', '10-15', '15-20']
+
+const openStats = async (session) => {
+  statsSession.value = { titre: session.titre, loading: true }
+  showStatsModal.value = true
+  try {
+    const result = await apiFetch(`/admin/sessions/${session.id}`)
+    if (!result.success) { toast.error('Erreur lors du chargement des statistiques'); showStatsModal.value = false; return }
+
+    const notes = (result.data.participants || [])
+      .map(p => p.note_sur_20)
+      .filter(n => n !== null && n !== undefined)
+
+    const distribution = [0, 0, 0, 0]
+    for (const note of notes) {
+      if (note < 5) distribution[0]++
+      else if (note < 10) distribution[1]++
+      else if (note < 15) distribution[2]++
+      else distribution[3]++
+    }
+
+    const moyenne = notes.length > 0 ? notes.reduce((a, b) => a + b, 0) / notes.length : 0
+
+    statsSession.value = {
+      titre: session.titre,
+      loading: false,
+      participantsCount: notes.length,
+      moyenneSur20: Math.round(moyenne * 100) / 100,
+      distributionItems: distribution.map((count, i) => ({
+        label: distributionLabels[i],
+        value: count,
+        color: distributionColors[i],
+        displayValue: `${count}`
+      }))
+    }
+  } catch (err) {
+    toast.error(err?.data?.message || 'Erreur lors du chargement des statistiques')
+    showStatsModal.value = false
+  }
+}
+
 onMounted(() => loadData())
 </script>
+
+<style scoped>
+.stats-backdrop-enter-active,
+.stats-backdrop-leave-active {
+  transition: opacity 0.2s ease;
+}
+.stats-backdrop-enter-from,
+.stats-backdrop-leave-to {
+  opacity: 0;
+}
+
+.stats-pop-enter-active {
+  transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.stats-pop-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.stats-pop-enter-from {
+  opacity: 0;
+  transform: scale(0.92) translateY(12px);
+}
+.stats-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.96) translateY(4px);
+}
+</style>

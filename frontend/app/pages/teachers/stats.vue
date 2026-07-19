@@ -74,21 +74,46 @@
             </div>
           </div>
 
-          <!-- Moyenne générale -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div class="bg-white rounded-xl shadow p-6">
-              <p class="text-sm text-[#9b9589] font-body mb-1">Moyenne générale (points bruts)</p>
-              <p class="text-3xl font-body font-extrabold" :class="noteColor(statsData.moyenne.sur20)">
-                {{ statsData.moyenne.generale }}
-              </p>
-              <p class="text-xs text-[#9b9589] font-body mt-1">Toutes sessions terminées confondues</p>
+          <!-- Graphique : moyenne par session -->
+          <div class="bg-white rounded-xl shadow p-6 mb-6">
+            <StatsBarChart
+              title="Moyenne par session (/20)"
+              subtitle="Une barre par session terminée, de la plus récente à la plus ancienne"
+              :items="moyenneParSessionItems"
+              :max-value="20"
+              unit="/20"
+              :min-height="220"
+            />
+            <p class="text-xs text-[#9b9589] font-body mt-3 text-center">
+              Moyenne générale toutes sessions confondues :
+              <span class="font-bold" :class="noteColor(statsData.moyenne.sur20)">{{ statsData.moyenne.sur20 }}/20</span>
+            </p>
+          </div>
+
+          <!-- Graphiques : répartition des notes par session -->
+          <div class="mb-6">
+            <h3 class="text-lg font-body font-bold text-[#1e3a2f] mb-3">Résultats des étudiants par session</h3>
+
+            <div v-if="!statsData.sessionsStats?.length" class="bg-white rounded-xl shadow p-8 text-center">
+              <p class="font-body text-sm text-[#9b9589]">Aucun résultat disponible pour le moment. Les graphiques apparaîtront ici une fois vos sessions terminées.</p>
             </div>
-            <div class="bg-white rounded-xl shadow p-6">
-              <p class="text-sm text-[#9b9589] font-body mb-1">Moyenne générale (sur 20)</p>
-              <p class="text-3xl font-body font-extrabold" :class="noteColor(statsData.moyenne.sur20)">
-                {{ statsData.moyenne.sur20 }}/20
-              </p>
-              <p class="text-xs text-[#9b9589] font-body mt-1">Basée sur les sessions dont les questions sont notées</p>
+
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div v-for="session in statsData.sessionsStats" :key="session.id" class="bg-white rounded-xl shadow p-5">
+                <div class="flex items-start justify-between gap-2 mb-2">
+                  <div class="min-w-0">
+                    <p class="font-body font-bold text-[#1e3a2f] truncate">{{ session.titre }}</p>
+                    <p class="text-xs font-body text-[#9b9589]">{{ session.participantsCount }} résultat(s) · moyenne {{ session.moyenneSur20 }}/20</p>
+                  </div>
+                  <NuxtLink :to="`/teachers/qcm/${session.id}`" class="shrink-0 text-xs font-body font-semibold text-secondary hover:underline">
+                    Voir →
+                  </NuxtLink>
+                </div>
+                <StatsBarChart
+                  :items="distributionItems(session.distribution)"
+                  :min-height="170"
+                />
+              </div>
             </div>
           </div>
 
@@ -170,7 +195,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useTeacher } from '../../../composables/useTeacher'
 import { useToast } from '../../../composables/useToast'
 
@@ -181,8 +206,38 @@ const loading = ref(true)
 const statsData = ref({
   stats: { total: 0, aVenir: 0, enCours: 0, terminees: 0 },
   moyenne: { generale: 0, sur20: 0 },
-  sessionsAVenir: []
+  sessionsAVenir: [],
+  sessionsStats: []
 })
+
+// Couleur d'une barre de moyenne selon la note (palette Mentora)
+const moyenneBarColor = (note) => {
+  if (note >= 14) return '#054348' // blacky (primary foncé)
+  if (note >= 10) return '#4a7c5e' // secondary (vert Mentora)
+  return '#d97757' // corail, pour les moyennes basses
+}
+
+const moyenneParSessionItems = computed(() =>
+  (statsData.value.sessionsStats || []).map(s => ({
+    label: s.titre,
+    value: s.moyenneSur20,
+    color: moyenneBarColor(s.moyenneSur20),
+    displayValue: `${s.moyenneSur20}`
+  }))
+)
+
+// Transforme un tableau de repartition [n0-5, n5-10, n10-15, n15-20] en items de graphique
+const distributionItems = (distribution) => {
+  if (!distribution) return []
+  const labels = ['0-5', '5-10', '10-15', '15-20']
+  const colors = ['#d97757', '#c9a95c', '#4a7c5e', '#054348']
+  return distribution.map((count, i) => ({
+    label: labels[i],
+    value: count,
+    color: colors[i],
+    displayValue: `${count}`
+  }))
+}
 
 const formatDate = (date) => {
   if (!date) return ''

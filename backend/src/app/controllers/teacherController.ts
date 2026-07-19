@@ -1600,24 +1600,56 @@ if (req.user!.role !== 'professeur' && req.user!.role !== 'superadmin') {
         let totalParticipants = 0;
         let totalPointsPossibles = 0;
 
+        // Statistiques par session (pour les graphiques) : moyenne /20 et repartition
+        // des notes par tranche pour chaque session terminee ayant des resultats.
+        const sessionsStats: any[] = [];
+
         for (const session of sessions) {
             if (session.status === 'completed' && session.questions && session.participants) {
                 const pointsSession = session.questions.reduce((sum, q) => sum + q.points, 0);
+
+                const scoresSur20: number[] = [];
 
                 for (const participant of session.participants) {
                     if (participant.score !== null) {
                         totalScores += participant.score;
                         totalParticipants++;
                         totalPointsPossibles += pointsSession;
+
+                        if (pointsSession > 0) {
+                            scoresSur20.push((participant.score / pointsSession) * 20);
+                        }
                     }
+                }
+
+                if (scoresSur20.length > 0) {
+                    const moyenneSession = scoresSur20.reduce((a, b) => a + b, 0) / scoresSur20.length;
+                    // Repartition par tranche : [0-5[, [5-10[, [10-15[, [15-20]
+                    const distribution = [0, 0, 0, 0];
+                    for (const note of scoresSur20) {
+                        if (note < 5) distribution[0]++;
+                        else if (note < 10) distribution[1]++;
+                        else if (note < 15) distribution[2]++;
+                        else distribution[3]++;
+                    }
+
+                    sessionsStats.push({
+                        id: session.id,
+                        titre: session.titre,
+                        date_fin: session.date_fin,
+                        participantsCount: scoresSur20.length,
+                        moyenneSur20: Math.round(moyenneSession * 100) / 100,
+                        distribution
+                    });
                 }
             }
         }
 
-        // Remplace
+        // Sessions les plus recentes en premier
+        sessionsStats.sort((a, b) => new Date(b.date_fin).getTime() - new Date(a.date_fin).getTime());
+
         const moyenneGenerale = totalParticipants > 0 ? (totalScores / totalParticipants) : 0;
         const moyenneSur20 = totalPointsPossibles > 0 ? (totalScores / totalPointsPossibles) * 20 : 0;
-        // Ces deux lignes sont deja correctes avec des points bruts
 
         res.json({
             success: true,
@@ -1632,7 +1664,8 @@ if (req.user!.role !== 'professeur' && req.user!.role !== 'superadmin') {
                     generale: Math.round(moyenneGenerale * 100) / 100,
                     sur20: Math.round(moyenneSur20 * 100) / 100
                 },
-                sessionsAVenir
+                sessionsAVenir,
+                sessionsStats
             }
         });
 
