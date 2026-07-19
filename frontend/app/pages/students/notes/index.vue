@@ -177,8 +177,12 @@ const parPage            = 4
 
 // ─── Sessions avec notes + filtre recherche ───────────────────────────────────
 const sessionsAvecNotes = computed(() => {
+  // On affiche toute session terminee par l'etudiant : verrouillee (cadenas)
+  // tant que resultatsVisibles est faux, ou avec la note des que le
+  // professeur publie. Un score de 0 est une note legitime a afficher,
+  // donc on ne filtre plus sur (score > 0).
   const base = historiqueSessions.value.filter(
-    i => i.statut === 'termine' && (i.score ?? 0) > 0
+    i => i.statut === 'termine'
   )
   if (!recherche.value.trim()) return base
   const q = recherche.value.toLowerCase().trim()

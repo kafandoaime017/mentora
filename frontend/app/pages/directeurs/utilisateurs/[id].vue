@@ -241,10 +241,12 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '~~/composables/useToast'
+import { useConfirm } from '~~/composables/useConfirm'
 
 const route  = useRoute()
 const router = useRouter()
 const toast  = useToast()
+const { confirm } = useConfirm()
 
 const loading  = ref(true)
 const user     = ref(null)
@@ -275,6 +277,17 @@ const loadUser = async () => {
 }
 
 const toggleActive = async () => {
+  const activation = !user.value.isActive
+  const ok = await confirm({
+    title: activation ? 'Réactiver le compte' : 'Désactiver le compte',
+    message: activation
+      ? `${user.value.prenom} ${user.value.nom} pourra de nouveau se connecter.`
+      : `${user.value.prenom} ${user.value.nom} ne pourra plus se connecter tant que le compte n'est pas réactivé.`,
+    confirmLabel: activation ? 'Réactiver' : 'Désactiver',
+    danger: !activation
+  })
+  if (!ok) return
+
   try {
     await apiFetch(`/admin/users/${user.value.id}/toggle-active`, { method: 'PATCH' })
     user.value.isActive = !user.value.isActive
@@ -296,7 +309,13 @@ const activateProf = async () => {
 }
 
 const deleteUser = async () => {
-  if (!confirm(`Supprimer définitivement ${user.value.prenom} ${user.value.nom} ?`)) return
+  const ok = await confirm({
+    title: 'Supprimer cet utilisateur',
+    message: `Supprimer définitivement ${user.value.prenom} ${user.value.nom} ? Cette action est irréversible.`,
+    confirmLabel: 'Supprimer',
+    danger: true
+  })
+  if (!ok) return
   try {
     await apiFetch(`/admin/users/${user.value.id}`, { method: 'DELETE' })
     toast.success('Utilisateur supprimé')

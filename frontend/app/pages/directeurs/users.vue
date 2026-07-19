@@ -194,8 +194,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from '~~/composables/useToast'
+import { useConfirm } from '~~/composables/useConfirm'
 
 const toast = useToast()
+const { confirm } = useConfirm()
 const loading = ref(true)
 const allUsers = ref([])
 const roleFiltre = ref('tous')
@@ -238,6 +240,17 @@ const loadUsers = async () => {
 }
 
 const toggleActive = async (user) => {
+  const activation = !user.isActive
+  const ok = await confirm({
+    title: activation ? 'Réactiver le compte' : 'Désactiver le compte',
+    message: activation
+      ? `${user.prenom} ${user.nom} pourra de nouveau se connecter.`
+      : `${user.prenom} ${user.nom} ne pourra plus se connecter tant que le compte n'est pas réactivé.`,
+    confirmLabel: activation ? 'Réactiver' : 'Désactiver',
+    danger: !activation
+  })
+  if (!ok) return
+
   try {
     await apiFetch(`/admin/users/${user.id}/toggle-active`, { method: 'PATCH' })
     user.isActive = !user.isActive
@@ -283,7 +296,13 @@ const downloadHistorique = async (user) => {
 }
 
 const deleteUser = async (user) => {
-  if (!confirm(`Supprimer définitivement ${user.prenom} ${user.nom} ?`)) return
+  const ok = await confirm({
+    title: 'Supprimer cet utilisateur',
+    message: `Supprimer définitivement ${user.prenom} ${user.nom} ? Cette action est irréversible.`,
+    confirmLabel: 'Supprimer',
+    danger: true
+  })
+  if (!ok) return
   try {
     await apiFetch(`/admin/users/${user.id}`, { method: 'DELETE' })
     toast.success('Utilisateur supprimé')

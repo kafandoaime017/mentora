@@ -5,9 +5,9 @@
         <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
           <h2 class="font-body text-2xl font-extrabold text-[#1e3a2f]">Calendrier de mes sessions</h2>
           <div class="flex items-center gap-3 text-xs font-body text-[#1e3a2f]">
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-gray-300"/> À venir</span>
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-400"/> En cours</span>
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-400"/> Terminée</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-yellow-500"/> Programmée</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500"/> En cours</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-black"/> Terminée</span>
           </div>
         </div>
 

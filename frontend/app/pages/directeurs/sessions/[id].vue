@@ -324,10 +324,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '~~/composables/useToast'
+import { useConfirm } from '~~/composables/useConfirm'
 
 const route  = useRoute()
 const router = useRouter()
 const toast  = useToast()
+const { confirm } = useConfirm()
 
 const loading  = ref(true)
 const data     = ref(null)
@@ -435,7 +437,12 @@ const saveSession = async () => {
 }
 
 const startSession = async () => {
-  if (!confirm('Démarrer cette session maintenant ?')) return
+  const ok = await confirm({
+    title: 'Démarrer la session',
+    message: 'Les étudiants pourront rejoindre et répondre dès que la session est démarrée. Continuer ?',
+    confirmLabel: 'Démarrer'
+  })
+  if (!ok) return
   acting.value = true
   try {
     await apiFetch(`/admin/sessions/${route.params.id}/start`, { method: 'POST' })
@@ -449,7 +456,13 @@ const startSession = async () => {
 }
 
 const endSession = async () => {
-  if (!confirm('Terminer cette session maintenant ?')) return
+  const ok = await confirm({
+    title: 'Terminer la session',
+    message: 'Les étudiants ne pourront plus soumettre de réponses une fois la session terminée. Continuer ?',
+    confirmLabel: 'Terminer',
+    danger: true
+  })
+  if (!ok) return
   acting.value = true
   try {
     await apiFetch(`/admin/sessions/${route.params.id}/end`, { method: 'POST' })
@@ -478,7 +491,13 @@ const toggleResultats = async () => {
 }
 
 const removeSession = async () => {
-  if (!confirm(`Supprimer la session "${data.value.session.titre}" ?`)) return
+  const ok = await confirm({
+    title: 'Supprimer la session',
+    message: `Supprimer définitivement "${data.value.session.titre}" ? Cette action est irréversible.`,
+    confirmLabel: 'Supprimer',
+    danger: true
+  })
+  if (!ok) return
   acting.value = true
   try {
     await apiFetch(`/admin/sessions/${route.params.id}`, { method: 'DELETE' })
@@ -516,6 +535,12 @@ const downloadPdf = async () => {
 }
 
 const duplicateSession = async () => {
+  const ok = await confirm({
+    title: 'Dupliquer la session',
+    message: 'Une copie de cette session sera créée avec des dates provisoires à redéfinir.',
+    confirmLabel: 'Dupliquer'
+  })
+  if (!ok) return
   duplicating.value = true
   try {
     const result = await apiFetch(`/admin/sessions/${route.params.id}/dupliquer`, { method: 'POST' })

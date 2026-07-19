@@ -195,8 +195,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from '~~/composables/useToast'
+import { useConfirm } from '~~/composables/useConfirm'
 
 const toast   = useToast()
+const { confirm } = useConfirm()
 const loading = ref(true)
 const sessions = ref([])
 const filieres = ref([])
@@ -260,6 +262,13 @@ const loadData = async () => {
 const duplicatingId = ref(null)
 
 const duplicateSession = async (session) => {
+  const ok = await confirm({
+    title: 'Dupliquer la session',
+    message: `Une copie de "${session.titre}" sera créée avec des dates provisoires à redéfinir.`,
+    confirmLabel: 'Dupliquer'
+  })
+  if (!ok) return
+
   duplicatingId.value = session.id
   try {
     const result = await apiFetch(`/admin/sessions/${session.id}/dupliquer`, { method: 'POST' })
@@ -277,7 +286,13 @@ const duplicateSession = async (session) => {
 }
 
 const deleteSession = async (session) => {
-  if (!confirm(`Supprimer la session "${session.titre}" ?`)) return
+  const ok = await confirm({
+    title: 'Supprimer la session',
+    message: `Supprimer définitivement "${session.titre}" ? Cette action est irréversible.`,
+    confirmLabel: 'Supprimer',
+    danger: true
+  })
+  if (!ok) return
   try {
     await apiFetch(`/admin/sessions/${session.id}`, { method: 'DELETE' })
     toast.success('Session supprimée')

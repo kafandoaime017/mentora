@@ -4,10 +4,10 @@
       <div class="max-w-6xl mx-auto">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
           <h1 class="text-2xl font-extrabold text-black font-body">Calendrier des sessions</h1>
-          <div class="flex items-center gap-3 text-xs font-body">
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-gray-300"/> À venir</span>
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-400"/> En cours</span>
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-400"/> Terminée</span>
+          <div class="flex items-center gap-3 text-xs font-body text-black">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-yellow-500"/> Programmée</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500"/> En cours</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-black"/> Terminée</span>
           </div>
         </div>
 

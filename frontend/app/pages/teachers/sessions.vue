@@ -234,7 +234,8 @@
                   <button
                     v-if="qcm.status === 'pending'"
                     @click.stop="deleteQCMHandler(qcm.id)"
-                    class="p-2 text-red-500 bg-[#e2ddd4] hover:bg-red-50 rounded-lg transition-colors"
+                    :disabled="deleting"
+                    class="p-2 text-red-500 bg-[#e2ddd4] hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                     title="Supprimer"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -322,7 +323,8 @@
                   <button
                     v-if="qcm.status === 'pending'"
                     @click.stop="deleteQCMHandler(qcm.id)"
-                    class="p-2 text-red-500 hover:bg-red-50 bg-gray-200 rounded-lg transition-colors"
+                    :disabled="deleting"
+                    class="p-2 text-red-500 hover:bg-red-50 bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
                     title="Supprimer"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -390,34 +392,6 @@
           </div>
         </div>
 
-        <!-- ==================== MODAL DE SUPPRESSION ==================== -->
-        <div v-if="deleteModalVisible" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="deleteModalVisible = false">
-          <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div class="border-b border-[#e2ddd4] p-4">
-              <h3 class="text-lg font-extrabold font-body text-black">Confirmer la suppression</h3>
-            </div>
-            <div class="p-6">
-              <p class="text-[#1e3a2f] font-body mb-6">
-                Êtes-vous sûr de vouloir supprimer ce QCM ? Cette action est irréversible.
-              </p>
-              <div class="flex gap-3 justify-end">
-                <button 
-                  @click="deleteModalVisible = false"
-                  class="px-4 font-body py-2 border border-[#e2ddd4] rounded-lg text-sm font-semibold text-[#1e3a2f] hover:bg-[#f5f0e8] transition-colors"
-                >
-                  Annuler
-                </button>
-                <button 
-                  @click="confirmDelete"
-                  :disabled="deleting"
-                  class="px-4 font-body py-2 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
-                >
-                  {{ deleting ? 'Suppression...' : 'Supprimer' }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </TeacherLayout>
   </div>
@@ -427,17 +401,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { useTeacher } from '../../../composables/useTeacher'
 import { useToast } from '../../../composables/useToast'
+import { useConfirm } from '../../../composables/useConfirm'
 
 const { getQCMList, deleteQCM, startSession, endSession, duplicateQCM } = useTeacher()
 const toast = useToast()
+const { confirm } = useConfirm()
 
 const loading = ref(true)
 const qcms = ref([])
 const searchQuery = ref('')
 const filterStatus = ref('all')
-const deleteModalVisible = ref(false)
 const deleting = ref(false)
-const qcmToDelete = ref(null)
 const duplicatingId = ref(null)
 
 // QR Code modal
@@ -540,6 +514,13 @@ const viewQCM = (id) => {
 }
 
 const startSessionHandler = async (id) => {
+  const ok = await confirm({
+    title: 'Démarrer la session',
+    message: 'Les étudiants pourront rejoindre et répondre dès que la session est démarrée. Continuer ?',
+    confirmLabel: 'Démarrer'
+  })
+  if (!ok) return
+
   const result = await startSession(id)
   if (result.success) {
     toast.success('Session démarrée !')
@@ -550,6 +531,14 @@ const startSessionHandler = async (id) => {
 }
 
 const endSessionHandler = async (id) => {
+  const ok = await confirm({
+    title: 'Terminer la session',
+    message: 'Les étudiants ne pourront plus soumettre de réponses une fois la session terminée. Continuer ?',
+    confirmLabel: 'Terminer',
+    danger: true
+  })
+  if (!ok) return
+
   const result = await endSession(id)
   if (result.success) {
     toast.success('Session terminée !')
@@ -559,12 +548,35 @@ const endSessionHandler = async (id) => {
   }
 }
 
-const deleteQCMHandler = (id) => {
-  qcmToDelete.value = id
-  deleteModalVisible.value = true
+const deleteQCMHandler = async (id) => {
+  const ok = await confirm({
+    title: 'Supprimer le QCM',
+    message: 'Cette action est irréversible.',
+    confirmLabel: 'Supprimer',
+    danger: true
+  })
+  if (!ok) return
+
+  deleting.value = true
+  const result = await deleteQCM(id)
+  deleting.value = false
+
+  if (result.success) {
+    toast.success('QCM supprimé avec succès')
+    await loadQCMs()
+  } else {
+    toast.error(result.message || 'Erreur lors de la suppression')
+  }
 }
 
 const duplicateQCMHandler = async (id) => {
+  const ok = await confirm({
+    title: 'Dupliquer la session',
+    message: 'Une copie de cette session sera créée avec des dates provisoires à redéfinir.',
+    confirmLabel: 'Dupliquer'
+  })
+  if (!ok) return
+
   duplicatingId.value = id
   const result = await duplicateQCM(id)
   duplicatingId.value = null
@@ -577,24 +589,6 @@ const duplicateQCMHandler = async (id) => {
   } else {
     toast.error(result.message || 'Erreur lors de la duplication')
   }
-}
-
-const confirmDelete = async () => {
-  if (!qcmToDelete.value) return
-  
-  deleting.value = true
-  const result = await deleteQCM(qcmToDelete.value)
-  
-  if (result.success) {
-    toast.success('QCM supprimé avec succès')
-    await loadQCMs()
-  } else {
-    toast.error(result.message || 'Erreur lors de la suppression')
-  }
-  
-  deleting.value = false
-  deleteModalVisible.value = false
-  qcmToDelete.value = null
 }
 
 onMounted(() => {

@@ -286,6 +286,7 @@
       </div>
     </nav>
 
+    <ConfirmModal />
   </div>
   <div v-else class="loading-screen"><div class="spinner" /></div>
 </template>

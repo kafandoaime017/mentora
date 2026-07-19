@@ -306,8 +306,10 @@
 import { ref, computed, onMounted } from 'vue'
 import * as XLSX from 'xlsx'
 import { useToast } from '~~/composables/useToast'
+import { useConfirm } from '~~/composables/useConfirm'
 
 const toast            = useToast()
+const { confirm }      = useConfirm()
 const loading          = ref(true)
 const invitations      = ref([])
 const filieres         = ref([])
@@ -431,7 +433,13 @@ const resendInvitation = async (inv) => {
 }
 
 const revokeInvitation = async (inv) => {
-  if (!confirm(`Révoquer l'invitation de ${inv.prenom} ${inv.nom} ?\nElle ne pourra plus être utilisée.`)) return
+  const ok = await confirm({
+    title: 'Révoquer l\'invitation',
+    message: `L'invitation de ${inv.prenom} ${inv.nom} ne pourra plus être utilisée.`,
+    confirmLabel: 'Révoquer',
+    danger: true
+  })
+  if (!ok) return
   try {
     await apiFetch(`/admin/invitations/${inv.id}/revoke`, { method: 'PATCH' })
     toast.success('Invitation révoquée')
@@ -442,7 +450,13 @@ const revokeInvitation = async (inv) => {
 }
 
 const deleteInvitation = async (id) => {
-  if (!confirm('Supprimer définitivement cette invitation ?')) return
+  const ok = await confirm({
+    title: 'Supprimer cette invitation',
+    message: 'Cette action est irréversible.',
+    confirmLabel: 'Supprimer',
+    danger: true
+  })
+  if (!ok) return
   try {
     await apiFetch(`/admin/invitations/${id}`, { method: 'DELETE' })
     toast.success('Invitation supprimée')

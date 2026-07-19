@@ -1,36 +1,36 @@
 <template>
-  <div class="bg-white rounded-lg shadow-[1px_1px_3px_1px_rgba(0,0,0,0.1)] overflow-hidden">
-    <!-- En-tête navigation -->
-    <div class="flex items-center justify-between p-4 border-b border-[#e2ddd4] bg-[#f5f0e8]/30">
-      <button @click="moisPrecedent" class="p-2 rounded-lg hover:bg-gray-200 transition-colors text-[#1e3a2f]">
+  <div class="bg-white rounded-sm border border-gray-200 overflow-hidden">
+    <!-- En-tête navigation (meme langage que le thead du tableau des sessions) -->
+    <div class="flex items-center justify-between p-3 bg-blacky">
+      <button @click="moisPrecedent" class="p-2 rounded-lg hover:bg-white/10 transition-colors text-white">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
       </button>
       <div class="flex items-center gap-3">
-        <h3 class="font-body text-lg font-bold text-[#1e3a2f] capitalize">{{ libelleMois }}</h3>
-        <button @click="allerAujourdhui" class="text-xs font-body font-semibold text-[#4a7c5e] hover:text-[#1e3a2f] bg-gray-100 px-2.5 py-1 rounded-full">
+        <h3 class="font-body text-sm font-extrabold uppercase tracking-wide text-white capitalize">{{ libelleMois }}</h3>
+        <button @click="allerAujourdhui" class="text-xs font-body font-semibold text-blacky bg-white hover:bg-gray-100 px-2.5 py-1 rounded-sm transition-colors">
           Aujourd'hui
         </button>
       </div>
-      <button @click="moisSuivant" class="p-2 rounded-lg hover:bg-gray-200 transition-colors text-[#1e3a2f]">
+      <button @click="moisSuivant" class="p-2 rounded-lg hover:bg-white/10 transition-colors text-white">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
       </button>
     </div>
 
     <div v-if="loading" class="p-12 text-center">
-      <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-[#4a7c5e] border-t-transparent"/>
+      <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-blacky border-t-transparent"/>
     </div>
 
     <template v-else>
       <!-- Grille du mois -->
-      <div class="grid grid-cols-7 border-b border-[#e2ddd4] bg-[#f5f0e8]/50">
-        <div v-for="j in joursSemaine" :key="j" class="py-2 text-center text-[10px] font-bold uppercase tracking-wide text-[#9b9589]">
+      <div class="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+        <div v-for="j in joursSemaine" :key="j" class="py-2 text-center text-[10px] font-body font-bold uppercase tracking-wide text-black">
           {{ j }}
         </div>
       </div>
       <div class="grid grid-cols-7">
         <div
           v-for="(jour, idx) in joursGrille" :key="idx"
-          class="min-h-[92px] border-b border-r border-[#eee] p-1.5"
+          class="min-h-[92px] border-b border-r border-gray-200 p-1.5"
           :class="[
             idx % 7 === 6 ? 'border-r-0' : '',
             jour.horsMois ? 'bg-gray-50' : '',
@@ -38,10 +38,10 @@
         >
           <div class="flex items-center justify-center mb-1">
             <span
-              class="text-xs w-6 h-6 flex items-center justify-center rounded-full font-body"
+              class="text-xs w-6 h-6 flex items-center justify-center rounded-full font-body font-semibold"
               :class="[
-                jour.horsMois ? 'text-gray-300' : 'text-[#1e3a2f]',
-                jour.estAujourdhui ? 'bg-[#4a7c5e] text-white font-bold' : ''
+                jour.horsMois ? 'text-gray-300' : 'text-black',
+                jour.estAujourdhui ? 'bg-blacky text-white font-bold' : ''
               ]"
             >{{ jour.date.getDate() }}</span>
           </div>
@@ -49,13 +49,13 @@
             <button
               v-for="s in jour.sessions.slice(0, 3)" :key="s.id"
               @click="ouvrir(s)"
-              class="w-full text-left px-1.5 py-0.5 rounded text-[10px] font-body font-semibold truncate block transition-colors"
+              class="w-full text-left px-1.5 py-0.5 rounded-sm text-[10px] font-body font-semibold truncate block transition-colors"
               :class="badgeClass(s.status)"
               :title="`${s.titre} — ${formatHeure(s.date_debut)}`"
             >
               {{ formatHeure(s.date_debut) }} {{ s.titre }}
             </button>
-            <p v-if="jour.sessions.length > 3" class="text-[10px] text-[#9b9589] pl-1.5">
+            <p v-if="jour.sessions.length > 3" class="text-[10px] text-black font-body pl-1.5">
               +{{ jour.sessions.length - 3 }} autre{{ jour.sessions.length - 3 > 1 ? 's' : '' }}
             </p>
           </div>
@@ -133,11 +133,14 @@ const allerAujourdhui = () => {
 
 const formatHeure = (date) => new Date(date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 
+// Meme mapping de couleurs que le badge Statut du tableau des sessions (directeur)
 const badgeClass = (status) => ({
-  pending:   'bg-gray-200 text-gray-700 hover:bg-gray-300',
-  active:    'bg-green-100 text-green-800 hover:bg-green-200',
-  completed: 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-})[status] || 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+  pending:   'bg-yellow-500 text-black hover:brightness-95',
+  active:    'bg-green-500 text-white hover:brightness-95',
+  completed: 'bg-black text-white hover:brightness-125',
+  cancelled: 'bg-red-500 text-white hover:brightness-95',
+  draft:     'bg-blue-500 text-white hover:brightness-95'
+})[status] || 'bg-gray-300 text-black hover:brightness-95'
 
 const ouvrir = (session) => {
   if (!props.detailPrefix) return
