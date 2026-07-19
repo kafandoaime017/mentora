@@ -3,7 +3,7 @@
 
     <!-- ═══ DESKTOP SIDEBAR ═══ -->
     <aside
-      class="hidden md:flex fixed left-0 top-0 bottom-0 bg-white flex-col p-3 z-40 overflow-hidden shadow-[1px_1px_2px_1px_rgba(0,0,0,0.16)] transition-all duration-300"
+      class="hidden md:flex fixed left-0 top-0 bottom-0 bg-white flex-col p-3 z-40 shadow-[1px_1px_2px_1px_rgba(0,0,0,0.16)] transition-all duration-300"
       :class="sidebarCollapsed ? 'w-[68px] items-center' : 'w-[220px] items-start'"
     >
       <div class="flex items-center justify-center w-full h-16 mb-6 mt-3">
@@ -25,7 +25,7 @@
         </svg>
       </button>
 
-      <nav class="flex flex-col flex-1 w-full gap-1">
+      <nav class="flex flex-col flex-1 min-h-0 w-full gap-1 overflow-y-auto overflow-x-hidden pr-0.5 sidebar-scroll">
         <nuxt-link
           v-for="item in navItems"
           :key="item.key"
@@ -273,18 +273,54 @@
           </nuxt-link>
         </div>
 
-        <nuxt-link to="/teachers/stats" class="flex flex-col items-center justify-center gap-0.5 transition-colors" :class="$route.path === '/teachers/stats' ? 'text-primary' : 'text-gray-500'">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-          <span class="text-[10px] font-medium">Stats</span>
-        </nuxt-link>
-
         <nuxt-link to="/teachers/profile" class="flex flex-col items-center justify-center gap-0.5 transition-colors" :class="$route.path === '/teachers/profile' ? 'text-primary' : 'text-gray-500'">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21a9 9 0 100-18 9 9 0 000 18zm0 0a8.949 8.949 0 004.951-1.488A3.987 3.987 0 0013 16h-2a3.987 3.987 0 00-3.951 3.512A8.948 8.948 0 0012 21zm3-11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           <span class="text-[10px] font-medium">Profil</span>
         </nuxt-link>
 
+        <button @click="showMobileMore = true" class="flex flex-col items-center justify-center gap-0.5 transition-colors text-gray-500">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          <span class="text-[10px] font-medium">Plus</span>
+        </button>
+
       </div>
     </nav>
+
+    <!-- ═══ MENU MOBILE "PLUS" (tous les liens) ═══ -->
+    <Teleport to="body">
+      <Transition name="sheet-fade">
+        <div v-if="showMobileMore" class="md:hidden fixed inset-0 z-[60] bg-black/50 flex items-end" @click.self="showMobileMore = false">
+          <Transition name="sheet-pop" appear>
+            <div v-if="showMobileMore" class="w-full bg-white rounded-t-2xl max-h-[75vh] overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+              <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-1"/>
+              <div class="px-4 py-2 flex items-center justify-between">
+                <h3 class="font-body font-bold text-[#1e3a2f]">Menu</h3>
+                <button @click="showMobileMore = false" class="p-1.5 text-gray-400 hover:text-gray-600">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+              </div>
+              <div class="px-3 pb-3 grid grid-cols-3 gap-2">
+                <nuxt-link
+                  v-for="item in navItems" :key="item.key" :to="item.to"
+                  @click="showMobileMore = false"
+                  class="flex flex-col items-center justify-center gap-1.5 rounded-xl p-3 transition-colors"
+                  :class="$route.path === item.to ? 'bg-secondary text-white' : 'bg-[#f5f0e8] text-[#1e3a2f]'"
+                >
+                  <component :is="item.icon" class="w-5 h-5" />
+                  <span class="text-[11px] font-medium text-center leading-tight">{{ item.label }}</span>
+                </nuxt-link>
+              </div>
+              <div class="border-t border-gray-100 px-3 py-3">
+                <button @click="showMobileMore = false; handleLogoutClick()" class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-red-100 text-red-600 font-body font-semibold text-sm">
+                  <IconLogout class="w-4 h-4" />
+                  Déconnexion
+                </button>
+              </div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
 
     <ConfirmModal />
   </div>
@@ -311,6 +347,7 @@ const sidebarCollapsed = ref(false)
 const dropdownOpen     = ref(false)
 const notifOpen        = ref(false)
 const authChecked      = ref(false)
+const showMobileMore   = ref(false)
 const currentUser      = ref(null)
 const notifRef         = ref(null)
 const avatarRef        = ref(null)
@@ -413,6 +450,7 @@ const navItems = [
   { key: 'create',   to: '/teachers/create-session', label: 'Créer une session', icon: () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', d: 'M12 4v16m8-8H4' })]) },
   { key: 'calendrier', to: '/teachers/calendrier', label: 'Calendrier', icon: () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }, [h('rect', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', x: 3, y: 4, width: 18, height: 18, rx: 2 }), h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', d: 'M16 2v4M8 2v4M3 10h18' })]) },
   { key: 'banque',   to: '/teachers/banque-questions', label: 'Banque de questions', icon: () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', d: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z' })]) },
+  { key: 'stats',    to: '/teachers/stats',            label: 'Statistiques',      icon: () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', d: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' })]) },
   { key: 'profile',  to: '/teachers/profile',        label: 'Profil',            icon: () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }, [h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', d: 'M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2' }), h('circle', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', cx: 12, cy: 7, r: 4 })]) },
 {
   key: 'parametres',
@@ -454,4 +492,15 @@ const navItems = [
 }
 .loading-screen { display: flex; align-items: center; justify-content: center; height: 100vh; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: #e2ddd4; border-radius: 4px; }
+.sidebar-scroll { scrollbar-width: thin; scrollbar-color: #e2ddd4 transparent; }
+
+.sheet-fade-enter-active, .sheet-fade-leave-active { transition: opacity 0.2s ease; }
+.sheet-fade-enter-from, .sheet-fade-leave-to { opacity: 0; }
+.sheet-pop-enter-active { transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.sheet-pop-leave-active { transition: transform 0.15s ease; }
+.sheet-pop-enter-from, .sheet-pop-leave-to { transform: translateY(100%); }
 </style>

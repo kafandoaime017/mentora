@@ -4,7 +4,7 @@
     <!-- ═══ DESKTOP SIDEBAR ═══ -->
     <aside
       v-if="!isParticipating"
-      class="hidden md:flex fixed left-0 top-0 bottom-0 bg-white flex-col p-3 z-40 overflow-hidden shadow-[1px_1px_2px_1px_rgba(0,0,0,0.16)] transition-all duration-300"
+      class="hidden md:flex fixed left-0 top-0 bottom-0 bg-white flex-col p-3 z-40 shadow-[1px_1px_2px_1px_rgba(0,0,0,0.16)] transition-all duration-300"
       :class="sidebarCollapsed ? 'w-[68px] items-center' : 'w-[220px] items-start'"
     >
       <div class="flex items-center justify-center w-full h-16 mb-6 mt-3">
@@ -26,7 +26,7 @@
         </svg>
       </button>
 
-      <nav class="flex flex-col flex-1 w-full gap-1">
+      <nav class="flex flex-col flex-1 min-h-0 w-full gap-1 overflow-y-auto overflow-x-hidden pr-0.5 sidebar-scroll">
         <nuxt-link
           v-for="item in navItems"
           :key="item.key"
@@ -234,7 +234,7 @@
 
     <!-- ═══ MOBILE BOTTOM NAV ═══ -->
     <nav v-if="!isParticipating" class="md:hidden fixed bottom-0 left-0 right-0 z-50">
-      <div class="w-full h-16 bg-white shadow-[0_-1px_2px_1px_rgba(0,0,0,0.10)] grid grid-cols-5">
+      <div class="w-full h-16 bg-white shadow-[0_-1px_2px_1px_rgba(0,0,0,0.10)] grid grid-cols-6">
         <nuxt-link to="/students" class="flex flex-col items-center justify-center gap-0.5 transition-colors" :class="$route.path === '/students' ? 'text-primary' : 'text-gray-500'">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m4 12 8-8 8 8M6 10.5V19a1 1 0 001 1h3v-3a1 1 0 011-1h2a1 1 0 011 1v3h3a1 1 0 001-1v-8.5"/></svg>
           <span class="text-[10px] font-medium">Accueil</span>
@@ -264,8 +264,48 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21a9 9 0 100-18 9 9 0 000 18zm0 0a8.949 8.949 0 004.951-1.488A3.987 3.987 0 0013 16h-2a3.987 3.987 0 00-3.951 3.512A8.948 8.948 0 0012 21zm3-11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           <span class="text-[10px] font-medium">Profil</span>
         </nuxt-link>
+        <button @click="showMobileMore = true" class="flex flex-col items-center justify-center gap-0.5 transition-colors text-gray-500">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          <span class="text-[10px] font-medium">Plus</span>
+        </button>
       </div>
     </nav>
+
+    <!-- ═══ MENU MOBILE "PLUS" (tous les liens) ═══ -->
+    <Teleport to="body">
+      <Transition name="sheet-fade">
+        <div v-if="showMobileMore" class="md:hidden fixed inset-0 z-[60] bg-black/50 flex items-end" @click.self="showMobileMore = false">
+          <Transition name="sheet-pop" appear>
+            <div v-if="showMobileMore" class="w-full bg-white rounded-t-2xl max-h-[75vh] overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+              <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-1"/>
+              <div class="px-4 py-2 flex items-center justify-between">
+                <h3 class="font-body font-bold text-[#1e3a2f]">Menu</h3>
+                <button @click="showMobileMore = false" class="p-1.5 text-gray-400 hover:text-gray-600">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+              </div>
+              <div class="px-3 pb-3 grid grid-cols-3 gap-2">
+                <nuxt-link
+                  v-for="item in navItems" :key="item.key" :to="item.to"
+                  @click="showMobileMore = false"
+                  class="flex flex-col items-center justify-center gap-1.5 rounded-xl p-3 transition-colors"
+                  :class="$route.path === item.to ? 'bg-primary text-white' : 'bg-[#f5f0e8] text-[#1e3a2f]'"
+                >
+                  <component :is="item.icon" class="w-5 h-5" />
+                  <span class="text-[11px] font-medium text-center leading-tight">{{ item.label }}</span>
+                </nuxt-link>
+              </div>
+              <div class="border-t border-gray-100 px-3 py-3">
+                <button @click="showMobileMore = false; handleLogoutClick()" class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-red-100 text-red-600 font-body font-semibold text-sm">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                  Déconnexion
+                </button>
+              </div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
 
   </div>
   <div v-else class="loading-screen"><div class="spinner"/></div>
@@ -293,6 +333,7 @@ const dropdownOpen     = ref(false)
 const notifOpen        = ref(false)
 const authChecked      = ref(false)
 const currentUser      = ref(null)
+const showMobileMore   = ref(false)
 const etudiantProfil   = ref(null)
 const notifRef         = ref(null)
 const avatarRef        = ref(null)
@@ -460,4 +501,15 @@ const navItems = [
 .spinner { border: 4px solid rgba(0,0,0,0.1); border-top-color: #054348; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
 .loading-screen { display: flex; align-items: center; justify-content: center; height: 100vh; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: #e2ddd4; border-radius: 4px; }
+.sidebar-scroll { scrollbar-width: thin; scrollbar-color: #e2ddd4 transparent; }
+
+.sheet-fade-enter-active, .sheet-fade-leave-active { transition: opacity 0.2s ease; }
+.sheet-fade-enter-from, .sheet-fade-leave-to { opacity: 0; }
+.sheet-pop-enter-active { transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.sheet-pop-leave-active { transition: transform 0.15s ease; }
+.sheet-pop-enter-from, .sheet-pop-leave-to { transform: translateY(100%); }
 </style>

@@ -207,6 +207,27 @@ export const useAuth = () => {
     }
   }
 
+  // Definit l'avatar a partir d'une URL externe (avatar DiceBear choisi dans
+  // l'AvatarPicker), sans passer par un upload de fichier.
+  const updateAvatarUrl = async (avatarUrl) => {
+    try {
+      const res = await $fetch('/api/users/me/avatar-url', {
+        method: 'POST',
+        headers: getAuthHeader(),
+        body: { avatarUrl }
+      })
+      if (res.success && res.user) {
+        const currentUser = getUser()
+        if (currentUser) {
+          localStorage.setItem('user', JSON.stringify({ ...currentUser, avatar: res.user.avatar }))
+        }
+      }
+      return res
+    } catch (error) {
+      return { success: false, message: error?.data?.message || "Erreur lors de la mise à jour de l'avatar" }
+    }
+  }
+
   const envoyerLienResetMotDePasse = async (email) => {
     try {
       const res = await $fetch('/api/auth/mot-de-passe-oublie', {
@@ -300,6 +321,7 @@ export const useAuth = () => {
     getProfile,
     updateProfile,
     updateAvatar,
+    updateAvatarUrl,
     envoyerLienResetMotDePasse,
     verifierTokenReset,
     reinitialiserMotDePasse,

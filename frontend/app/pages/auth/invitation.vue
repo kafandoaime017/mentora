@@ -202,11 +202,19 @@
         </svg>
       </div>
     </div>
+
+    <AvatarPicker
+      v-model="showAvatarPicker"
+      :allow-skip="true"
+      title="Choisis ton avatar"
+      subtitle="Sélectionne un avatar ou passe pour qu'on t'en attribue un au hasard."
+      @done="onAvatarDone"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 
 definePageMeta({ layout: false })
@@ -224,6 +232,10 @@ const password        = ref('')
 const passwordConfirm = ref('')
 const showPwd         = ref(false)
 const registering     = ref(false)
+
+const showAvatarPicker = ref(false)
+const redirectRole     = ref(null)
+let navigatedAfterAvatar = false
 
 const apiFetch = async (url, options = {}) => {
   const config = useRuntimeConfig()
@@ -271,9 +283,10 @@ const startPolling = (email) => {
         tokenCookie.value = result.data.token
         localStorage.setItem('user', JSON.stringify(result.data.user))
         emailVerified.value = true
+        redirectRole.value = result.data.user?.role
 
         setTimeout(() => {
-          navigateTo(dashboardParRole[result.data.user?.role] || '/auth')
+          showAvatarPicker.value = true
         }, 1200)
       }
     } catch {
@@ -281,6 +294,20 @@ const startPolling = (email) => {
     }
   }, 4000)
 }
+
+const goToDashboard = () => {
+  if (navigatedAfterAvatar) return
+  navigatedAfterAvatar = true
+  navigateTo(dashboardParRole[redirectRole.value] || '/auth')
+}
+
+const onAvatarDone = () => goToDashboard()
+
+// Filet de sécurité : si l'utilisateur ferme la fenêtre d'avatar sans choisir
+// (clic sur le fond), on le redirige quand même vers son espace.
+watch(showAvatarPicker, (isOpen, wasOpen) => {
+  if (wasOpen && !isOpen) goToDashboard()
+})
 
 const registerViaInvitation = async () => {
   if (password.value.length < 8 || password.value !== passwordConfirm.value) return

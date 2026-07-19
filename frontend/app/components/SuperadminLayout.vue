@@ -3,7 +3,7 @@
 
     <!-- SIDEBAR DESKTOP -->
     <aside
-      class="hidden md:flex fixed left-0 top-0 bottom-0 bg-white flex-col p-2 z-40 overflow-hidden shadow-[1px_1px_2px_1px_rgba(0,0,0,0.16)] transition-all duration-300"
+      class="hidden md:flex fixed left-0 top-0 bottom-0 bg-white flex-col p-2 z-40 shadow-[1px_1px_2px_1px_rgba(0,0,0,0.16)] transition-all duration-300"
       :class="sidebarCollapsed ? 'w-[68px] items-center' : 'w-[220px] items-start'"
     >
       <div class="flex items-center justify-center w-full h-16 mb-4 mt-2">
@@ -20,7 +20,7 @@
         </svg>
       </button>
 
-      <nav class="flex flex-col flex-1 w-full gap-2">
+      <nav class="flex flex-col flex-1 min-h-0 w-full gap-2 overflow-y-auto overflow-x-hidden pr-0.5 sidebar-scroll">
         <!-- Section Navigation -->
         <div class="w-full">
           <button
@@ -233,8 +233,9 @@
           <!-- Avatar -->
           <div class="relative" ref="avatarRef">
             <button @click="toggleDropdown" class="flex items-center gap-2 focus:outline-none">
-              <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/40 text-white text-xs font-bold">
-                {{ currentUser?.prenom?.[0] }}{{ currentUser?.nom?.[0] }}
+              <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/40 text-white text-xs font-bold overflow-hidden">
+                <img v-if="avatarUrl" :src="avatarUrl" alt="Avatar" class="w-full h-full object-cover" />
+                <template v-else>{{ currentUser?.prenom?.[0] }}{{ currentUser?.nom?.[0] }}</template>
               </div>
               <svg class="w-4 h-4 text-white transition-transform duration-200 hidden sm:block" :class="{ 'rotate-180': dropdownOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -358,7 +359,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, onBeforeMount, h, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, onBeforeMount, h, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../../composables/useAuth'
 import { useNotifications } from '../../composables/useNotifications'
@@ -448,6 +449,13 @@ const loadUserData = async () => {
     }
   } catch { currentUser.value = getUser() }
 }
+
+const avatarUrl = computed(() => {
+  const avatar = currentUser.value?.avatar
+  if (!avatar) return null
+  if (avatar.startsWith('http')) return avatar
+  return `${useRuntimeConfig().public.apiBase?.replace('/api', '') || 'http://localhost:5000'}${avatar}`
+})
 
 const handleClickOutside = (e) => {
   if (notifRef.value  && !notifRef.value.contains(e.target))  notifOpen.value = false
@@ -561,4 +569,9 @@ const monitoringLinks = [
 .spinner { border: 4px solid rgba(0,0,0,0.1); border-top-color: #024864; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
 .loading-screen { display: flex; align-items: center; justify-content: center; height: 100vh; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
+.sidebar-scroll { scrollbar-width: thin; scrollbar-color: #e5e7eb transparent; }
 </style>

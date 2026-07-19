@@ -142,3 +142,34 @@ export const uploadAvatar = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Erreur lors de l\'upload' });
   }
 };
+
+// Definir l'avatar a partir d'une URL externe (avatar genere par l'API publique
+// DiceBear choisi dans l'AvatarPicker) - pas de fichier a uploader ici, juste
+// l'URL a enregistrer sur le compte.
+export const setAvatarFromUrl = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Non authentifié' });
+      return;
+    }
+
+    const { avatarUrl } = req.body;
+    if (!avatarUrl || typeof avatarUrl !== 'string' || !avatarUrl.startsWith('http')) {
+      res.status(400).json({ success: false, message: 'URL d\'avatar invalide' });
+      return;
+    }
+
+    const result = await userService.updateUserAvatar({ userId, avatarUrl });
+
+    if (!result.success) {
+      res.status(400).json(result);
+      return;
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('Erreur setAvatarFromUrl:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+};

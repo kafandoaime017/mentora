@@ -1,7 +1,7 @@
 <template>
   <div class="flex min-h-screen bg-layout font-['DM_Sans','Nunito',system-ui]" v-if="authChecked">
     <aside
-      class="hidden md:flex fixed left-0 top-0 bottom-0 bg-white flex-col p-2 z-40 overflow-hidden shadow-[1px_1px_2px_1px_rgba(0,0,0,0.16)] transition-all duration-300"
+      class="hidden md:flex fixed left-0 top-0 bottom-0 bg-white flex-col p-2 z-40 shadow-[1px_1px_2px_1px_rgba(0,0,0,0.16)] transition-all duration-300"
       :class="sidebarCollapsed ? 'w-[68px] items-center' : 'w-[220px] items-start'"
     >
       <div class="flex items-center justify-center w-full h-16 mb-4 mt-2">
@@ -23,7 +23,7 @@
         </svg>
       </button>
 
-      <nav class="flex flex-col flex-1 w-full gap-2">
+      <nav class="flex flex-col flex-1 min-h-0 w-full gap-2 overflow-y-auto overflow-x-hidden pr-0.5 sidebar-scroll">
         <!-- Section Navigation Principale -->
         <div class="w-full">
           <button 
@@ -280,8 +280,9 @@
           <!-- Avatar -->
           <div class="relative" ref="avatarRef">
             <button @click="toggleDropdown" class="flex items-center gap-2 focus:outline-none">
-              <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/40">
-                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/40 overflow-hidden">
+                <img v-if="avatarUrl" :src="avatarUrl" alt="Avatar" class="w-full h-full object-cover" />
+                <svg v-else class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                 </svg>
               </div>
@@ -368,9 +369,24 @@
               <span class="text-[10px] font-medium">Sessions</span>
             </nuxt-link>
 
+            <nuxt-link to="/directeurs/create-session" @click="mobileMenuOpen = false" class="flex flex-col items-center justify-center gap-1 py-2 rounded-lg hover:bg-gray-50 transition-colors" :class="$route.path === '/directeurs/create-session' ? 'text-blacky' : 'text-black'">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              <span class="text-[10px] font-medium">Session urgence</span>
+            </nuxt-link>
+
+            <nuxt-link to="/directeurs/calendrier" @click="mobileMenuOpen = false" class="flex flex-col items-center justify-center gap-1 py-2 rounded-lg hover:bg-gray-50 transition-colors" :class="$route.path === '/directeurs/calendrier' ? 'text-blacky' : 'text-black'">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span class="text-[10px] font-medium">Calendrier</span>
+            </nuxt-link>
+
             <nuxt-link to="/directeurs/ecole" @click="mobileMenuOpen = false" class="flex flex-col items-center justify-center gap-1 py-2 rounded-lg hover:bg-gray-50 transition-colors" :class="$route.path === '/directeurs/ecole' ? 'text-blacky' : 'text-black'">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zM12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>
               <span class="text-[10px] font-medium">Établissement</span>
+            </nuxt-link>
+
+            <nuxt-link to="/directeurs/abonnement" @click="mobileMenuOpen = false" class="flex flex-col items-center justify-center gap-1 py-2 rounded-lg hover:bg-gray-50 transition-colors" :class="$route.path === '/directeurs/abonnement' ? 'text-blacky' : 'text-black'">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+              <span class="text-[10px] font-medium">Abonnement</span>
             </nuxt-link>
 
             <nuxt-link to="/directeurs/annonces" @click="mobileMenuOpen = false" class="flex flex-col items-center justify-center gap-1 py-2 rounded-lg hover:bg-gray-50 transition-colors" :class="$route.path === '/directeurs/annonces' ? 'text-blacky' : 'text-black'">
@@ -551,7 +567,14 @@ const loadUserData = async () => {
 const admin = computed(() => ({
   firstName: currentUser.value?.prenom || 'Admin',
   lastName:  currentUser.value?.nom    || '',
+  avatar:    currentUser.value?.avatar || null,
 }))
+
+const avatarUrl = computed(() => {
+  if (!admin.value.avatar) return null
+  if (admin.value.avatar.startsWith('http')) return admin.value.avatar
+  return `${useRuntimeConfig().public.apiBase?.replace('/api', '') || 'http://localhost:5000'}${admin.value.avatar}`
+})
 
 const handleClickOutside = (e) => {
   if (notifRef.value  && !notifRef.value.contains(e.target))  notifOpen.value = false
@@ -713,4 +736,9 @@ const compteNavItems = [
 .spinner { border: 4px solid rgba(0,0,0,0.1); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
 .loading-screen { display: flex; align-items: center; justify-content: center; height: 100vh; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
+.sidebar-scroll { scrollbar-width: thin; scrollbar-color: #e5e7eb transparent; }
 </style>

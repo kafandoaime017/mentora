@@ -21,15 +21,22 @@
               </div>
             </div>
             <button
-              @click="changerAvatar"
+              @click="showAvatarPicker = true"
               :disabled="avatarLoading"
               class="text-md font-body text-primary hover:text-[#1e3a2f] font-semibold transition-colors duration-200 mt-2"
             >
               {{ avatarLoading ? 'Chargement...' : "Changer d'avatar" }}
             </button>
-            <input ref="avatarInput" type="file" accept="image/jpeg,image/png,image/jpg,image/webp" class="hidden" @change="onAvatarChange"/>
           </div>
         </div>
+
+        <AvatarPicker
+          v-model="showAvatarPicker"
+          :current-avatar="avatarURL"
+          title="Changer d'avatar"
+          subtitle="Choisis un nouvel avatar ou importe une photo."
+          @done="onAvatarPickerDone"
+        />
 
         <!-- INFORMATIONS -->
         <div class="bg-white shadow-[1px_1px_7px_1px_rgba(0,0,0,0.16)] border border-[#e2ddd4] rounded-lg overflow-hidden">
@@ -298,7 +305,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useAuth } from '../../../composables/useAuth'
 
-const { getUser, getProfile, updateProfile, updateAvatar, logout, envoyerCodeChangementMdp, changerMotDePasse } = useAuth()
+const { getUser, getProfile, updateProfile, logout, envoyerCodeChangementMdp, changerMotDePasse } = useAuth()
 
 // ─── Données utilisateur ──────────────────────────────────────────────────────
 const userData = reactive({
@@ -312,11 +319,10 @@ const userData = reactive({
   filiere: ''
 })
 
-const loading       = ref(false)
-const avatarLoading = ref(false)
-const avatarPreview = ref(null)
-const avatarInput   = ref(null)
-const notification  = ref({ show: false, message: '', type: 'success' })
+const loading         = ref(false)
+const avatarLoading   = ref(false)
+const showAvatarPicker = ref(false)
+const notification    = ref({ show: false, message: '', type: 'success' })
 
 // ─── Modal nom/prénom ─────────────────────────────────────────────────────────
 const modalVisible  = ref(false)
@@ -400,41 +406,11 @@ async function updateUserProfile(field, value) {
 }
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
-function changerAvatar() { avatarInput.value.click() }
-
-async function onAvatarChange(event) {
-  const file = event.target.files[0]
-  if (!file) return
-  if (!file.type.startsWith('image/')) { showNotification('Veuillez sélectionner une image', 'error'); return }
-  if (file.size > 5 * 1024 * 1024) { showNotification("L'image ne doit pas dépasser 5MB", 'error'); return }
-
-  const reader = new FileReader()
-  reader.onload = (e) => { avatarPreview.value = e.target.result }
-  reader.readAsDataURL(file)
-
-  avatarLoading.value = true
-  try {
-    const result = await updateAvatar(file)
-    if (result.success) {
-      userData.avatar  = result.user.avatar
-      avatarPreview.value = null
-      showNotification('Avatar mis à jour avec succès')
-      const currentUser = getUser()
-      if (currentUser) {
-        currentUser.avatar = result.user.avatar
-        localStorage.setItem('user', JSON.stringify(currentUser))
-      }
-    } else {
-      showNotification(result.message || "Erreur lors de l'upload", 'error')
-      avatarPreview.value = null
-    }
-  } catch {
-    showNotification("Erreur lors de l'upload", 'error')
-    avatarPreview.value = null
-  } finally {
-    avatarLoading.value = false
-    avatarInput.value.value = ''
-  }
+function onAvatarPickerDone(newAvatar) {
+  userData.avatar = newAvatar
+  showNotification('Avatar mis à jour avec succès')
+  // Recharge la page pour que le header (état séparé dans TeacherLayout) reflète le nouvel avatar
+  setTimeout(() => window.location.reload(), 700)
 }
 
 // ─── Modal nom/prénom ─────────────────────────────────────────────────────────

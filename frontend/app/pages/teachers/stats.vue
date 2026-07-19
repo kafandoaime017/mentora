@@ -2,26 +2,25 @@
   <div class="bg-[#f5f0e8] font-body min-h-screen">
     <TeacherLayout>
       <div class="py-3">
-        
+
         <!-- En-tête -->
         <div class="mb-8">
-          <h1 class="text-2xl font-body font-extrabold text-[#1e3a2f]">Tableau de bord</h1>
-          <p class="text-sm text-[#9b9589] font-body">Bienvenue dans votre espace professeur</p>
+          <h1 class="text-2xl font-body font-extrabold text-[#1e3a2f]">Statistiques</h1>
+          <p class="text-sm text-[#9b9589] font-body">Vue d'ensemble de vos sessions et des résultats de vos étudiants</p>
         </div>
 
         <!-- Chargement -->
         <div v-if="loading" class="bg-white shadow rounded-lg p-12 text-center">
-          <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-[#4a7c5e] border-t-transparent"></div>
+          <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-[#4a7c5e] border-t-transparent"/>
         </div>
 
         <div v-else>
           <!-- Cartes statistiques -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <!-- Total sessions -->
-            <div class="bg-primary rounded-xl  p-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div class="bg-primary rounded-xl p-6">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-white font-body  mb-1">Total sessions</p>
+                  <p class="text-white font-body mb-1">Total sessions</p>
                   <p class="text-3xl font-body font-extrabold text-white">{{ statsData.stats.total }}</p>
                 </div>
                 <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -32,11 +31,10 @@
               </div>
             </div>
 
-            <!-- Sessions à venir -->
-            <div class="bg-danger rounded-xl shadow p-6">
+            <div class="bg-danger rounded-xl p-6">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-white font-body ">Sessions à venir</p>
+                  <p class="text-white font-body">Sessions à venir</p>
                   <p class="text-3xl font-body font-bold text-white">{{ statsData.stats.aVenir }}</p>
                 </div>
                 <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
@@ -47,11 +45,10 @@
               </div>
             </div>
 
-            <!-- Sessions en cours -->
-            <div class="bg-yellow-600 rounded-xl shadow p-6">
+            <div class="bg-yellow-600 rounded-xl p-6">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-white font-body ">En cours</p>
+                  <p class="text-white font-body">En cours</p>
                   <p class="text-3xl font-body font-bold text-white">{{ statsData.stats.enCours }}</p>
                 </div>
                 <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
@@ -62,11 +59,10 @@
               </div>
             </div>
 
-            <!-- Sessions terminées -->
-            <div class="bg-secondary rounded-xl shadow p-6">
+            <div class="bg-secondary rounded-xl p-6">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-white font-body ">Terminées</p>
+                  <p class="text-white font-body">Terminées</p>
                   <p class="text-3xl font-body font-bold text-white">{{ statsData.stats.terminees }}</p>
                 </div>
                 <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
@@ -78,15 +74,31 @@
             </div>
           </div>
 
-         
+          <!-- Moyenne générale -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="bg-white rounded-xl shadow p-6">
+              <p class="text-sm text-[#9b9589] font-body mb-1">Moyenne générale (points bruts)</p>
+              <p class="text-3xl font-body font-extrabold" :class="noteColor(statsData.moyenne.sur20)">
+                {{ statsData.moyenne.generale }}
+              </p>
+              <p class="text-xs text-[#9b9589] font-body mt-1">Toutes sessions terminées confondues</p>
+            </div>
+            <div class="bg-white rounded-xl shadow p-6">
+              <p class="text-sm text-[#9b9589] font-body mb-1">Moyenne générale (sur 20)</p>
+              <p class="text-3xl font-body font-extrabold" :class="noteColor(statsData.moyenne.sur20)">
+                {{ statsData.moyenne.sur20 }}/20
+              </p>
+              <p class="text-xs text-[#9b9589] font-body mt-1">Basée sur les sessions dont les questions sont notées</p>
+            </div>
+          </div>
 
-          <!-- Liste des sessions à venir -->
+          <!-- Sessions à venir -->
           <div class="bg-white rounded-xl shadow overflow-hidden">
             <div class="px-6 py-4 border-b border-[#e2ddd4] bg-[#f5f0e8]/30">
               <h3 class="text-lg font-body font-bold text-[#1e3a2f]">Sessions à venir</h3>
             </div>
-            
-            <div v-if="statsData.sessionsAVenir?.length === 0" class="p-12 text-center text-[#9b9589]">
+
+            <div v-if="!statsData.sessionsAVenir?.length" class="p-12 text-center text-[#9b9589]">
               <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
               </svg>
@@ -97,8 +109,8 @@
             </div>
 
             <div v-else class="divide-y divide-[#e2ddd4]">
-              <div 
-                v-for="session in statsData.sessionsAVenir" 
+              <div
+                v-for="session in statsData.sessionsAVenir"
                 :key="session.id"
                 class="p-4 hover:bg-[#f5f0e8]/30 cursor-pointer transition-colors"
                 @click="navigateTo(`/teachers/qcm/${session.id}`)"
@@ -137,7 +149,7 @@
                     <span class="px-3 py-1 text-xs rounded-full bg-yellow-200 text-yellow-800">
                       Programmée
                     </span>
-                    <button 
+                    <button
                       @click.stop="navigateTo(`/teachers/qcm/${session.id}/edit`)"
                       class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Modifier"
@@ -180,6 +192,13 @@ const formatDate = (date) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+const noteColor = (sur20) => {
+  const n = parseFloat(sur20)
+  if (n >= 14) return 'text-green-600'
+  if (n >= 10) return 'text-yellow-600'
+  return 'text-red-600'
 }
 
 const loadStats = async () => {
