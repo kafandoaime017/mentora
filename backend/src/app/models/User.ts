@@ -93,4 +93,11 @@ export class User {
 
     @Column({ name: 'notif_notes_publiees', type: 'tinyint', default: 1 })
     notifNotesPubliees!: boolean
+
+    // --- Son de notification (cloche en temps réel) ---
+    @Column({ name: 'notif_son_actif', type: 'tinyint', default: 1 })
+    notifSonActif!: boolean
+
+    @Column({ name: 'notif_son_url', type: 'varchar', length: 500, nullable: true })
+    notifSonUrl!: string | null
 }

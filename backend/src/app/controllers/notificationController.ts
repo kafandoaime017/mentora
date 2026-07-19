@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express'
 import AppDataSource from '../../config/data-source'
 import { Notification } from '../models/Notification'
 import { User } from '../models/User'
+import { getSocketIO } from '../../socket'
 
 interface AuthRequest extends Request { user?: User }
 
@@ -81,6 +82,16 @@ export const createNotification = async (
             isRead:    false
         })
         await notifRepo.save(notif)
+
+        // Pousse la notification en direct (bell + son) à l'utilisateur, quel que
+        // soit son rôle - il rejoint tous sa salle personnelle `user_${id}` (cf.
+        // socket/index.ts). Best-effort : si Socket.IO n'est pas encore initialisé
+        // (ex. tests) ou l'utilisateur hors ligne, ça ne fait juste rien.
+        try {
+            const io = getSocketIO()
+            if (io) io.to(`user_${userId}`).emit('notification', notif)
+        } catch { /* non bloquant */ }
+
         return notif
     } catch (err) {
         console.error('Erreur création notification:', err)

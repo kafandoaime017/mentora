@@ -79,6 +79,52 @@
             </div>
           </div>
 
+          <!-- SON DE NOTIFICATION -->
+          <div class="bg-white shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] rounded-xl overflow-hidden mb-4">
+            <div class="p-4 border-b border-gray-100">
+              <h3 class="font-bold text-[#1e3a2f] font-body">Son de notification</h3>
+              <p class="text-sm text-gray-500 font-body mt-0.5">Un son joue quand une notification arrive en direct</p>
+            </div>
+
+            <div class="divide-y divide-gray-50">
+              <div class="flex items-center justify-between p-4">
+                <div>
+                  <p class="text-sm font-semibold text-gray-800 font-body">Son actif</p>
+                  <p class="text-sm text-gray-500 font-body mt-0.5">Désactivez pour ne jouer aucun son</p>
+                </div>
+                <button
+                  @click="toggle('notifSonActif')"
+                  class="relative inline-flex h-7 w-14 items-center rounded-full transition-colors duration-300 flex-shrink-0 focus:outline-none"
+                  :class="settings.notifSonActif ? 'bg-primary' : 'bg-gray-300'"
+                >
+                  <span
+                    class="inline-block h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-300"
+                    :style="settings.notifSonActif ? 'transform: translateX(32px)' : 'transform: translateX(4px)'"
+                  />
+                </button>
+              </div>
+
+              <div class="p-4">
+                <p class="text-sm font-semibold text-gray-800 font-body mb-1">Son personnalisé</p>
+                <p class="text-sm text-gray-500 font-body mb-3">
+                  {{ settings.notifSonUrl ? 'Un son personnalisé est actif.' : "Aucun son personnalisé - le carillon par défaut est utilisé." }}
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <button @click="testerSon" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-body font-semibold hover:bg-gray-200 transition">
+                    Tester
+                  </button>
+                  <label class="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-body font-semibold hover:bg-gray-200 transition cursor-pointer">
+                    {{ uploadingSon ? 'Envoi...' : 'Importer un son (mp3/wav)' }}
+                    <input type="file" accept="audio/mpeg,audio/wav,audio/ogg,.mp3,.wav,.ogg" class="hidden" :disabled="uploadingSon" @change="onSonFileChange" />
+                  </label>
+                  <button v-if="settings.notifSonUrl" @click="reinitialiserSon" class="px-4 py-2 border border-red-300 text-red-500 rounded-xl text-sm font-body font-semibold hover:bg-red-50 transition">
+                    Réinitialiser
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- SÉCURITÉ 2FA -->
           <div class="bg-white shadow-[1px_1px_7px_1px_rgba(0,0,0,0.08)] rounded-xl overflow-hidden mb-4">
             <div class="p-4 border-b border-gray-100">
@@ -270,16 +316,21 @@ import { ref, reactive, onMounted } from 'vue'
 import { useSettings } from '~~/composables/useSettings'
 import { useAuth } from '~~/composables/useAuth'
 import { useToast } from '~~/composables/useToast'
+import { useNotificationSound } from '~~/composables/useNotificationSound.js'
 
 const { getSettings, updateSettings } = useSettings()
 const { getAuthHeader } = useAuth()
 const toast = useToast()
+const { play: jouerSonTest, invalidatePrefsCache } = useNotificationSound()
 
-const loading  = ref(true)
+const loading      = ref(true)
+const uploadingSon = ref(false)
 const settings = reactive({
   notifNouvelleSession: true,
   notifSessionDemarree: true,
   notifNotesPubliees:   true,
+  notifSonActif:        true,
+  notifSonUrl:          null,
   totpEnabled:          false
 })
 
@@ -302,6 +353,8 @@ onMounted(async () => {
     settings.notifNouvelleSession = result.data.notifNouvelleSession
     settings.notifSessionDemarree = result.data.notifSessionDemarree
     settings.notifNotesPubliees   = result.data.notifNotesPubliees
+    settings.notifSonActif        = result.data.notifSonActif
+    settings.notifSonUrl          = result.data.notifSonUrl
     settings.totpEnabled          = result.data.totpEnabled
   }
   loading.value = false
@@ -313,9 +366,49 @@ const toggle = async (key) => {
   const result = await updateSettings({ [key]: settings[key] })
   if (result.success) {
     toast.success('Préférences mises à jour')
+    if (key === 'notifSonActif') invalidatePrefsCache()
   } else {
     settings[key] = !settings[key] // rollback
     toast.error('Erreur lors de la mise à jour')
+  }
+}
+
+// ─── Son de notification ──────────────────────────────────────────────────────
+const testerSon = () => jouerSonTest()
+
+const onSonFileChange = async (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  if (file.size > 2 * 1024 * 1024) { toast.error('Fichier trop volumineux (max 2 Mo)'); e.target.value = ''; return }
+
+  uploadingSon.value = true
+  try {
+    const formData = new FormData()
+    formData.append('son', file)
+    const res = await $fetch('/api/settings/notif-son', { method: 'POST', headers: getAuthHeader(), body: formData })
+    if (res.success) {
+      settings.notifSonUrl = res.data.notifSonUrl
+      invalidatePrefsCache()
+      toast.success('Son de notification mis à jour')
+    } else {
+      toast.error(res.message || "Erreur lors de l'upload")
+    }
+  } catch (err) {
+    toast.error(err?.data?.message || "Erreur lors de l'upload")
+  } finally {
+    uploadingSon.value = false
+    e.target.value = ''
+  }
+}
+
+const reinitialiserSon = async () => {
+  const result = await updateSettings({ notifSonUrl: null })
+  if (result.success) {
+    settings.notifSonUrl = null
+    invalidatePrefsCache()
+    toast.success('Son par défaut restauré')
+  } else {
+    toast.error('Erreur')
   }
 }
 

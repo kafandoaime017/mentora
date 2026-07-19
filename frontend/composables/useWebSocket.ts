@@ -56,6 +56,14 @@ export const useWebSocket = () => {
       window.dispatchEvent(new CustomEvent('session-completed', { detail: data }))
     })
 
+    // Notification générique (createNotification côté backend) - couvre TOUS les
+    // types de notifications, pour les 4 rôles (étudiant, professeur, directeur,
+    // superadmin), contrairement aux événements ci-dessus qui ne couvrent que le
+    // cycle de vie d'une session.
+    socketInstance.on('notification', (data) => {
+      window.dispatchEvent(new CustomEvent('app-notification', { detail: data }))
+    })
+
     socketInstance.on('connect_error', (error) => {
       console.error('❌ Erreur connexion:', error.message)
       isConnectedRef.value = false
@@ -91,6 +99,10 @@ export const useWebSocket = () => {
     window.addEventListener('session-completed', (event: any) => callback(event.detail))
   }
 
+  const onNotification = (callback: (data: any) => void) => {
+    window.addEventListener('app-notification', (event: any) => callback(event.detail))
+  }
+
   const getSocket = () => socketInstance
 
   return {
@@ -101,6 +113,7 @@ export const useWebSocket = () => {
     onNewSession,
     onSessionStarted,
     onSessionCompleted, // ← AJOUTE
+    onNotification,
     getSocket
   }
 }

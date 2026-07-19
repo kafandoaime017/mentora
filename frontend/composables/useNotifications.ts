@@ -1,6 +1,9 @@
+import { useNotificationSound } from './useNotificationSound.js'
+
 export const useNotifications = () => {
     const notifications = ref<any[]>([])
     const loading = ref(false)
+    const { play: playNotificationSound } = useNotificationSound()
 
     const apiFetch = async (url: string, options: any = {}) => {
         const config = useRuntimeConfig()
@@ -63,6 +66,7 @@ export const useNotifications = () => {
             createdAt: new Date().toISOString(),
             ...notif
         })
+        playNotificationSound()
     }
 
     const unreadCount = computed(() =>

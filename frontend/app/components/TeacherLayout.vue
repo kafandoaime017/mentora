@@ -336,7 +336,7 @@ import { useEcoleLogo } from '../../composables/useEcoleLogo'
 const route  = useRoute()
 const router = useRouter()
 const { getUser, logout, getProfile } = useAuth()
-const { connect, disconnect } = useWebSocket()
+const { connect, disconnect, onNotification } = useWebSocket()
 const toast = useToast()
 const { ecoleNom, logoUrl: ecoleLogoUrl, chargerEcoleLogo } = useEcoleLogo()
 
@@ -371,6 +371,18 @@ const handleStudentSubmitted = (e) => {
     message: `Score : ${data.score}/${data.totalPoints} pts`,
     type:    'student_submitted',
     link:    null
+  })
+}
+
+// Notification générique (createNotification côté backend) - couvre tout ce qui
+// n'a pas déjà d'événement dédié ci-dessus (ex. si le professeur n'est pas sur la
+// page qcm/[id] au moment d'une soumission, c'est ce canal qui le prévient quand même).
+const handleGenericNotification = (notif) => {
+  addRealtime({
+    titre:   notif.titre,
+    message: notif.message,
+    type:    notif.type,
+    link:    notif.link
   })
 }
 
@@ -422,6 +434,7 @@ onMounted(async () => {
 
   document.addEventListener('click', handleClickOutside)
   window.addEventListener('student-submitted-notif', handleStudentSubmitted)
+  onNotification(handleGenericNotification)
 })
 
 onUnmounted(() => {

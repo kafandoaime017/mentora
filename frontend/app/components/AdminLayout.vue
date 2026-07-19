@@ -441,6 +441,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../../composables/useAuth'
 import { useNotifications } from '../../composables/useNotifications'
 import { useEcoleLogo } from '../../composables/useEcoleLogo'
+import { useWebSocket } from '../../composables/useWebSocket'
 import { useCookie } from '#app'
 
 const route  = useRoute()
@@ -564,7 +565,19 @@ const leave = (el) => {
   el.style.opacity = '0'
 }
 
-const { notifications, unreadCount, loading, load, markRead, markAllRead, clearAll } = useNotifications()
+const { notifications, unreadCount, loading, load, markRead, markAllRead, clearAll, addRealtime } = useNotifications()
+const { connect, disconnect, onNotification } = useWebSocket()
+
+// Notification générique en temps réel (le directeur ne recevait rien en
+// direct jusqu'ici - seul le rechargement de page mettait la cloche à jour).
+const handleGenericNotification = (notif) => {
+  addRealtime({
+    titre:   notif.titre,
+    message: notif.message,
+    type:    notif.type,
+    link:    notif.link
+  })
+}
 
 const toggleNotifications = () => { notifOpen.value = !notifOpen.value; dropdownOpen.value = false; mobileMenuOpen.value = false }
 
@@ -615,6 +628,12 @@ onMounted(async () => {
   authChecked.value = true
   await loadUserData()
   chargerEcoleLogo()
+
+  if (currentUser.value?.id) {
+    connect(currentUser.value.id, 'directeur')
+    onNotification(handleGenericNotification)
+  }
+
   document.addEventListener('click', handleClickOutside)
 })
 
@@ -624,7 +643,7 @@ onUnmounted(() => {
 
 const toggleDropdown    = () => { dropdownOpen.value = !dropdownOpen.value; notifOpen.value = false }
 const closeDropdown     = () => { dropdownOpen.value = false }
-const handleLogout      = () => { logout(); router.push('/auth') }
+const handleLogout      = () => { disconnect(); logout(); router.push('/auth') }
 const handleLogoutClick = () => { closeDropdown(); handleLogout() }
 
 const IconLogout = () => h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, [

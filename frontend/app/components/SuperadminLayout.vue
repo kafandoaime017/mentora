@@ -358,6 +358,7 @@ import { ref, computed, onMounted, onUnmounted, onBeforeMount, h, watch } from '
 import { useRouter } from 'vue-router'
 import { useAuth } from '../../composables/useAuth'
 import { useNotifications } from '../../composables/useNotifications'
+import { useWebSocket } from '../../composables/useWebSocket'
 import { useCookie } from '#app'
 
 const router = useRouter()
@@ -423,7 +424,19 @@ const leave = (el) => {
   el.style.height = '0'; el.style.opacity = '0'
 }
 
-const { notifications, unreadCount, loading, load, markRead, markAllRead, clearAll } = useNotifications()
+const { notifications, unreadCount, loading, load, markRead, markAllRead, clearAll, addRealtime } = useNotifications()
+const { connect, disconnect, onNotification } = useWebSocket()
+
+// Notification générique en temps réel (le superadmin ne recevait rien en
+// direct jusqu'ici - seul le rechargement de page mettait la cloche à jour).
+const handleGenericNotification = (notif) => {
+  addRealtime({
+    titre:   notif.titre,
+    message: notif.message,
+    type:    notif.type,
+    link:    notif.link
+  })
+}
 
 const toggleNotifications = () => { notifOpen.value = !notifOpen.value; dropdownOpen.value = false; mobileMenuOpen.value = false }
 
@@ -463,6 +476,12 @@ onMounted(async () => {
   await load()
   authChecked.value = true
   await loadUserData()
+
+  if (currentUser.value?.id) {
+    connect(currentUser.value.id, 'superadmin')
+    onNotification(handleGenericNotification)
+  }
+
   document.addEventListener('click', handleClickOutside)
 })
 
@@ -470,7 +489,7 @@ onUnmounted(() => { document.removeEventListener('click', handleClickOutside) })
 
 const toggleDropdown = () => { dropdownOpen.value = !dropdownOpen.value; notifOpen.value = false }
 const closeDropdown  = () => { dropdownOpen.value = false }
-const handleLogout   = async () => { await logout(); router.push('/auth') }
+const handleLogout   = async () => { disconnect(); await logout(); router.push('/auth') }
 const handleLogoutClick = () => { closeDropdown(); handleLogout() }
 
 const mainNavItems = [

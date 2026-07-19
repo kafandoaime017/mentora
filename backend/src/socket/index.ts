@@ -52,8 +52,12 @@ export const setupSocketIO = (io: Server) => {
 
             console.log(`✅ Utilisateur authentifié: ID=${userId}, Rôle=${role}, Socket=${socket.id}`);
 
+            // Salle personnelle : TOUS les rôles la rejoignent (etudiant, professeur,
+            // directeur, superadmin) - c'est elle que createNotification() cible pour
+            // pousser les notifications en direct, quel que soit le rôle.
+            socket.join(`user_${userId}`);
+
             if (role === 'etudiant') {
-                socket.join(`user_${userId}`);
                 socket.join(`student_${userId}`);
                 console.log(`📌 Étudiant ${userId} a rejoint sa salle personnelle`);
             }
