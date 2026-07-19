@@ -217,10 +217,24 @@
         <div class="md:hidden flex items-center gap-2">
           <img src="/images/logo-color.png" alt="Mentora" class="h-10 brightness-0 invert" />
           <img v-if="ecoleLogoUrl" :src="ecoleLogoUrl" alt="" class="w-8 h-8 rounded-lg object-cover border border-white/30"/>
+          <span
+            v-if="planLabel"
+            class="text-[10px] font-body font-bold uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0"
+            :class="ecolePlan === 'pro' ? 'bg-amber-400 text-blacky' : 'bg-white/15 text-white'"
+          >
+            {{ planLabel }}
+          </span>
         </div>
         <div class="hidden md:flex items-center gap-2">
           <img v-if="ecoleLogoUrl" :src="ecoleLogoUrl" alt="" class="w-7 h-7 rounded-lg object-cover border border-white/30"/>
           <p class="text-white font-semibold text-sm opacity-80">{{ ecoleNom || 'Administration' }}</p>
+          <span
+            v-if="planLabel"
+            class="text-[10px] font-body font-bold uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0"
+            :class="ecolePlan === 'pro' ? 'bg-amber-400 text-blacky' : 'bg-white/15 text-white'"
+          >
+            {{ planLabel }}
+          </span>
         </div>
 
         <div class="flex items-center gap-2">
@@ -429,7 +443,14 @@ import { useCookie } from '#app'
 const route  = useRoute()
 const router = useRouter()
 const { getUser, logout, getProfile } = useAuth()
-const { ecoleNom, logoUrl: ecoleLogoUrl, chargerEcoleLogo } = useEcoleLogo()
+const { ecoleNom, ecolePlan, logoUrl: ecoleLogoUrl, chargerEcoleLogo } = useEcoleLogo()
+
+const planLabel = computed(() => {
+  if (ecolePlan.value === 'pro') return 'Pro'
+  if (ecolePlan.value === 'starter') return 'Starter'
+  if (ecolePlan.value === 'gratuit') return 'Gratuit'
+  return ''
+})
 
 // Utilisation des cookies pour sauvegarder l'état
 const sidebarStateCookie = useCookie('sidebar_collapsed', {

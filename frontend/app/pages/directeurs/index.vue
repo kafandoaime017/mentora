@@ -17,19 +17,6 @@
 
         <div v-else>
 
-          <!-- Bannière plan -->
-          <div v-if="planInfo" class="mb-6 rounded-lg p-5 bg-blacky flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div>
-              <p class="text-white font-body font-bold text-sm uppercase tracking-wide">Plan {{ planInfo.plan }}</p>
-              <p v-if="planInfo.is_trial" class="text-white/80 font-body text-sm mt-1">
-                Période d'essai : {{ planInfo.trial_days_left }} jour{{ planInfo.trial_days_left > 1 ? 's' : '' }} restant{{ planInfo.trial_days_left > 1 ? 's' : '' }}
-              </p>
-            </div>
-            <nuxt-link to="/directeurs/abonnement" class="shrink-0 bg-white text-blacky font-body font-semibold text-sm px-4 py-2 rounded-lg hover:bg-white/90 transition-colors">
-              Gérer l'abonnement
-            </nuxt-link>
-          </div>
-
           <!-- KPI Cards -->
           <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
             <div class="bg-primary rounded-lg p-5">
@@ -235,12 +222,9 @@ const stats = ref({})
 const profsPending = ref([])
 const invitationsEnAttente = ref([])
 const dernieresSessions = ref([])
-const planInfo = ref(null)
 
 //Recuperer l'utilisateur connecté par sa session
 const currentUser = getUser()
-
-const token = () => useCookie('auth_token').value
 
 const activateProf = async (userId) => {
   try {
@@ -256,22 +240,6 @@ const activateProf = async (userId) => {
   }
 }
 
-const chargerPlan = async () => {
-  try {
-    const result = await $fetch('/api/stripe/abonnement', {
-      headers: { Authorization: `Bearer ${token()}` }
-    })
-    if (result.success) {
-      planInfo.value = {
-        plan: result.data.plan,
-        is_trial: result.data.is_trial,
-        trial_days_left: result.data.trial_days_left,
-        limites: result.data.limites
-      }
-    }
-  } catch { }
-}
-
 const loadDashboard = async () => {
   loading.value = true
   try {
@@ -279,8 +247,7 @@ const loadDashboard = async () => {
       getDashboard(),
       getUsers({ role: 'professeur' }),
       getInvitations(),
-      getSessions(),
-      chargerPlan()
+      getSessions()
     ])
 
     if (dashResult.success) stats.value = dashResult.data.stats

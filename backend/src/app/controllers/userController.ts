@@ -42,7 +42,7 @@ export const getMyEcole = async (req: Request, res: Response) => {
     const ecole = await ecoleRepoForEcole.findOne({ where: { id: ecoleId } })
     if (!ecole) { res.json({ success: true, data: null }); return }
 
-    res.json({ success: true, data: { nom: ecole.nom, logo: ecole.logo } })
+    res.json({ success: true, data: { nom: ecole.nom, logo: ecole.logo, plan: ecole.plan } })
   } catch (error) {
     console.error('Erreur getMyEcole:', error)
     res.status(500).json({ success: false, message: 'Erreur serveur' })

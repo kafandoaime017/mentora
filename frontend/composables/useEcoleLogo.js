@@ -4,6 +4,7 @@
 export const useEcoleLogo = () => {
   const ecoleNom  = ref('')
   const ecoleLogo = ref('')
+  const ecolePlan = ref('')
   const loaded    = ref(false)
 
   const logoUrl = computed(() => {
@@ -24,6 +25,7 @@ export const useEcoleLogo = () => {
       if (res.success && res.data) {
         ecoleNom.value  = res.data.nom || ''
         ecoleLogo.value = res.data.logo || ''
+        ecolePlan.value = res.data.plan || ''
       }
     } catch {
       // silencieux : l'en-tête retombe simplement sur le branding par défaut
@@ -32,5 +34,5 @@ export const useEcoleLogo = () => {
     }
   }
 
-  return { ecoleNom, ecoleLogo, logoUrl, loaded, chargerEcoleLogo }
+  return { ecoleNom, ecoleLogo, ecolePlan, logoUrl, loaded, chargerEcoleLogo }
 }
