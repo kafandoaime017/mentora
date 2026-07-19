@@ -6,13 +6,16 @@
       class="hidden md:flex fixed left-0 top-0 bottom-0 bg-white flex-col p-3 z-40 shadow-[1px_1px_2px_1px_rgba(0,0,0,0.16)] transition-all duration-300"
       :class="sidebarCollapsed ? 'w-[68px] items-center' : 'w-[220px] items-start'"
     >
-      <div class="flex items-center justify-center w-full h-16 mb-6 mt-3">
-        <img src="/images/logo-color.png" alt="Mentora" class="h-20 transition-all duration-300" />
-      </div>
-
-      <div v-if="ecoleLogoUrl" class="flex items-center gap-2 w-full px-2 mb-4" :class="{ 'justify-center': sidebarCollapsed }">
-        <img :src="ecoleLogoUrl" alt="" class="w-8 h-8 rounded-lg object-cover border border-gray-200 shrink-0"/>
-        <span v-if="!sidebarCollapsed" class="text-xs font-semibold text-black truncate">{{ ecoleNom }}</span>
+      <div class="flex flex-col items-center justify-center w-full mb-6 mt-3">
+        <template v-if="ecoleLogoUrl">
+          <img
+            :src="ecoleLogoUrl" :alt="ecoleNom"
+            class="rounded-xl object-cover border border-gray-200 transition-all duration-300"
+            :class="sidebarCollapsed ? 'w-10 h-10' : 'w-20 h-20'"
+          />
+          <span v-if="!sidebarCollapsed && ecoleNom" class="text-xs font-semibold text-black text-center mt-2 truncate max-w-full px-1">{{ ecoleNom }}</span>
+        </template>
+        <img v-else src="/images/logo-color.png" alt="Mentora" class="h-20 transition-all duration-300" />
       </div>
 
       <button
