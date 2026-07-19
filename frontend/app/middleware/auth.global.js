@@ -17,6 +17,7 @@ export default defineNuxtRouteMiddleware((to) => {
       '/auth/invitation',
       '/auth/verify-invitation',
       '/auth/totp',
+      '/inscription-ecole',
       '/legal/cgu',
       '/legal/politique-confidentialite',
       '/legal/mentions-legales'
