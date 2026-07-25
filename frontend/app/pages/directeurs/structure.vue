@@ -1,206 +1,199 @@
 <template>
   <div class="bg-layout font-body min-h-screen">
     <AdminLayout>
-      <div class="max-w-4xl mx-auto">
+      <div class="max-w-8xl mx-auto">
 
         <!-- En-tête -->
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <h1 class="text-2xl font-body font-extrabold text-black">Filières & Classes</h1>
-          <div class="flex items-center gap-3">
-            <div class="relative">
-              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-              </svg>
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Rechercher..."
-                class="w-56 pl-9 pr-4 py-2 rounded-lg  bg-gray-300/80 placeholder:text-black placeholder:font-bold text-sm font-body focus:outline-none focus:border-blacky"
-              />
-            </div>
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <h1 class="text-2xl font-extrabold font-body text-black">Filières & Classes</h1>
+          <span class="text-sm font-body text-black">{{ filieres.length }} filière(s) · {{ classes.length }} classe(s)</span>
+        </div>
+
+        <!-- Filières -->
+        <div class="mb-6">
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-xs font-body font-bold text-black uppercase tracking-wide">Filières</p>
             <button
               @click="showAddFiliere = true"
-              class="flex items-center gap-2 bg-blacky text-white px-4 py-2 rounded-lg text-sm font-body font-semibold hover:bg-[#024864] transition-colors"
+              class="flex items-center gap-1.5 text-xs font-body font-semibold px-3 py-1.5 rounded-lg bg-blacky text-white hover:bg-[#024864] transition-colors"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
               </svg>
-              Ajouter une filière
+              Nouvelle filière
             </button>
           </div>
-        </div>
 
-        <!-- Loading -->
-        <div v-if="loading" class="flex justify-center py-16">
-          <div class="animate-spin rounded-full h-8 w-8 border-2 border-blacky border-t-transparent"/>
-        </div>
-
-        <!-- Vide -->
-        <div v-else-if="filteredFilieres.length === 0" class="bg-white rounded-lg p-12 text-center text-black">
-          <svg class="w-14 h-14 mx-auto mb-4 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-          </svg>
-          <p class="font-body text-sm">Aucune filière trouvée</p>
-        </div>
-
-        <!-- Arbre -->
-        <div v-else class="flex gap-0 items-start">
-
-          <!-- Nœud École -->
-          <div class="flex flex-col items-center shrink-0" style="padding-top: 16px;">
-            <div class="bg-primary text-white px-5 py-4 rounded-2xl font-body font-bold text-sm shadow-md w-[120px] text-center">
-              <svg class="w-5 h-5 mx-auto mb-1.5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
-              </svg>
-                {{ ecole?.nom || 'Écolre' }}
-
-            </div>
+          <div v-if="loading" class="flex gap-2">
+            <div class="h-10 w-40 bg-white rounded-lg animate-pulse"/>
+            <div class="h-10 w-40 bg-white rounded-lg animate-pulse"/>
           </div>
 
-          <!-- Ligne horizontale École → filières -->
-          <div class="shrink-0 w-8 border-t-2 border-gray-300" style="margin-top: 38px;"/>
+          <div v-else-if="filieres.length === 0" class="bg-white rounded-sm border border-gray-200 p-6 text-center">
+            <p class="text-sm font-body text-black">Aucune filière pour le moment.</p>
+          </div>
 
-          <!-- Colonne de droite : filières + classes -->
-          <div class="flex-1 flex flex-col">
-
-            <!-- Ligne verticale qui longe toutes les filières -->
-            <div class="relative">
-
-              <!-- Barre verticale gauche -->
-              <div
-                class="absolute left-0 top-0 border-l-2 border-gray-300"
-                :style="{ height: verticalBarHeight }"
-                ref="verticalBar"
+          <div v-else class="flex flex-wrap gap-2">
+            <div
+              v-for="f in filieres" :key="f.id"
+              class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg pl-3 pr-1.5 py-1.5"
+            >
+              <span
+                class="w-2 h-2 rounded-full shrink-0"
+                :class="f.isActive ? 'bg-green-500' : 'bg-gray-300'"
+                :title="f.isActive ? 'Active' : 'Inactive'"
               />
+              <span class="text-sm font-body font-semibold text-black">{{ f.nom }}</span>
+              <span class="text-xs font-body text-black/50">({{ classesDe(f.id).length }})</span>
 
-              <!-- Filières visibles -->
-              <div
-                v-for="(filiere, fIdx) in visibleFilieres"
-                :key="filiere.id"
-                class="relative"
-                :style="{ paddingBottom: fIdx < visibleFilieres.length - 1 ? '24px' : '0' }"
-              >
-                <!-- Connecteur horizontal filière -->
-                <div class="flex items-center gap-0">
-                  <div class="w-8 shrink-0 border-t-2 border-gray-300" style="margin-top: 0; align-self: flex-start; margin-top: 20px;"/>
-
-                  <div class="flex-1">
-
-                    <!-- Nœud filière -->
-                    <div class="flex items-center gap-2 mb-2">
-                      <div class="bg-secondary text-white pl-3 pr-4 py-2 rounded-2xl font-body font-bold text-sm shadow flex items-center gap-2">
-                        <svg class="w-3.5 h-3.5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                        </svg>
-                        {{ filiere.nom }}
-                      </div>
-                      <!-- Actions filière -->
-                      <button
-                        @click="openAddClasse(filiere)"
-                        class="w-7 h-7 rounded-full bg-blacky/10 text-blacky hover:bg-blacky/20 flex items-center justify-center transition-colors border border-blacky/20"
-                        title="Ajouter une classe"
-                      >
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
-                        </svg>
-                      </button>
-                      <button
-                        @click="deleteFiliere(filiere)"
-                        class="w-7 h-7 rounded-full bg-red-50 text-red-400 hover:bg-red-100 flex items-center justify-center transition-colors"
-                        title="Supprimer la filière"
-                      >
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
-                      </button>
-                    </div>
-
-                    <!-- Aucune classe -->
-                    <div v-if="!filiere.classes || filiere.classes.length === 0" class="ml-8 mb-1">
-                      <p class="text-xs font-body text-black italic">Aucune classe</p>
-                    </div>
-
-                    <!-- Classes -->
-                    <div v-else class="relative ml-8">
-                      <!-- Barre verticale classes -->
-                      <div
-                        class="absolute left-0 border-l-2 border-gray-300"
-                        :style="{
-                          top: '20px',
-                          height: `calc(100% - 20px - 20px)`
-                        }"
-                      />
-
-                      <div
-                        v-for="(classe, cIdx) in filiere.classes"
-                        :key="classe.id"
-                        class="flex items-center gap-3 relative"
-                        :style="{ marginBottom: cIdx < filiere.classes.length - 1 ? '12px' : '0' }"
-                      >
-                        <!-- Connecteur horizontal classe (style ├─) -->
-                        <div class="shrink-0 flex items-center">
-                          <!-- Petit tiret horizontal -->
-                          <div class="w-6 border-t-2 border-gray-300"/>
-                        </div>
-
-                        <!-- Badge classe -->
-                        <div class="bg-gray-300 text-black px-4 py-2 rounded-2xl font-body font-semibold text-sm  w-[130px]">
-                          <p>{{ classe.nom }}</p>
-                        </div>
-
-                        <!-- Code -->
-                      
-
-                        <!-- Actions classe -->
-                        <div class="flex items-center gap-1">
-                         
-                          
-                          <button
-                            @click="deleteClasse(classe)"
-                            class="w-7 h-7 rounded-full bg-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-colors"
-                            title="Supprimer"
-                          >
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-              </div>
-
-              <!-- Bouton Afficher plus -->
-              <div v-if="filteredFilieres.length > visibleCount" class="flex justify-center mt-6 pl-8">
-                <button
-                  @click="showMore"
-                  class="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-black rounded-lg text-sm font-body font-semibold hover:bg-gray-50 hover:border-blacky/30 hover:text-blacky transition-all"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                  </svg>
-                  Afficher plus
-                  <span class="bg-gray-100 text-black text-xs px-2 py-0.5 rounded-full">
-                    {{ filteredFilieres.length - visibleCount }} restante(s)
-                  </span>
-                </button>
-              </div>
-
-              <!-- Bouton Réduire -->
-              <div v-if="visibleCount > INITIAL_COUNT && filteredFilieres.length > INITIAL_COUNT" class="flex justify-center mt-2 pl-8">
-                <button
-                  @click="visibleCount = INITIAL_COUNT"
-                  class="text-xs font-body text-black hover:text-black transition-colors"
-                >
-                  Réduire
-                </button>
-              </div>
-
+              <button @click="openAddClasse(f)" title="Ajouter une classe" class="w-6 h-6 rounded-md bg-secondary/10 text-secondary hover:bg-secondary/20 flex items-center justify-center transition-colors">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+              </button>
+              <button @click="openRename('filiere', f)" title="Renommer" class="w-6 h-6 rounded-md bg-gray-100 text-black hover:bg-gray-200 flex items-center justify-center transition-colors">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+              </button>
+              <button @click="toggleFiliereActive(f)" :title="f.isActive ? 'Désactiver' : 'Activer'" class="w-6 h-6 rounded-md bg-gray-100 text-black hover:bg-gray-200 flex items-center justify-center transition-colors">
+                <svg v-if="f.isActive" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 0M12 3v9"/></svg>
+                <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              </button>
+              <button @click="deleteFiliere(f)" title="Supprimer" class="w-6 h-6 rounded-md bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition-colors">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
             </div>
           </div>
+        </div>
+
+        <!-- Filtres classes -->
+        <div class="flex flex-wrap gap-3 mb-4">
+          <select
+            v-model="filiereFilter"
+            class="px-3 py-2 bg-gray-300/80 placeholder:text-black placeholder:font-bold rounded-lg text-sm font-body focus:outline-none"
+          >
+            <option value="">Toutes les filières</option>
+            <option v-for="f in filieres" :key="f.id" :value="f.id">{{ f.nom }}</option>
+          </select>
+
+          <div class="relative flex-1 min-w-[200px]">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Rechercher une classe..."
+              class="w-full pl-9 pr-4 py-2 bg-gray-300/80 placeholder:text-black placeholder:font-bold rounded-lg text-sm font-body focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <!-- Tableau classes -->
+        <div class="bg-white rounded-sm border border-gray-200 overflow-hidden">
+          <div v-if="loading" class="p-12 text-center">
+            <div class="animate-spin rounded-full h-6 w-6 border-2 border-blacky border-t-transparent mx-auto"/>
+          </div>
+
+          <div v-else-if="filteredClasses.length === 0" class="p-12 text-center">
+            <svg class="w-12 h-12 text-black mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+            </svg>
+            <p class="text-black text-sm font-body">Aucune classe trouvée</p>
+          </div>
+
+          <table v-else class="w-full">
+            <thead class="bg-blacky border-b border-gray-100">
+              <tr>
+                <th class="px-4 py-3 uppercase font-body text-left text-xs font-bold text-white">Classe</th>
+                <th class="px-4 py-3 uppercase font-body text-left text-xs font-bold text-white hidden md:table-cell">Filière</th>
+                <th class="px-4 py-3 uppercase font-body text-center text-xs font-bold text-white hidden md:table-cell">Étudiants</th>
+                <th class="px-4 py-3 uppercase font-body text-left text-xs font-bold text-white hidden lg:table-cell">Code d'inscription</th>
+                <th class="px-4 py-3 uppercase font-body text-center text-xs font-bold text-white">Statut</th>
+                <th class="px-4 py-3 uppercase font-body text-center text-xs font-bold text-white">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+              <tr v-for="c in filteredClasses" :key="c.id" class="hover:bg-gray-50 border border-gray-200 transition-colors">
+
+                <!-- Classe -->
+                <td class="px-4 py-3">
+                  <p class="text-sm font-body font-semibold text-black">{{ c.nom }}</p>
+                </td>
+
+                <!-- Filière -->
+                <td class="px-4 py-3 hidden md:table-cell border border-gray-200">
+                  <span class="inline-block bg-secondary/10 text-secondary text-xs font-body font-semibold px-2 py-0.5 rounded-full">
+                    {{ c.filiere || '—' }}
+                  </span>
+                </td>
+
+                <!-- Étudiants -->
+                <td class="px-4 py-3 text-center hidden md:table-cell border border-gray-200">
+                  <span class="text-sm font-body font-bold text-black">{{ c.nbEtudiants }}</span>
+                </td>
+
+                <!-- Code -->
+                <td class="px-4 py-3 hidden lg:table-cell border border-gray-200">
+                  <button
+                    v-if="c.codeInscription"
+                    @click="copierCode(c.codeInscription)"
+                    title="Copier le code"
+                    class="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-black bg-gray-100 px-2 py-1 rounded-md hover:bg-gray-200 transition-colors"
+                  >
+                    {{ c.codeInscription }}
+                    <svg class="w-3 h-3 text-black/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                  </button>
+                  <span v-else class="text-xs font-body text-black/40 italic">Aucun code</span>
+                </td>
+
+                <!-- Statut -->
+                <td class="px-4 py-3 text-center border border-gray-200">
+                  <span
+                    class="inline-flex items-center gap-1 text-xs font-body font-semibold px-2 py-0.5 rounded-full"
+                    :class="c.isActive ? 'bg-green-500 text-white' : 'bg-gray-300 text-black'"
+                  >
+                    {{ c.isActive ? 'Active' : 'Inactive' }}
+                  </span>
+                </td>
+
+                <!-- Actions -->
+                <td class="px-4 py-3 border border-gray-200">
+                  <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                    <button
+                      @click="genererCode(c)"
+                      :disabled="generatingCodeId === c.id"
+                      class="inline-flex items-center gap-1 text-xs font-body font-semibold px-2.5 py-1.5 rounded-lg bg-secondary/90 text-white hover:bg-secondary transition-colors disabled:opacity-50"
+                    >
+                      <div v-if="generatingCodeId === c.id" class="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"/>
+                      <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                      {{ c.codeInscription ? 'Régénérer' : 'Générer' }} le code
+                    </button>
+                    <button
+                      @click="openRename('classe', c)"
+                      class="inline-flex items-center gap-1 text-xs font-body font-semibold px-2.5 py-1.5 rounded-lg bg-gray-100 text-black hover:bg-gray-200 transition-colors"
+                    >
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                      Renommer
+                    </button>
+                    <button
+                      @click="toggleClasseActive(c)"
+                      class="inline-flex items-center gap-1 text-xs font-body font-semibold px-2.5 py-1.5 rounded-lg bg-blacky/80 text-white hover:bg-blacky transition-colors"
+                    >
+                      <svg v-if="c.isActive" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 0M12 3v9"/></svg>
+                      <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                      {{ c.isActive ? 'Désactiver' : 'Activer' }}
+                    </button>
+                    <button
+                      @click="deleteClasse(c)"
+                      class="inline-flex items-center gap-1 text-xs font-body font-semibold px-2.5 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
+                    >
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                      Supprimer
+                    </button>
+                  </div>
+                </td>
+
+              </tr>
+            </tbody>
+          </table>
         </div>
 
       </div>
@@ -246,6 +239,29 @@
         </div>
       </div>
 
+      <!-- Modal renommer -->
+      <div v-if="showRenameModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="showRenameModal = false">
+        <div class="bg-white rounded-lg w-full max-w-md p-6">
+          <h3 class="font-body font-bold text-black mb-4 text-lg">
+            Renommer {{ renameType === 'filiere' ? 'la filière' : 'la classe' }}
+          </h3>
+          <input
+            v-model="renameValue"
+            type="text"
+            class="w-full px-4 py-3 bg-input rounded-lg font-body text-sm focus:outline-none mb-4"
+            @keyup.enter="confirmRename"
+            autofocus
+          />
+          <div class="flex gap-3">
+            <button @click="showRenameModal = false" class="flex-1 py-2.5 bg-gray-100 text-black rounded-lg text-sm font-body font-semibold">Annuler</button>
+            <button @click="confirmRename" :disabled="!renameValue.trim() || renaming" class="flex-1 py-2.5 bg-blacky text-white rounded-lg text-sm font-body font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
+              <div v-if="renaming" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"/>
+              <span v-else>Renommer</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
     </AdminLayout>
   </div>
 </template>
@@ -253,83 +269,116 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from '~~/composables/useToast'
+import { useConfirm } from '~~/composables/useConfirm'
 import { useAdmin } from '~~/composables/useAdmin'
 
-const toast           = useToast()
-const { getFilieres, getClasses, getEcole, createFiliere, createClasse, deleteFiliere: deleteFilieresApi, deleteClasse: deleteClasseApi } = useAdmin()
+const toast   = useToast()
+const { confirm } = useConfirm()
+const {
+  getFilieres, getClasses,
+  createFiliere: createFiliereApi, updateFiliere: updateFiliereApi, deleteFiliere: deleteFiliereApi,
+  createClasse: createClasseApi, updateClasse: updateClasseApi, deleteClasse: deleteClasseApi,
+  generateClasseCode: generateClasseCodeApi
+} = useAdmin()
 
-const loading         = ref(true)
-const filieres        = ref([])
-const ecole           = ref(null)
-const searchQuery     = ref('')
+const loading      = ref(true)
+const filieres      = ref([])
+const classes       = ref([])
+const searchQuery   = ref('')
+const filiereFilter = ref('')
+
 const showAddFiliere  = ref(false)
 const showAddClasse   = ref(false)
 const newFiliereName  = ref('')
 const newClassName    = ref('')
 const selectedFiliere = ref(null)
 
-const INITIAL_COUNT = 5
-const visibleCount  = ref(INITIAL_COUNT)
+const showRenameModal = ref(false)
+const renameType      = ref(null) // 'filiere' | 'classe'
+const renameTarget    = ref(null)
+const renameValue     = ref('')
+const renaming        = ref(false)
 
-const filteredFilieres = computed(() => {
-  if (!searchQuery.value.trim()) return filieres.value
-  const q = searchQuery.value.toLowerCase()
-  return filieres.value.filter(f =>
-    f.nom.toLowerCase().includes(q) ||
-    f.classes?.some(c => c.nom.toLowerCase().includes(q))
-  )
+const generatingCodeId = ref(null)
+
+const classesDe = (filiereId) => classes.value.filter(c => c.filiereId === filiereId)
+
+const filteredClasses = computed(() => {
+  let result = classes.value
+  if (filiereFilter.value) result = result.filter(c => c.filiereId === filiereFilter.value)
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase()
+    result = result.filter(c =>
+      c.nom.toLowerCase().includes(q) ||
+      c.filiere?.toLowerCase().includes(q) ||
+      c.codeInscription?.toLowerCase().includes(q)
+    )
+  }
+  return result
 })
 
-const visibleFilieres = computed(() =>
-  filteredFilieres.value.slice(0, visibleCount.value)
-)
-
-const verticalBarHeight = computed(() => {
-  if (visibleFilieres.value.length === 0) return '0px'
-  return `calc(100% - 20px)`
-})
-
-const showMore = () => {
-  visibleCount.value = Math.min(visibleCount.value + 5, filteredFilieres.value.length)
-}
-
-const loadFilieres = async () => {
+const loadData = async () => {
   loading.value = true
   try {
-    const [filRes, clsRes, ecoleRes] = await Promise.all([
-      getFilieres(),
-      getClasses(),
-      getEcole()
-    ])
-    if (filRes.success) {
-      filieres.value = filRes.data.map(f => ({
-        ...f,
-        classes: clsRes.data?.filter(c => c.filiereId === f.id) || []
-      }))
-    }
-    if (ecoleRes.success) {
-      ecole.value = ecoleRes.data
-    }
+    const [filRes, clsRes] = await Promise.all([getFilieres(), getClasses()])
+    if (filRes.success) filieres.value = filRes.data
+    if (clsRes.success) classes.value = clsRes.data
   } finally {
     loading.value = false
   }
 }
 
+// ─── Filières ─────────────────────────────────────────────────────────────────
 const addFiliere = async () => {
   if (!newFiliereName.value.trim()) return
   try {
-    const result = await createFiliere({ nom: newFiliereName.value })
+    const result = await createFiliereApi({ nom: newFiliereName.value })
     if (result.success) {
       toast.success('Filière créée')
       showAddFiliere.value = false
       newFiliereName.value = ''
-      await loadFilieres()
+      await loadData()
     } else {
       toast.error(result.message || 'Erreur')
     }
   } catch { toast.error('Erreur') }
 }
 
+const toggleFiliereActive = async (filiere) => {
+  try {
+    const result = await updateFiliereApi(filiere.id, { isActive: !filiere.isActive })
+    if (result.success) {
+      toast.success(filiere.isActive ? 'Filière désactivée' : 'Filière activée')
+      await loadData()
+    } else {
+      toast.error(result.message || 'Erreur')
+    }
+  } catch (err) { toast.error(err?.data?.message || 'Erreur') }
+}
+
+const deleteFiliere = async (filiere) => {
+  const nbClasses = classesDe(filiere.id).length
+  const ok = await confirm({
+    title: 'Supprimer la filière',
+    message: nbClasses > 0
+      ? `Impossible de supprimer "${filiere.nom}" tant que ${nbClasses} classe(s) y sont rattachée(s).`
+      : `Supprimer "${filiere.nom}" ? Cette action est irréversible.`,
+    confirmLabel: 'Supprimer',
+    danger: true
+  })
+  if (!ok) return
+  try {
+    const result = await deleteFiliereApi(filiere.id)
+    if (result.success) {
+      toast.success('Filière supprimée')
+      await loadData()
+    } else {
+      toast.error(result.message || 'Erreur')
+    }
+  } catch (err) { toast.error(err?.data?.message || 'Erreur') }
+}
+
+// ─── Classes ──────────────────────────────────────────────────────────────────
 const openAddClasse = (filiere) => {
   selectedFiliere.value = filiere
   showAddClasse.value   = true
@@ -338,43 +387,106 @@ const openAddClasse = (filiere) => {
 const addClasse = async () => {
   if (!newClassName.value.trim()) return
   try {
-    const result = await createClasse({ nom: newClassName.value, filiereId: selectedFiliere.value.id })
+    const result = await createClasseApi({ nom: newClassName.value, filiereId: selectedFiliere.value.id })
     if (result.success) {
       toast.success('Classe créée')
       showAddClasse.value = false
       newClassName.value  = ''
-      await loadFilieres()
+      await loadData()
     } else {
       toast.error(result.message || 'Erreur')
     }
   } catch { toast.error('Erreur') }
 }
 
-const deleteFiliere = async (filiere) => {
-  if (!confirm(`Supprimer la filière "${filiere.nom}" ?`)) return
+const toggleClasseActive = async (classe) => {
   try {
-    const result = await deleteFilieresApi(filiere.id)
+    const result = await updateClasseApi(classe.id, { isActive: !classe.isActive })
     if (result.success) {
-      toast.success('Filière supprimée')
-      await loadFilieres()
+      toast.success(classe.isActive ? 'Classe désactivée' : 'Classe activée')
+      await loadData()
     } else {
       toast.error(result.message || 'Erreur')
     }
   } catch (err) { toast.error(err?.data?.message || 'Erreur') }
 }
 
+const genererCode = async (classe) => {
+  generatingCodeId.value = classe.id
+  try {
+    const result = await generateClasseCodeApi(classe.id)
+    if (result.success) {
+      classe.codeInscription = result.data.code
+      toast.success('Code généré')
+    } else {
+      toast.error(result.message || 'Erreur')
+    }
+  } catch (err) {
+    toast.error(err?.data?.message || 'Erreur')
+  } finally {
+    generatingCodeId.value = null
+  }
+}
+
+const copierCode = async (code) => {
+  try {
+    await navigator.clipboard.writeText(code)
+    toast.success('Code copié')
+  } catch {
+    toast.error('Impossible de copier le code')
+  }
+}
+
 const deleteClasse = async (classe) => {
-  if (!confirm(`Supprimer la classe "${classe.nom}" ?`)) return
+  const ok = await confirm({
+    title: 'Supprimer la classe',
+    message: classe.nbEtudiants > 0
+      ? `Impossible de supprimer "${classe.nom}" tant que ${classe.nbEtudiants} étudiant(s) y sont rattaché(s).`
+      : `Supprimer "${classe.nom}" ? Cette action est irréversible.`,
+    confirmLabel: 'Supprimer',
+    danger: true
+  })
+  if (!ok) return
   try {
     const result = await deleteClasseApi(classe.id)
     if (result.success) {
       toast.success('Classe supprimée')
-      await loadFilieres()
+      await loadData()
     } else {
       toast.error(result.message || 'Erreur')
     }
   } catch (err) { toast.error(err?.data?.message || 'Erreur') }
 }
 
-onMounted(() => loadFilieres())
+// ─── Renommer (filière ou classe) ─────────────────────────────────────────────
+const openRename = (type, item) => {
+  renameType.value   = type
+  renameTarget.value = item
+  renameValue.value  = item.nom
+  showRenameModal.value = true
+}
+
+const confirmRename = async () => {
+  if (!renameValue.value.trim() || renaming.value) return
+  renaming.value = true
+  try {
+    const result = renameType.value === 'filiere'
+      ? await updateFiliereApi(renameTarget.value.id, { nom: renameValue.value.trim() })
+      : await updateClasseApi(renameTarget.value.id, { nom: renameValue.value.trim() })
+
+    if (result.success) {
+      toast.success(renameType.value === 'filiere' ? 'Filière renommée' : 'Classe renommée')
+      showRenameModal.value = false
+      await loadData()
+    } else {
+      toast.error(result.message || 'Erreur')
+    }
+  } catch (err) {
+    toast.error(err?.data?.message || 'Erreur')
+  } finally {
+    renaming.value = false
+  }
+}
+
+onMounted(() => loadData())
 </script>
