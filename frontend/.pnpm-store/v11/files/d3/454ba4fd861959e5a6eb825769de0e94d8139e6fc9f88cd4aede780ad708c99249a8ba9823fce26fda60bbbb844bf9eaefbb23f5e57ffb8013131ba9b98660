@@ -1,8 +1,0 @@
-/**
- * Nitro plugin that instruments storage driver calls for Nuxt v5+ (Nitro v3+)
- */
-declare const _default: (_nitroApp: import("nitro/types").NitroApp & {
-    hooks: NonNullable<import("nitro/types").NitroApp["hooks"]>;
-}) => Promise<void>;
-export default _default;
-//# sourceMappingURL=storage.server.d.ts.map

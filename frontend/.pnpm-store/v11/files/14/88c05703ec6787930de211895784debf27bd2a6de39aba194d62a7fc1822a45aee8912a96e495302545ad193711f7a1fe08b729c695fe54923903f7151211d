@@ -1,5 +1,0 @@
-/**
- * Nitro plugin that instruments database calls for Nuxt v3/v4 (Nitro v2)
- */
-declare const _default: () => void;
-export default _default;

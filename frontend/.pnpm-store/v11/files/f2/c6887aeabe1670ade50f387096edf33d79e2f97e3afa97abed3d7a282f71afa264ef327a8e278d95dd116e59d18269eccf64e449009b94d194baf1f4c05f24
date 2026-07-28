@@ -1,9 +1,0 @@
-import type { Database } from 'db0';
-import { type DatabaseConnectionConfig } from './database-span-data.js';
-/**
- * Creates the Nitro database plugin setup by instrumenting the configured database instances.
- *
- * Called from the version-specific plugin entry points (database.server.ts / database-legacy.server.ts)
- * which supply the correct `useDatabase` import for their respective Nitro version.
- */
-export declare function createDatabasePlugin(useDatabase: (name: string) => Database, databaseConfig: Record<string, DatabaseConnectionConfig>): void;

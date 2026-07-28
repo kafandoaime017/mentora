@@ -1,6 +1,0 @@
-import { useDatabase } from "nitro/database";
-import { databaseConfig } from "#sentry/database-config.mjs";
-import { createDatabasePlugin } from "../utils/instrumentDatabase.js";
-export default () => {
-  createDatabasePlugin(useDatabase, databaseConfig);
-};
