@@ -1,0 +1,65 @@
+<div style="text-align:center; margin-bottom: 24px;">
+  <div style="display:inline-block; background:#054348; border-radius:12px; padding: 12px 24px;">
+    <span style="color:white; font-size:18px; font-weight:700;">Invitation Mentora</span>
+  </div>
+</div>
+
+<p style="font-size:16px; color:#1f2937; margin-bottom:8px;">
+  Bonjour <strong>{{prenom}} {{nom}}</strong>,
+</p>
+
+<p style="font-size:14px; color:#6b7280; margin-bottom:24px;">
+  Vous avez été invité(e) à rejoindre la plateforme <strong>Mentora</strong> de <strong>{{ecole}}</strong>.
+</p>
+
+<div style="background:#eef5f2; border-radius:12px; padding:20px; margin-bottom:24px;">
+  <p style="font-size:12px; font-weight:700; color:#054348; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">
+    Vos informations
+  </p>
+  <table style="width:100%; font-size:14px;">
+    <tr>
+      <td style="color:#6b7280; padding:4px 0;">Rôle</td>
+      <td style="color:#1f2937; font-weight:600; text-align:right;">{{role}}</td>
+    </tr>
+    {{#if filiere}}
+    <tr>
+      <td style="color:#6b7280; padding:4px 0;">Filière</td>
+      <td style="color:#1f2937; font-weight:600; text-align:right;">{{filiere}}</td>
+    </tr>
+    {{/if}}
+    {{#if classe}}
+    <tr>
+      <td style="color:#6b7280; padding:4px 0;">Classe</td>
+      <td style="color:#1f2937; font-weight:600; text-align:right;">{{classe}}</td>
+    </tr>
+    {{/if}}
+    <tr>
+      <td style="color:#6b7280; padding:4px 0;">École</td>
+      <td style="color:#1f2937; font-weight:600; text-align:right;">{{ecole}}</td>
+    </tr>
+  </table>
+</div>
+
+<div style="text-align:center; margin-bottom:24px;">
+    <a
+    href="{{invitationUrl}}"
+    style="display:inline-block; background:#054348; color:white; text-decoration:none; padding:14px 32px; border-radius:12px; font-size:15px; font-weight:700;"
+  >
+    Créer mon compte
+  </a>
+</div>
+
+<p style="font-size:12px; color:#9ca3af; text-align:center; margin-bottom:8px;">
+  Ce lien expire le <strong>{{expiresFormatted}}</strong>
+</p>
+
+<p style="font-size:12px; color:#9ca3af; text-align:center;">
+  Si vous n'attendiez pas cette invitation, ignorez cet email.
+</p>
+
+<div style="background:#f9fafb; border-radius:8px; padding:12px; margin-top:16px;">
+  <p style="font-size:11px; color:#9ca3af; text-align:center; margin:0;">
+    Ou copiez ce lien dans votre navigateur :<br/>
+    <span style="color:#054348; word-break:break-all;">{{invitationUrl}}</span>
+  </p>
+</div>

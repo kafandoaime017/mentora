@@ -18,6 +18,12 @@ export class Ecole {
   @Column({ type: 'varchar', length: 500, nullable: true })
   logo!: string | null;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  adresse!: string | null;
+
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  telephone!: string | null;
+
   @Column({ type: 'boolean', default: true })
   isActive!: boolean;
 
@@ -29,4 +35,16 @@ export class Ecole {
 
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  @Column({ type: 'simple-enum', enum: ['gratuit', 'starter', 'pro'], default: 'gratuit' })
+plan!: 'gratuit' | 'starter' | 'pro'
+
+@Column({ type: 'datetime', nullable: true })
+plan_expire_at!: Date | null
+
+@Column({ type: 'varchar', length: 255, nullable: true })
+stripe_customer_id!: string | null
+
+@Column({ type: 'varchar', length: 255, nullable: true })
+stripe_subscription_id!: string | null
 }

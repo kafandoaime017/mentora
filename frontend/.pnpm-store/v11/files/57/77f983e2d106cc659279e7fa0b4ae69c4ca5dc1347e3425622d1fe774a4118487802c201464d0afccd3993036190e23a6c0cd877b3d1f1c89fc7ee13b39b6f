@@ -1,0 +1,1 @@
+{"version":3,"file":"databaseConfig.d.ts","sourceRoot":"","sources":["../../../src/vite/databaseConfig.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,WAAW,EAAE,MAAM,iBAAiB,CAAC;AACnD,OAAO,KAAK,EAAE,uBAAuB,EAAE,MAAM,iBAAiB,CAAC;AAG/D;;GAEG;AACH,wBAAgB,0BAA0B,CACxC,KAAK,EAAE,WAAW,EAClB,aAAa,EAAE,OAAO,EACtB,aAAa,CAAC,EAAE,uBAAuB,GACtC,IAAI,CAoCN"}

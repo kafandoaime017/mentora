@@ -26,6 +26,23 @@ export class ReponseEtudiant {
     @Column({ type: 'boolean', default: false })
     est_correcte!: boolean;
 
+    // --- Correction manuelle (texte_libre / fichier) ---
+    @Column({ type: 'text', nullable: true })
+    reponse_texte!: string | null;
+
+    @Column({ type: 'varchar', length: 500, nullable: true })
+    reponse_fichier!: string | null;
+
+    @Column({ type: 'int', nullable: true })
+    note_manuelle!: number | null;
+
+    @Column({ type: 'boolean', default: false })
+    corrige_manuellement!: boolean;
+
+    // --- Detection de triche basique ---
+    @Column({ type: 'int', nullable: true })
+    temps_reponse_ms!: number | null;
+
     @CreateDateColumn()
     submitted_at!: Date;
 

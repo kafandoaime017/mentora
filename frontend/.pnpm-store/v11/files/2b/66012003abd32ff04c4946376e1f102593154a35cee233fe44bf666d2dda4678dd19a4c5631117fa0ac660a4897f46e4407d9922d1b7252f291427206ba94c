@@ -1,0 +1,55 @@
+import { dedupeIntegration, inboundFiltersIntegration, functionToStringIntegration, conversationIdIntegration, linkedErrorsIntegration, requestDataIntegration, consoleIntegration, getIntegrationsToSetup, spanStreamingIntegration, stackParserFromStackParserOptions, initAndBind } from '@sentry/core';
+import { CloudflareClient } from './client.js';
+import { makeFlushLock } from './flush.js';
+import { httpServerIntegration } from './integrations/httpServer.js';
+import { fetchIntegration } from './integrations/fetch.js';
+import { honoIntegration } from './integrations/hono.js';
+import { setupOpenTelemetryTracer } from './opentelemetry/tracer.js';
+import { makeCloudflareTransport } from './transport.js';
+import { defaultStackParser } from './vendor/stacktrace.js';
+
+function getDefaultIntegrations(options) {
+  const cookiesEnabled = options.sendDefaultPii || options.dataCollection?.cookies != null;
+  return [
+    // The Dedupe integration should not be used in workflows because we want to
+    // capture all step failures, even if they are the same error.
+    ...options.enableDedupe === false ? [] : [dedupeIntegration()],
+    // TODO(v11): Replace with `eventFiltersIntegration` once we remove the deprecated `inboundFiltersIntegration`
+    // eslint-disable-next-line typescript/no-deprecated
+    inboundFiltersIntegration(),
+    functionToStringIntegration(),
+    conversationIdIntegration(),
+    linkedErrorsIntegration(),
+    fetchIntegration(),
+    // eslint-disable-next-line typescript/no-deprecated
+    honoIntegration(),
+    httpServerIntegration(),
+    requestDataIntegration(cookiesEnabled ? void 0 : { include: { cookies: false } }),
+    consoleIntegration()
+  ];
+}
+function init(options) {
+  if (options.defaultIntegrations === void 0) {
+    options.defaultIntegrations = getDefaultIntegrations(options);
+  }
+  const flushLock = options.ctx ? makeFlushLock(options.ctx) : void 0;
+  delete options.ctx;
+  const resolvedIntegrations = getIntegrationsToSetup(options);
+  if (options.traceLifecycle === "stream" && !resolvedIntegrations.some((i) => i.name === "SpanStreaming")) {
+    resolvedIntegrations.push(spanStreamingIntegration());
+  }
+  const clientOptions = {
+    ...options,
+    stackParser: stackParserFromStackParserOptions(options.stackParser || defaultStackParser),
+    integrations: resolvedIntegrations,
+    transport: options.transport || makeCloudflareTransport,
+    flushLock
+  };
+  if (!options.skipOpenTelemetrySetup) {
+    setupOpenTelemetryTracer();
+  }
+  return initAndBind(CloudflareClient, clientOptions);
+}
+
+export { getDefaultIntegrations, init };
+//# sourceMappingURL=sdk.js.map

@@ -1,0 +1,7 @@
+/**
+ * Patches the H3 event handler of Nitro.
+ *
+ * Uses a TypeScript generic type to ensure the returned handler type fits different versions of Nitro.
+ */
+export declare function patchEventHandler<H3EventHandler extends Function>(handler: H3EventHandler): H3EventHandler;
+//# sourceMappingURL=patchEventHandler.d.ts.map

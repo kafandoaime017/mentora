@@ -1,0 +1,32 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+
+const sourceMaps = require('./sourceMaps.js');
+
+function validateSourceMapsOptionsPlugin(options) {
+  const { nuxt, moduleOptions, sourceMapsEnabled } = options;
+  const isDebug = moduleOptions.debug;
+  return {
+    name: "sentry-nuxt-source-map-validation",
+    config(viteConfig, env) {
+      if (!sourceMapsEnabled || env.mode === "development" || nuxt.options?._prepare) {
+        return;
+      }
+      const runtime = viteConfig.build?.ssr ? "server" : "client";
+      const nuxtSourceMapSetting = sourceMaps.extractNuxtSourceMapSetting(nuxt, runtime);
+      viteConfig.build = viteConfig.build || {};
+      const viteSourceMap = viteConfig.build.sourcemap;
+      if (isDebug) {
+        console.log(`[Sentry] Validating Vite config for the ${runtime} runtime.`);
+      }
+      sourceMaps.validateDifferentSourceMapSettings({
+        nuxtSettingKey: `sourcemap.${runtime}`,
+        nuxtSettingValue: nuxtSourceMapSetting,
+        otherSettingKey: "viteConfig.build.sourcemap",
+        otherSettingValue: viteSourceMap
+      });
+    }
+  };
+}
+
+exports.validateSourceMapsOptionsPlugin = validateSourceMapsOptionsPlugin;
+//# sourceMappingURL=sentryVitePlugin.js.map

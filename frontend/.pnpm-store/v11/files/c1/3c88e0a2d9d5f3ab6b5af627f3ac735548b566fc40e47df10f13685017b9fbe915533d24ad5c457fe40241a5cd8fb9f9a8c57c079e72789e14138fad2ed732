@@ -1,0 +1,24 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+
+const kit = require('@nuxt/kit');
+const serverTemplate = require('../vendor/server-template.js');
+
+var _documentCurrentScript = typeof document !== 'undefined' ? document.currentScript : null;
+function addStorageInstrumentation(nuxt, isLegacyNitro) {
+  const moduleDirResolver = kit.createResolver((typeof document === 'undefined' ? require('u' + 'rl').pathToFileURL(__filename).href : (_documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === 'SCRIPT' && _documentCurrentScript.src || new URL('vite/storageConfig.js', document.baseURI).href)));
+  const userStorageMounts = Object.keys(nuxt.options.nitro.storage || {});
+  serverTemplate.addServerTemplate({
+    filename: "#sentry/storage-config.mjs",
+    getContents: () => {
+      return `export const userStorageMounts = ${JSON.stringify(userStorageMounts)};`;
+    }
+  });
+  if (isLegacyNitro) {
+    kit.addServerPlugin(moduleDirResolver.resolve("./runtime/plugins/storage-legacy.server"));
+  } else {
+    kit.addServerPlugin(moduleDirResolver.resolve("./runtime/plugins/storage.server"));
+  }
+}
+
+exports.addStorageInstrumentation = addStorageInstrumentation;
+//# sourceMappingURL=storageConfig.js.map

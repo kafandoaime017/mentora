@@ -1,0 +1,20 @@
+<h2>Bonjour {{prenom}},</h2>
+
+<p>
+  Votre facture pour <strong style="color:#054348;">{{nomEcole}}</strong> — période <strong>{{periode}}</strong> est disponible.
+</p>
+
+<div style="background:#f0fdf4; border:1px solid #86efac; border-radius:12px; padding:24px; margin-bottom:24px; text-align:center;">
+  <p style="color:#166534; font-size:13px; font-weight:600; margin:0 0 8px;">✅ Paiement reçu</p>
+  <p style="color:#166534; font-size:32px; font-weight:800; margin:0;">{{montant}}</p>
+</div>
+
+<div style="text-align: center; margin: 28px 0 12px 0;">
+    <a href="{{factureUrl}}" class="btn-primary" style="background-color: #054348; color: white; text-decoration: none; padding: 12px 28px; border-radius: 40px; display: inline-block; font-weight: 500;">
+        Télécharger ma facture
+    </a>
+</div>
+
+<p style="color: #6c7a86; font-size: 13px; text-align: center;">
+  Gérez votre abonnement sur <a href="{{abonnementUrl}}" style="color:#054348;">votre espace abonnement</a>
+</p>

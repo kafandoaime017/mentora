@@ -7,6 +7,7 @@ import AppDataSource from '../../config/data-source';
 import { User, UserRole } from '../models/User';
 import { EtudiantProfil } from '../models/EtudiantProfil';
 import { envoyerCodeVerification, envoyerBienvenue, envoyerResetPassword, envoyerConfirmationResetPassword } from './emailService';
+import { AppError } from '../utils/AppError';
 
 const userRepo     = () => AppDataSource.getRepository(User);
 const profilRepo   = () => AppDataSource.getRepository(EtudiantProfil);
@@ -252,66 +253,73 @@ export const renvoyerCodeVerification = async (data: RenvoyerCodePayload) => {
 // ─── Connexion (tous les rôles) ───────────────────────────────────────────────
 
 export const connecter = async (data: ConnexionPayload) => {
-  const user = await userRepo().findOne({ where: { email: data.email } });
+  const user = await userRepo().findOne({ where: { email: data.email } })
 
-  // 1️⃣ Vérifier si l'utilisateur existe
-  if (!user || !user.motDePasse) {
-    throw new Error('Email ou mot de passe incorrect.');
+  if (!user || !user.motDePasse)
+    throw new AppError('Email ou mot de passe incorrect.', 401)
+
+  if (!user.isActive)
+    throw new AppError('Ce compte a été désactivé. Contactez un administrateur.', 403)
+
+  const valide = await bcrypt.compare(data.motDePasse, user.motDePasse)
+  if (!valide)
+    throw new AppError('Email ou mot de passe incorrect.', 401)
+
+  if (!user.isVerified)
+    throw new AppError('Veuillez vérifier votre email avant de vous connecter.', 403)
+
+  // ─── TOTP : si activé, ne pas donner le vrai token ───────────────────────
+  if (user.totpEnabled) {
+    const tempToken = jwt.sign(
+      { id: user.id, totp_pending: true },
+      process.env.JWT_SECRET as string,
+      { expiresIn: '5m' }
+    )
+    return {
+      success:       true,
+      totp_required: true,
+      userId:        user.id,
+      tempToken,
+      message:       'Code 2FA requis'
+    }
   }
 
-  // 2️⃣ Vérifier si le compte est actif
-  if (!user.isActive) {
-    throw new Error('Ce compte a été désactivé. Contactez un administrateur.');
-  }
+  // ─── Flow normal ──────────────────────────────────────────────────────────
+  let profilInfo = null
 
-  const valide = await bcrypt.compare(data.motDePasse, user.motDePasse);
-  if (!valide) {
-    throw new Error('Email ou mot de passe incorrect.');
-  }
-
-  // 4️⃣ Vérifier si l'email est vérifié
-  if (!user.isVerified) {
-    throw new Error('Veuillez vérifier votre email avant de vous connecter.');
-  }
-
-  let profilInfo = null;
-  
   if (user.role === UserRole.ETUDIANT) {
     const etudiantProfil = await profilRepo().findOne({
       where: { userId: user.id },
       relations: ['ecole', 'filiere', 'classe']
-    });
-    
+    })
     profilInfo = {
-      type: 'etudiant',
+      type:          'etudiant',
       dateNaissance: etudiantProfil?.dateNaissance,
-      ecole: etudiantProfil?.ecole?.nom,
-      ecoleId: etudiantProfil?.ecoleId,
-      filiere: etudiantProfil?.filiere?.nom,
-      filiereId: etudiantProfil?.filiereId,
-      classe: etudiantProfil?.classe?.nom,
-      classeId: etudiantProfil?.classeId,
-    };
-  }
-  
-  if (user.role === UserRole.ADMIN || user.role === UserRole.DIRECTEUR) {
-    profilInfo = {
-      type: user.role,
-      permissions: user.role === UserRole.ADMIN ? 'toutes' : 'limitées',
-    };
+      ecole:         etudiantProfil?.ecole?.nom,
+      ecoleId:       etudiantProfil?.ecoleId,
+      filiere:       etudiantProfil?.filiere?.nom,
+      filiereId:     etudiantProfil?.filiereId,
+      classe:        etudiantProfil?.classe?.nom,
+      classeId:      etudiantProfil?.classeId,
+    }
   }
 
-  // 6️⃣ Retourner l'utilisateur complet avec ses infos
-  return { 
-    success: true, 
-    token: signToken(user), 
+  if (user.role === UserRole.SUPERADMIN || user.role === UserRole.DIRECTEUR) {
+    profilInfo = {
+      type:        user.role,
+      permissions: user.role === UserRole.SUPERADMIN ? 'toutes' : 'limitées',
+    }
+  }
+
+  return {
+    success: true,
+    token:   signToken(user),
     user: {
       ...safeUser(user),
       profil: profilInfo
     }
-  };
-};
-
+  }
+}
 
 
 
@@ -412,7 +420,7 @@ export const connecterAvecGoogle = async (idToken: string) => {
   });
 
   const payload = ticket.getPayload();
-  if (!payload?.email) throw new Error('Token Google invalide.');
+  if (!payload?.email) throw new AppError('Token Google invalide.', 401);
 
   const { sub: googleId, email, given_name, family_name, picture } = payload;
   const repo = userRepo();
@@ -424,7 +432,7 @@ export const connecterAvecGoogle = async (idToken: string) => {
 
     if (user) {
       // Lier Google à un compte existant
-      if (!user.isActive) throw new Error('Ce compte a été désactivé.');
+      if (!user.isActive) throw new AppError('Ce compte a été désactivé.', 403);
       user.googleId = googleId;
       user.avatar   = user.avatar ?? picture ?? null;
       await repo.save(user);
@@ -450,7 +458,7 @@ export const connecterAvecGoogle = async (idToken: string) => {
     }
   }
 
-  if (!user!.isActive) throw new Error('Ce compte a été désactivé.');
+  if (!user!.isActive) throw new AppError('Ce compte a été désactivé.', 403);
 
   const profil = await profilRepo().findOne({ where: { userId: user!.id } });
 
@@ -582,3 +590,53 @@ export const reinitialiserMotDePasse = async (data: ResetMotDePassePayload) => {
     message: 'Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter.' 
   };
 };
+
+
+// ─── Envoyer code changement mot de passe ────────────────────────────────────
+export const envoyerCodeChangementMdp = async (userId: number) => {
+  const user = await userRepo().findOne({ where: { id: userId } })
+  if (!user) return { success: false, message: 'Utilisateur non trouvé' }
+
+  const code    = genererCodeVerification()
+  const expires = new Date(Date.now() + 10 * 60 * 1000) // 10 min
+
+  user.verificationCode        = code
+  user.verificationCodeExpires = expires
+  await userRepo().save(user)
+
+  try {
+    await envoyerCodeVerification(user.email, code, user.prenom)
+    return { success: true, message: `Code envoyé à ${user.email}` }
+  } catch {
+    return { success: false, message: "Erreur lors de l'envoi du code" }
+  }
+}
+
+// ─── Changer le mot de passe avec code ───────────────────────────────────────
+export const changerMotDePasse = async (userId: number, data: {
+  codeVerification: string
+  nouveauMotDePasse: string
+  confirmationMotDePasse: string
+}) => {
+  if (data.nouveauMotDePasse !== data.confirmationMotDePasse)
+    return { success: false, message: 'Les mots de passe ne correspondent pas' }
+
+  if (data.nouveauMotDePasse.length < 8)
+    return { success: false, message: 'Le mot de passe doit contenir au moins 8 caractères' }
+
+  const user = await userRepo().findOne({ where: { id: userId } })
+  if (!user) return { success: false, message: 'Utilisateur non trouvé' }
+
+  if (user.verificationCode !== data.codeVerification)
+    return { success: false, message: 'Code invalide' }
+
+  if (user.verificationCodeExpires && user.verificationCodeExpires < new Date())
+    return { success: false, message: 'Code expiré. Demandez un nouveau code.' }
+
+  user.motDePasse              = await bcrypt.hash(data.nouveauMotDePasse, 12)
+  user.verificationCode        = null
+  user.verificationCodeExpires = null
+  await userRepo().save(user)
+
+  return { success: true, message: 'Mot de passe modifié avec succès' }
+}

@@ -4,6 +4,7 @@ import {
 } from 'typeorm';
 import { User } from './User';
 import { Ecole } from './Ecole';
+import { Filiere } from './Filiere';
 
 @Entity('professeur_profils')
 export class ProfesseurProfil {
@@ -16,7 +17,7 @@ export class ProfesseurProfil {
     @Column({ type: 'varchar', length: 20, nullable: true })
     telephone!: string | null;
 
-    // ─── Relation User ────────────────────────────────────────────────────────
+    // --- Relation User ---
     @Column({ type: 'int', unsigned: true, unique: true })
     userId!: number;
 
@@ -24,11 +25,22 @@ export class ProfesseurProfil {
     @JoinColumn({ name: 'userId' })
     user!: User;
 
-    // ─── École rattachée ──────────────────────────────────────────────────────
+    // --- Ecole rattachee ---
     @Column({ type: 'int', unsigned: true, nullable: true })
     ecoleId!: number | null;
 
     @ManyToOne(() => Ecole, { nullable: true, onDelete: 'SET NULL' })
     @JoinColumn({ name: 'ecoleId' })
     ecole!: Ecole | null;
+
+
+    @Column({ type: 'simple-enum', enum: ['pending', 'active'], default: 'pending' })
+    statut!: string;
+
+    @Column({ type: 'int', unsigned: true, nullable: true })
+    filiereId!: number | null;
+
+    @ManyToOne(() => Filiere, { nullable: true, onDelete: 'SET NULL' })
+    @JoinColumn({ name: 'filiereId' })
+    filiere!: Filiere | null;
 }

@@ -1,0 +1,29 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN node -e "const pkg=require('./package.json'); delete pkg.dependencies.sharp; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2))"
+
+RUN npm install --legacy-peer-deps
+
+COPY . .
+
+RUN npm run build
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY package*.json ./
+
+EXPOSE 5000
+
+# Applique les migrations TypeORM en attente avant de démarrer le serveur.
+# Évite qu'un déploiement démarre sur un schéma de base de données obsolète.
+CMD ["sh", "-c", "npm run migration:run && node dist/server.js"]

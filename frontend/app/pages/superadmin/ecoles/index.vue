@@ -1,0 +1,335 @@
+<template>
+  <div class="bg-layout font-body min-h-screen">
+    <SuperadminLayout>
+      <div>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 class="text-2xl font-body font-extrabold text-black">Écoles</h1>
+            <p class="text-sm font-body text-black mt-1">{{ ecoles.length }} école(s) enregistrée(s)</p>
+          </div>
+          <button @click="ouvrirModalCreer"
+            class="flex items-center gap-2 px-5 py-2.5 bg-[#024864] text-white font-body rounded-lg text-sm font-semibold hover:bg-blacky/80 transition"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Nouvelle école
+          </button>
+        </div>
+
+        <div v-if="loading" class="bg-white shadow rounded-lg p-12 text-center">
+          <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-blacky border-t-transparent"/>
+        </div>
+
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div v-for="ecole in ecoles" :key="ecole.id"
+            class="group bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-all overflow-hidden flex flex-col"
+          >
+            <!-- Header -->
+            <div class="px-5 pt-5 pb-4 border-b border-gray-100">
+              <div class="flex items-start justify-between mb-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-11 h-11 bg-blacky/10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+                    <img v-if="ecole.logo" :src="logoUrl(ecole.logo)" alt="" class="w-full h-full object-cover"/>
+                    <svg v-else class="w-5 h-5 text-blacky" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                    </svg>
+                  </div>
+                  <div class="min-w-0">
+                    <h3 class="font-body font-bold text-black text-sm truncate">{{ ecole.nom }}</h3>
+                    <p class="text-xs font-body text-black mt-0.5 truncate">{{ ecole.ville || 'Ville non renseignée' }}</p>
+                  </div>
+                </div>
+                <div class="relative shrink-0">
+                  <button @click.stop="menuOuvert = menuOuvert === ecole.id ? null : ecole.id" class="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-black transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01"/></svg>
+                  </button>
+                  <div v-if="menuOuvert === ecole.id" class="absolute right-0 mt-1 w-44 bg-white rounded-lg border border-gray-200 py-1.5 z-20">
+                    <button @click="ouvrirModalModifier(ecole)" class="w-full text-left px-4 py-2 text-xs font-body font-medium text-black hover:bg-gray-50">Modifier</button>
+                    <button @click="confirmerSuppression(ecole)" class="w-full text-left px-4 py-2 text-xs font-body font-medium text-red-500 hover:bg-red-50">Supprimer</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="px-2.5 py-1 rounded-full text-xs font-body font-semibold" :class="planStyle(ecole.plan)">{{ ecole.plan }}</span>
+                <span class="px-2.5 py-1 rounded-full text-xs font-body font-semibold" :class="ecole.isActive ? 'bg-green-600 text-white' : 'bg-red-600 text-white'">
+                  {{ ecole.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Directeur -->
+            <div class="px-5 py-3 border-b border-gray-100">
+              <div v-if="ecole.directeur" class="flex items-center gap-2 text-xs font-body">
+                <div class="w-6 h-6 rounded-full bg-secondary/10 flex items-center justify-center font-bold text-secondary shrink-0">{{ ecole.directeur.prenom?.[0] }}</div>
+                <span class="text-black truncate">{{ ecole.directeur.prenom }} {{ ecole.directeur.nom }}</span>
+                <span v-if="!ecole.directeur.isVerified" class="text-yellow-600 font-semibold shrink-0">· en attente</span>
+              </div>
+              <p v-else class="text-xs font-body text-black">Aucun directeur rattaché</p>
+            </div>
+
+            <!-- Usage vs limites -->
+            <div class="px-5 py-4 space-y-3 flex-1">
+              <div>
+                <div class="flex items-center justify-between text-[11px] font-body mb-1">
+                  <span class="text-black">Étudiants</span>
+                  <span class="font-semibold text-black">{{ ecole.stats?.nbEtudiants || 0 }} / {{ ecole.limites?.maxEtudiants === -1 ? '∞' : ecole.limites?.maxEtudiants }}</span>
+                </div>
+                <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-primary rounded-full" :style="{ width: usagePct(ecole.stats?.nbEtudiants, ecole.limites?.maxEtudiants) + '%' }"/>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center justify-between text-[11px] font-body mb-1">
+                  <span class="text-black">Professeurs</span>
+                  <span class="font-semibold text-black">{{ ecole.stats?.nbProfs || 0 }} / {{ ecole.limites?.maxProfs === -1 ? '∞' : ecole.limites?.maxProfs }}</span>
+                </div>
+                <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-secondary rounded-full" :style="{ width: usagePct(ecole.stats?.nbProfs, ecole.limites?.maxProfs) + '%' }"/>
+                </div>
+              </div>
+              <div class="flex items-center justify-between text-[11px] font-body pt-1">
+                <span class="text-black">Sessions</span>
+                <span class="font-semibold text-black">{{ ecole.stats?.nbSessions || 0 }}</span>
+              </div>
+            </div>
+
+            <!-- Footer action -->
+            <div class="px-5 pb-5">
+              <nuxt-link :to="`/superadmin/ecoles/${ecole.id}`"
+                class="flex items-center justify-center gap-1.5 w-full py-2.5 bg-blacky/5 group-hover:bg-blacky group-hover:text-white text-blacky rounded-lg text-xs font-body font-semibold transition"
+              >
+                Voir les détails
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </nuxt-link>
+            </div>
+          </div>
+
+          <div v-if="ecoles.length === 0" class="col-span-full py-16 text-center text-black">
+            <svg class="w-14 h-14 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5"/>
+            </svg>
+            <p class="text-sm font-body">Aucune école créée</p>
+          </div>
+        </div>
+
+        <!-- Modal créer/modifier -->
+        <div v-if="modalVisible" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" @click.self="fermerModal">
+          <div class="bg-white rounded-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="font-extrabold text-black text-center text-xl font-body mb-4">{{ modeEdition ? 'Modifier l\'école' : 'Nouvelle école' }}</h3>
+            <div class="space-y-3">
+
+              <!-- Logo -->
+              <div class="flex flex-col items-center mb-2">
+                <div class="w-16 h-16 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden mb-2">
+                  <img v-if="logoPreview" :src="logoPreview" alt="" class="w-full h-full object-cover"/>
+                  <svg v-else class="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <button type="button" @click="logoInput?.click()" class="text-xs font-body font-semibold text-blacky hover:underline">
+                  {{ logoPreview ? "Changer le logo" : "Ajouter un logo" }}
+                </button>
+                <input ref="logoInput" type="file" accept="image/jpeg,image/png,image/jpg,image/webp" class="hidden" @change="onLogoChange"/>
+              </div>
+
+              <div>
+                <label class="block font-body text-xs font-semibold text-black mb-1">Nom *</label>
+                <input v-model="form.nom" type="text" placeholder="Ex: HEC Paris"
+                  class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
+              </div>
+              <div>
+                <label class="block font-body text-xs font-semibold text-black mb-1">Ville</label>
+                <input v-model="form.ville" type="text" placeholder="Ex: Paris"
+                  class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
+              </div>
+              <div>
+                <label class="block font-body text-xs font-semibold text-black mb-1">Adresse</label>
+                <input v-model="form.adresse" type="text" placeholder="Ex: 12 rue des Écoles"
+                  class="w-full px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
+              </div>
+              <div>
+                <label class="block font-body text-xs font-semibold text-black mb-1">Téléphone</label>
+                <div class="flex gap-2">
+                  <select v-model="form.indicatif" class="px-2 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none shrink-0 w-28">
+                    <option v-for="c in countries" :key="c.iso" :value="c.dial">{{ c.flag }} {{ c.dial }}</option>
+                  </select>
+                  <input v-model="form.numero" type="tel" placeholder="6 12 34 56 78"
+                    class="flex-1 min-w-0 px-3 py-2.5 bg-input rounded-lg text-sm font-body focus:outline-none"/>
+                </div>
+              </div>
+              <div v-if="erreur" class="bg-red-50 text-red-600 text-xs font-body rounded-lg px-4 py-2">{{ erreur }}</div>
+            </div>
+            <div class="flex gap-3 mt-5">
+              <button @click="fermerModal" class="flex-1 font-body py-2.5 bg-gray-200 text-black rounded-lg text-sm font-semibold">Annuler</button>
+              <button @click="sauvegarder" :disabled="enregistrement || !form.nom"
+                class="flex-1 font-body py-2.5 bg-[#024864] hover:bg-blacky/80 text-white rounded-lg text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <div v-if="enregistrement" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"/>
+                <span v-else>{{ modeEdition ? 'Modifier' : 'Créer' }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal suppression -->
+        <div v-if="modalSuppressionVisible" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" @click.self="modalSuppressionVisible = false">
+          <div class="bg-white rounded-lg w-full max-w-sm p-6">
+            <h3 class="font-extrabold text-black text-center text-xl font-body mb-2">Supprimer l'école</h3>
+            <p class="text-sm font-body text-black text-center mb-6">Êtes-vous sûr de vouloir supprimer <strong>{{ ecoleASupprimer?.nom }}</strong> ?</p>
+            <div class="flex gap-3">
+              <button @click="modalSuppressionVisible = false" class="flex-1 font-body py-2.5 bg-gray-200 text-black rounded-lg text-sm font-semibold">Annuler</button>
+              <button @click="supprimerEcole" :disabled="enregistrement"
+                class="flex-1 font-body py-2.5 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <div v-if="enregistrement" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"/>
+                <span v-else>Supprimer</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </SuperadminLayout>
+  </div>
+</template>
+
+<script setup>
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { useSuperadmin } from '~~/composables/useSuperadmin'
+import { useToast } from '~~/composables/useToast'
+import { countries, defaultCountry } from '~~/app/utils/countries'
+definePageMeta({ layout: false })
+
+const toast = useToast()
+const { getEcoles, createEcole, updateEcole, uploadEcoleLogo, deleteEcole } = useSuperadmin()
+const config = useRuntimeConfig()
+
+const loading                 = ref(true)
+const ecoles                  = ref([])
+const modalVisible            = ref(false)
+const modalSuppressionVisible = ref(false)
+const modeEdition             = ref(false)
+const enregistrement          = ref(false)
+const erreur                  = ref('')
+const ecoleEnEdition          = ref(null)
+const ecoleASupprimer         = ref(null)
+const menuOuvert              = ref(null)
+const logoInput                = ref(null)
+const logoFile                 = ref(null)
+const logoPreview              = ref('')
+const form                    = reactive({ nom: '', ville: '', adresse: '', indicatif: defaultCountry.dial, numero: '' })
+
+const logoUrl = (path) => path?.startsWith('http') ? path : `${config.public.apiBase.replace(/\/api$/, '')}${path}`
+
+const onLogoChange = (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+  logoFile.value = file
+  logoPreview.value = URL.createObjectURL(file)
+}
+
+// Sépare une valeur "telephone" stockée (ex: "+225 0102030405") en indicatif + numéro
+const parseTelephone = (telephone) => {
+  if (!telephone) return { indicatif: defaultCountry.dial, numero: '' }
+  const [indicatif, ...rest] = telephone.trim().split(' ')
+  return { indicatif: indicatif || defaultCountry.dial, numero: rest.join(' ') }
+}
+
+const planStyle = (plan) => ({
+  gratuit: 'bg-gray-200 text-black',
+  starter: 'bg-blacky/10 text-blacky',
+  pro:     'bg-secondary/10 text-secondary'
+}[plan] || 'bg-gray-200 text-black')
+
+const usagePct = (val, max) => {
+  val = val || 0
+  if (max === -1 || max === undefined) return 8
+  if (max === 0) return 0
+  return Math.min(100, Math.round((val / max) * 100))
+}
+
+const fermerMenu = () => { menuOuvert.value = null }
+
+const resetLogo = () => { logoFile.value = null; logoPreview.value = '' }
+
+const ouvrirModalCreer = () => {
+  modeEdition.value = false
+  form.nom = ''; form.ville = ''; form.adresse = ''; form.indicatif = defaultCountry.dial; form.numero = ''
+  resetLogo()
+  erreur.value = ''
+  modalVisible.value = true
+}
+const ouvrirModalModifier = (ecole) => {
+  fermerMenu()
+  modeEdition.value = true
+  ecoleEnEdition.value = ecole
+  form.nom = ecole.nom
+  form.ville = ecole.ville || ''
+  form.adresse = ecole.adresse || ''
+  const { indicatif, numero } = parseTelephone(ecole.telephone)
+  form.indicatif = indicatif
+  form.numero = numero
+  resetLogo()
+  if (ecole.logo) logoPreview.value = logoUrl(ecole.logo)
+  erreur.value = ''
+  modalVisible.value = true
+}
+const fermerModal = () => { modalVisible.value = false }
+
+const sauvegarder = async () => {
+  if (!form.nom.trim()) { erreur.value = 'Le nom est requis'; return }
+  enregistrement.value = true
+  erreur.value = ''
+
+  const payload = {
+    nom: form.nom,
+    ville: form.ville,
+    adresse: form.adresse,
+    telephone: form.numero.trim() ? `${form.indicatif} ${form.numero.trim()}` : ''
+  }
+
+  const result = modeEdition.value
+    ? await updateEcole(ecoleEnEdition.value.id, payload)
+    : await createEcole(payload)
+
+  if (result.success) {
+    const ecoleId = modeEdition.value ? ecoleEnEdition.value.id : result.data.id
+    if (logoFile.value) {
+      const logoResult = await uploadEcoleLogo(ecoleId, logoFile.value)
+      if (!logoResult.success) toast.error(logoResult.message || "Erreur lors de l'envoi du logo")
+    }
+    toast.success(modeEdition.value ? 'École modifiée' : 'École créée')
+    fermerModal()
+    await chargerEcoles()
+  } else {
+    erreur.value = result.message || 'Erreur'
+  }
+  enregistrement.value = false
+}
+
+const confirmerSuppression = (ecole) => { fermerMenu(); ecoleASupprimer.value = ecole; modalSuppressionVisible.value = true }
+
+const supprimerEcole = async () => {
+  enregistrement.value = true
+  const result = await deleteEcole(ecoleASupprimer.value.id)
+  if (result.success) { toast.success('École supprimée'); modalSuppressionVisible.value = false; await chargerEcoles() }
+  else toast.error(result.message || 'Erreur')
+  enregistrement.value = false
+}
+
+const chargerEcoles = async () => {
+  const result = await getEcoles()
+  if (result.success) ecoles.value = result.data
+}
+
+onMounted(async () => {
+  loading.value = true
+  await chargerEcoles()
+  loading.value = false
+  document.addEventListener('click', fermerMenu)
+})
+
+onUnmounted(() => { document.removeEventListener('click', fermerMenu) })
+</script>

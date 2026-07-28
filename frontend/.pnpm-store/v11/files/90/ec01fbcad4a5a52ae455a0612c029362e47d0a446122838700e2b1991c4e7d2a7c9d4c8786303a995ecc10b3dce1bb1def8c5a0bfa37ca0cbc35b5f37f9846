@@ -1,0 +1,76 @@
+import { isD1Database, isQueue, isR2Bucket, isDurableObjectNamespace, isJSRPC } from '../../utils/isBinding.js';
+import { instrumentD1 } from './instrumentD1.js';
+import { appendRpcMeta } from '../../utils/rpcMeta.js';
+import { getEffectiveRpcPropagation } from '../../utils/rpcOptions.js';
+import { instrumentDurableObjectNamespace, STUB_NON_RPC_METHODS } from '../instrumentDurableObjectNamespace.js';
+import { instrumentFetcher } from './instrumentFetcher.js';
+import { instrumentQueueProducer } from './instrumentQueueProducer.js';
+import { instrumentR2Bucket } from './instrumentR2.js';
+
+function isProxyable(item) {
+  return item !== null && (typeof item === "object" || typeof item === "function");
+}
+const instrumentedBindings = /* @__PURE__ */ new WeakMap();
+function instrumentEnv(env, options) {
+  if (!env || typeof env !== "object") {
+    return env;
+  }
+  const rpcPropagation = options ? getEffectiveRpcPropagation(options) : false;
+  return new Proxy(env, {
+    get(target, prop, receiver) {
+      const item = Reflect.get(target, prop, receiver);
+      if (!isProxyable(item)) {
+        return item;
+      }
+      const cached = instrumentedBindings.get(item);
+      if (cached) {
+        return cached;
+      }
+      if (isD1Database(item)) {
+        const instrumented = instrumentD1(item);
+        instrumentedBindings.set(item, instrumented);
+        return instrumented;
+      }
+      if (isQueue(item)) {
+        const bindingName = typeof prop === "string" ? prop : String(prop);
+        const instrumented = instrumentQueueProducer(item, bindingName);
+        instrumentedBindings.set(item, instrumented);
+        return instrumented;
+      }
+      if (isR2Bucket(item)) {
+        const bindingName = typeof prop === "string" ? prop : String(prop);
+        const instrumented = instrumentR2Bucket(item, bindingName);
+        instrumentedBindings.set(item, instrumented);
+        return instrumented;
+      }
+      if (!rpcPropagation) {
+        return item;
+      }
+      if (isDurableObjectNamespace(item)) {
+        const instrumented = instrumentDurableObjectNamespace(item);
+        instrumentedBindings.set(item, instrumented);
+        return instrumented;
+      }
+      if (isJSRPC(item)) {
+        const instrumented = new Proxy(item, {
+          get(target2, p) {
+            const value = Reflect.get(target2, p);
+            if (p === "fetch" && typeof value === "function") {
+              return instrumentFetcher((...args) => Reflect.apply(value, target2, args));
+            }
+            if (typeof value === "function" && typeof p === "string" && !STUB_NON_RPC_METHODS.has(p)) {
+              return (...args) => Reflect.apply(value, target2, appendRpcMeta(args));
+            }
+            return value;
+          }
+        });
+        instrumentedBindings.set(item, instrumented);
+        return instrumented;
+      }
+      return item;
+    }
+  });
+}
+
+export { instrumentEnv };
+//# sourceMappingURL=instrumentEnv.js.map

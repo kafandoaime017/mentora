@@ -1,46 +1,194 @@
 version: "3.9"
 
+# Environnement de PRODUCTION
+# Lancer avec : docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+#
+# ATTENTION: MYSQL_ROOT_PASSWORD (DB_ROOT_PASSWORD) doit venir de .env.prod
+# et correspondre a DB_PASSWORD dans backend/.env.prod
+#
+# "name:" isole ce stack de celui de dev (docker-compose.dev.yml) : sans ça,
+# les deux fichiers partagent le meme nom de projet Compose implicite (deduit
+# du dossier), ce qui fait que Compose melange les conteneurs dev/prod dans ses
+# messages "orphan containers" et peut recreer l'un en manipulant l'autre.
+# Le reseau/volumes ci-dessous sont epingles a leur nom Docker physique actuel
+# (name:) pour que ce changement ne deplace ni ne recree rien.
+name: mentora-prod
+
 services:
   db:
     image: mysql:8
-    container_name: mentora_db
+    container_name: mentora_db_prod
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: mentora
-    volumes:
-      - mentora_data:/var/lib/mysql
-
-  adminer:
-    image: adminer
-    container_name: mentora_adminer
-    restart: always
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
     ports:
-      - "8080:8080"
+      - "3309:3306" # <- change de 3306 a 3309
+    volumes:
+      - mentora_data_prod:/var/lib/mysql
+    networks:
+      - mentora-net-prod
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${DB_ROOT_PASSWORD}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   backend:
-    build: ./backend
-    container_name: mentora_backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: mentora_backend_prod
     restart: always
     ports:
-      - "5000:5000"
+      - "5001:5000" # <- change de 5000 a 5001 (optionnel)
     env_file:
-      - ./backend/.env
+      - ./backend/.env.prod
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+    networks:
+      - mentora-net-prod
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
-    container_name: mentora_frontend
+      dockerfile: Dockerfile.prod
+    container_name: mentora_frontend_prod
     restart: always
     ports:
-      - "3000:3000"
+      - "3001:3000" # <- change de 3000 a 3001 (optionnel)
     env_file:
-      - ./frontend/.env
+      - ./frontend/.env.prod
     depends_on:
       - backend
+    networks:
+      - mentora-net-prod
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  glitchtip-db:
+    image: postgres:17-alpine
+    container_name: glitchtip_db_prod
+    restart: always
+    environment:
+      POSTGRES_USER: glitchtip
+      POSTGRES_PASSWORD: ${GLITCHTIP_DB_PASSWORD}
+      POSTGRES_DB: glitchtip
+    volumes:
+      - glitchtip_postgres_data_prod:/var/lib/postgresql/data
+    networks:
+      - mentora-net-prod
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U glitchtip"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  glitchtip-valkey:
+    image: valkey/valkey:8-alpine
+    container_name: glitchtip_valkey_prod
+    restart: always
+    command: valkey-server --appendonly yes
+    volumes:
+      - glitchtip_valkey_data_prod:/data
+    networks:
+      - mentora-net-prod
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  glitchtip-web:
+    image: glitchtip/glitchtip:latest
+    container_name: glitchtip_web_prod
+    restart: always
+    environment:
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY}
+      GLITCHTIP_DOMAIN: https://errors.mentoraapp.online
+      DATABASE_URL: postgres://glitchtip:${GLITCHTIP_DB_PASSWORD}@glitchtip-db:5432/glitchtip
+      VALKEY_URL: redis://glitchtip-valkey:6379/0
+      DEFAULT_FROM_EMAIL: ${GLITCHTIP_EMAIL}
+      ENABLE_USER_REGISTRATION: "False"
+      ENABLE_ORGANIZATION_CREATION: "False"
+      GLITCHTIP_MAX_EVENT_LIFE_DAYS: 30
+    depends_on:
+      glitchtip-db:
+        condition: service_healthy
+      glitchtip-valkey:
+        condition: service_healthy
+    ports:
+      - "8001:8000" # <- change de 8000 a 8001 (optionnel)
+    networks:
+      - mentora-net-prod
+    # Pas de "command:" ici : on laisse l'image lancer son script de démarrage
+    # par défaut (migrate + uWSGI), au lieu du serveur de dev Django utilisé
+    # avant (manage.py runserver = mono-thread, fragile, jamais fait pour la prod).
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  glitchtip-worker:
+    image: glitchtip/glitchtip:latest
+    container_name: glitchtip_worker_prod
+    restart: always
+    environment:
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY}
+      GLITCHTIP_DOMAIN: https://errors.mentoraapp.online
+      DATABASE_URL: postgres://glitchtip:${GLITCHTIP_DB_PASSWORD}@glitchtip-db:5432/glitchtip
+      VALKEY_URL: redis://glitchtip-valkey:6379/0
+      DEFAULT_FROM_EMAIL: ${GLITCHTIP_EMAIL}
+    depends_on:
+      glitchtip-db:
+        condition: service_healthy
+      glitchtip-valkey:
+        condition: service_healthy
+    networks:
+      - mentora-net-prod
+    command: ./manage.py celery worker -l info
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  mentora-net-prod:
+    external: true
+    name: mentora_mentora-net-prod
 
 volumes:
-  mentora_data:
+  mentora_data_prod:
+    external: true
+    name: mentora_mentora_data_prod
+  glitchtip_postgres_data_prod:
+    external: true
+    name: mentora_glitchtip_postgres_data_prod
+  glitchtip_valkey_data_prod:
+    external: true
+    name: mentora_glitchtip_valkey_data_prod

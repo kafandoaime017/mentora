@@ -3,12 +3,15 @@ import AppDataSource from '../../config/data-source';
 import { Session, SessionStatus } from '../models/Session';
 import { SessionParticipant, ParticipantStatus } from '../models/SessionParticipant';
 import { ReponseEtudiant } from '../models/ReponseEtudiant';
-import { Question } from '../models/Question';
+import { Question, QuestionType } from '../models/Question';
 import { User } from '../models/User';
 import { In } from 'typeorm';
+import { getSocketIO } from '../../socket';
 import { EtudiantProfil } from '../models/EtudiantProfil';
+import { createNotification } from './notificationController'
+import { NotificationType } from '../models/Notification'
 
-// Définir le type pour les requêtes authentifiées
+// Definir le type pour les requetes authentifiees
 interface AuthRequest extends Request {
     user?: User;
 }
@@ -28,10 +31,22 @@ const parseId = (id: string | string[] | undefined): number => {
     return isNaN(parsed) ? 0 : parsed;
 };
 
-const arraysEqual = (a: number[], b: number[]): boolean => {
+const arraysEqual = (a: any[], b: any[]): boolean => {
     if (!a || !b) return false;
     if (a.length !== b.length) return false;
-    return a.every((val, idx) => val === b[idx]);
+    return a.every((val, idx) => Number(val) === Number(b[idx]));
+};
+
+// Types auto-corriges a la soumission (comparaison d'indices) vs types a
+// correction manuelle (texte_libre/fichier), notes plus tard par le prof.
+const isTypeAutoCorrige = (type: QuestionType): boolean =>
+    type !== QuestionType.TEXTE_LIBRE && type !== QuestionType.FICHIER;
+
+const computePointsForReponse = (r: ReponseEtudiant, q: Question): number => {
+    if (!isTypeAutoCorrige(q.type)) {
+        return r.corrige_manuellement ? (r.note_manuelle || 0) : 0;
+    }
+    return r.est_correcte ? q.points : 0;
 };
 
 const updateEtudiantScore = async (sessionId: number, etudiantId: number): Promise<void> => {
@@ -43,8 +58,8 @@ const updateEtudiantScore = async (sessionId: number, etudiantId: number): Promi
     let pointsObtenus = 0;
     for (const r of toutesReponses) {
         const q = toutesQuestions.find(q => q.id === r.question_id);
-        if (r.est_correcte && q) {
-            pointsObtenus += q.points;
+        if (q) {
+            pointsObtenus += computePointsForReponse(r, q);
         }
     }
 
@@ -54,7 +69,58 @@ const updateEtudiantScore = async (sessionId: number, etudiantId: number): Promi
     );
 };
 
-// ==================== RÉCUPÉRER UNE SESSION (ADAPTÉE AU STATUT) ====================
+// Verifications communes avant d'accepter une reponse (autosave, upload ou
+// soumission finale) : session active, etudiant bien inscrit, pas deja
+// termine, temps non ecoule. Ecrit directement la reponse HTTP et renvoie
+// `null` si une verification echoue - l'appelant doit alors simplement
+// `return` sans rien faire de plus.
+const verifierSessionEcrivable = async (
+    sessionId: number,
+    etudiantId: number,
+    res: Response
+): Promise<{ session: Session; participant: SessionParticipant } | null> => {
+    const session = await sessionRepo.findOne({
+        where: { id: sessionId, status: SessionStatus.ACTIVE }
+    });
+    if (!session) {
+        res.status(404).json({ success: false, message: 'Session non trouvee ou terminee' });
+        return null;
+    }
+
+    const participant = await participantRepo.findOne({
+        where: { session_id: sessionId, etudiant_id: etudiantId }
+    });
+    if (!participant) {
+        res.status(403).json({ success: false, message: 'Vous devez d\'abord rejoindre la session' });
+        return null;
+    }
+
+    if (participant.statut === ParticipantStatus.TERMINE) {
+        res.status(403).json({
+            success: false,
+            message: 'Vous avez deja termine cette session. Vous ne pouvez plus modifier vos reponses.'
+        });
+        return null;
+    }
+
+    const maintenant = new Date();
+    const dateFin = new Date(session.date_fin);
+    if (maintenant > dateFin) {
+        await participantRepo.update(
+            { session_id: sessionId, etudiant_id: etudiantId },
+            { statut: ParticipantStatus.TERMINE, date_completed: new Date() }
+        );
+        res.status(403).json({
+            success: false,
+            message: 'Temps ecoule ! Session terminee automatiquement.'
+        });
+        return null;
+    }
+
+    return { session, participant };
+};
+
+// ==================== RECUPERER UNE SESSION (ADAPTEE AU STATUT) ====================
 
 export const getSessionForStudent = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -66,26 +132,26 @@ export const getSessionForStudent = async (req: AuthRequest, res: Response, next
             return;
         }
 
-        // Récupérer la session
+        // Recuperer la session
         const session = await sessionRepo.findOne({
             where: { id: sessionId },
             relations: ['classe', 'filiere', 'professeur']
         });
 
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' });
+            res.status(404).json({ success: false, message: 'Session non trouvee' });
             return;
         }
 
-        // Vérifier que l'étudiant a accès à cette session
+        // Verifier que l'etudiant a acces a cette session
         const etudiantProfil = await etudiantProfilRepo.findOne({
             where: { userId: etudiantId }
         });
 
-        if (!etudiantProfil || 
-            (etudiantProfil.classeId !== session.classe_id) || 
+        if (!etudiantProfil ||
+            (etudiantProfil.classeId !== session.classe_id) ||
             (etudiantProfil.filiereId !== session.filiere_id)) {
-            res.status(403).json({ success: false, message: 'Vous n\'avez pas accès à cette session' });
+            res.status(403).json({ success: false, message: 'Vous n\'avez pas acces a cette session' });
             return;
         }
 
@@ -96,37 +162,37 @@ export const getSessionForStudent = async (req: AuthRequest, res: Response, next
         const tempsRestantSec = Math.max(0, Math.floor(tempsRestantMs / 1000));
         const estTerminee = tempsRestantMs <= 0;
 
-        // Vérifier si la session est terminée (temps écoulé)
+        // Verifier si la session est terminee (temps ecoule)
         if (session.status === SessionStatus.ACTIVE && estTerminee) {
-            // Mettre à jour le statut de la session
+            // Mettre a jour le statut de la session
             await sessionRepo.update(session.id, { status: SessionStatus.COMPLETED });
-            
-            res.status(403).json({ 
-                success: false, 
-                message: ' Temps écoulé ! Cette session est maintenant terminée. Vous ne pouvez plus y participer.',
+
+            res.status(403).json({
+                success: false,
+                message: 'Temps ecoule ! Cette session est maintenant terminee. Vous ne pouvez plus y participer.',
                 sessionStatus: 'completed',
                 code: 'SESSION_EXPIRED'
             });
             return;
         }
 
-        // Vérifier si la session est déjà terminée
+        // Verifier si la session est deja terminee
         if (session.status === SessionStatus.COMPLETED) {
-            res.status(403).json({ 
-                success: false, 
-                message: ' Cette session est déjà terminée. Vous ne pouvez plus y participer.',
+            res.status(403).json({
+                success: false,
+                message: 'Cette session est deja terminee. Vous ne pouvez plus y participer.',
                 sessionStatus: 'completed',
                 code: 'SESSION_COMPLETED'
             });
             return;
         }
 
-        // Vérifier si l'étudiant a déjà rejoint
+        // Verifier si l'etudiant a deja rejoint
         const participant = await participantRepo.findOne({
             where: { session_id: sessionId, etudiant_id: etudiantId }
         });
 
-        // Données de base de la session
+        // Donnees de base de la session
         const sessionData: any = {
             id: session.id,
             titre: session.titre,
@@ -147,7 +213,7 @@ export const getSessionForStudent = async (req: AuthRequest, res: Response, next
 
         // Si la session est active, ajouter les questions et le temps restant
         if (session.status === SessionStatus.ACTIVE && !estTerminee) {
-            // Récupérer les questions (sans les réponses correctes)
+            // Recuperer les questions (sans les reponses correctes)
             const questions = await questionRepo.find({
                 where: { session_id: sessionId },
                 order: { ordre: 'ASC' }
@@ -165,12 +231,12 @@ export const getSessionForStudent = async (req: AuthRequest, res: Response, next
             sessionData.total_points = questions.reduce((sum, q) => sum + q.points, 0);
             sessionData.temps_restant = tempsRestantSec;
 
-            // Si l'étudiant a déjà répondu à certaines questions
+            // Si l'etudiant a deja repondu a certaines questions
             if (participant) {
                 const reponsesExistantes = await reponseRepo.find({
                     where: { session_id: sessionId, etudiant_id: etudiantId }
                 });
-                
+
                 const reponsesMap: Record<number, number[]> = {};
                 reponsesExistantes.forEach(r => {
                     reponsesMap[r.question_id] = r.reponse_ids;
@@ -183,20 +249,20 @@ export const getSessionForStudent = async (req: AuthRequest, res: Response, next
             let statusMessage = '';
             switch (session.status) {
                 case SessionStatus.PENDING:
-                    statusMessage = '⏰ Cette session n\'a pas encore commencé.';
+                    statusMessage = 'Cette session n\'a pas encore commence.';
                     break;
                 case SessionStatus.DRAFT:
-                    statusMessage = '📝 Cette session est en cours de préparation.';
+                    statusMessage = 'Cette session est en cours de preparation.';
                     break;
                 case SessionStatus.CANCELLED:
-                    statusMessage = '🚫 Cette session a été annulée.';
+                    statusMessage = 'Cette session a ete annulee.';
                     break;
                 default:
-                    statusMessage = '❌ Cette session n\'est pas disponible.';
+                    statusMessage = 'Cette session n\'est pas disponible.';
             }
-            
-            res.status(403).json({ 
-                success: false, 
+
+            res.status(403).json({
+                success: false,
                 message: statusMessage,
                 sessionStatus: session.status
             });
@@ -222,11 +288,11 @@ export const getAvailableSessions = async (req: AuthRequest, res: Response, next
         });
 
         if (!etudiantProfil) {
-            res.status(400).json({ success: false, message: 'Profil étudiant incomplet' });
+            res.status(400).json({ success: false, message: 'Profil etudiant incomplet' });
             return;
         }
 
-        // Récupérer d'abord les sessions ACTIVE
+        // Recuperer d'abord les sessions ACTIVE
         const activeWhereCondition: any = {
             status: SessionStatus.ACTIVE
         };
@@ -245,7 +311,7 @@ export const getAvailableSessions = async (req: AuthRequest, res: Response, next
             order: { date_debut: 'ASC' }
         });
 
-        // Récupérer ensuite les sessions PENDING
+        // Recuperer ensuite les sessions PENDING
         const pendingWhereCondition: any = {
             status: SessionStatus.PENDING
         };
@@ -264,10 +330,10 @@ export const getAvailableSessions = async (req: AuthRequest, res: Response, next
             order: { date_debut: 'ASC' }
         });
 
-        // Combiner les résultats : d'abord les ACTIVE, puis les PENDING
+        // Combiner les resultats : d'abord les ACTIVE, puis les PENDING
         const allSessions = [...activeSessions, ...pendingSessions];
 
-        // Format simplifié pour la liste
+        // Format simplifie pour la liste
         const formattedSessions = allSessions.map(session => ({
             id: session.id,
             titre: session.titre,
@@ -284,44 +350,42 @@ export const getAvailableSessions = async (req: AuthRequest, res: Response, next
         next(err);
     }
 };
-// ==================== 2. VÉRIFIER CODE ====================
-
-// ==================== 2. VÉRIFIER CODE ====================
+// ==================== 2. VERIFIER CODE ====================
 
 export const verifySessionCode = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { code } = req.body;
         const etudiantId = req.user!.id;
 
-        // 1. Vérifier le profil étudiant
+        // 1. Verifier le profil etudiant
         const etudiantProfil = await etudiantProfilRepo.findOne({
             where: { userId: etudiantId },
             relations: ['ecole', 'filiere', 'classe']
         });
 
         if (!etudiantProfil) {
-            res.status(400).json({ 
-                success: false, 
-                message: 'Profil étudiant incomplet. Veuillez compléter votre profil.' 
+            res.status(400).json({
+                success: false,
+                message: 'Profil etudiant incomplet. Veuillez completer votre profil.'
             });
             return;
         }
 
-        // 2. Vérifier si la session existe
+        // 2. Verifier si la session existe
         const session = await sessionRepo.findOne({
             where: { code },
             relations: ['classe', 'filiere']
         });
 
         if (!session) {
-            res.status(404).json({ 
-                success: false, 
-                message: ' Code invalide. Aucune session trouvée avec ce code.' 
+            res.status(404).json({
+                success: false,
+                message: 'Code invalide. Aucune session trouvee avec ce code.'
             });
             return;
         }
 
-        // 3. Vérifier si la session est active ET si le temps n'est pas écoulé
+        // 3. Verifier si la session est active ET si le temps n'est pas ecoule
         const maintenant = new Date();
         const dateFin = new Date(session.date_fin);
         const tempsRestant = dateFin.getTime() - maintenant.getTime();
@@ -331,13 +395,13 @@ export const verifySessionCode = async (req: AuthRequest, res: Response, next: N
             let statusMessage = '';
             switch (session.status) {
                 case SessionStatus.PENDING:
-                    statusMessage = 'Cette session n\'a pas encore commencé. Veuillez attendre l\'heure de début.';
+                    statusMessage = 'Cette session n\'a pas encore commence. Veuillez attendre l\'heure de debut.';
                     break;
                 case SessionStatus.COMPLETED:
-                    statusMessage = 'Cette session est déjà terminée.';
+                    statusMessage = 'Cette session est deja terminee.';
                     break;
                 case SessionStatus.CANCELLED:
-                    statusMessage = 'Cette session a été annulée.';
+                    statusMessage = 'Cette session a ete annulee.';
                     break;
                 case SessionStatus.DRAFT:
                     statusMessage = 'Cette session est encore en brouillon.';
@@ -345,47 +409,47 @@ export const verifySessionCode = async (req: AuthRequest, res: Response, next: N
                 default:
                     statusMessage = 'Cette session n\'est pas disponible.';
             }
-            res.status(403).json({ 
-                success: false, 
+            res.status(403).json({
+                success: false,
                 message: statusMessage,
                 sessionStatus: session.status
             });
             return;
         }
 
-        // 4. Vérifier si le temps est écoulé (session clôturée)
+        // 4. Verifier si le temps est ecoule (session cloturee)
         if (estTerminee) {
-            // Mettre à jour le statut de la session si nécessaire
+            // Mettre a jour le statut de la session si necessaire
             if (session.status === SessionStatus.ACTIVE) {
                 await sessionRepo.update(session.id, { status: SessionStatus.COMPLETED });
             }
-            res.status(403).json({ 
-                success: false, 
-                message: 'Temps écoulé ! Cette session est maintenant terminée. Vous ne pouvez plus la rejoindre.',
+            res.status(403).json({
+                success: false,
+                message: 'Temps ecoule ! Cette session est maintenant terminee. Vous ne pouvez plus la rejoindre.',
                 sessionStatus: 'completed'
             });
             return;
         }
 
-        // 5. Vérifier la filière
+        // 5. Verifier la filiere
         if (etudiantProfil.filiereId !== session.filiere_id) {
-            res.status(403).json({ 
-                success: false, 
-                message: `🎓 Vous n'êtes pas dans la bonne filière. Cette session est pour la filière: ${session.filiere?.nom}` 
+            res.status(403).json({
+                success: false,
+                message: `Vous n'etes pas dans la bonne filiere. Cette session est pour la filiere: ${session.filiere?.nom}`
             });
             return;
         }
 
-        // 6. Vérifier la classe
+        // 6. Verifier la classe
         if (etudiantProfil.classeId !== session.classe_id) {
-            res.status(403).json({ 
-                success: false, 
-                message: `🏫 Vous n'êtes pas dans la bonne classe. Cette session est pour la classe: ${session.classe?.nom}` 
+            res.status(403).json({
+                success: false,
+                message: `Vous n'etes pas dans la bonne classe. Cette session est pour la classe: ${session.classe?.nom}`
             });
             return;
         }
 
-        // 7. Succès
+        // 7. Succes
         res.json({
             success: true,
             data: {
@@ -399,14 +463,14 @@ export const verifySessionCode = async (req: AuthRequest, res: Response, next: N
         });
     } catch (err) {
         console.error('Erreur verifySessionCode:', err);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erreur serveur. Veuillez réessayer plus tard.' 
+        res.status(500).json({
+            success: false,
+            message: 'Erreur serveur. Veuillez reessayer plus tard.'
         });
     }
 };
 
-// ==================== 3. VÉRIFIER QR CODE ====================
+// ==================== 3. VERIFIER QR CODE ====================
 
 export const verifyQRCode = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -429,13 +493,17 @@ export const verifyQRCode = async (req: AuthRequest, res: Response, next: NextFu
         });
 
         if (!etudiantProfil) {
-            res.status(400).json({ success: false, message: 'Profil étudiant incomplet' });
+            res.status(400).json({ success: false, message: 'Profil etudiant incomplet' });
             return;
         }
 
         const session = await sessionRepo.findOne({
-            where: { id: sessionId, code },
-            relations: ['classe', 'filiere']
+            where: { code },
+            relations: {
+                classe: true,
+                filiere: true,
+                professeur: true
+            }
         });
 
         if (!session) {
@@ -443,7 +511,7 @@ export const verifyQRCode = async (req: AuthRequest, res: Response, next: NextFu
             return;
         }
 
-        // Vérifier le temps restant
+        // Verifier le temps restant
         const maintenant = new Date();
         const dateFin = new Date(session.date_fin);
         const tempsRestant = dateFin.getTime() - maintenant.getTime();
@@ -453,16 +521,16 @@ export const verifyQRCode = async (req: AuthRequest, res: Response, next: NextFu
             let statusMessage = '';
             switch (session.status) {
                 case SessionStatus.PENDING:
-                    statusMessage = '⏰ Cette session n\'a pas encore commencé.';
+                    statusMessage = 'Cette session n\'a pas encore commence.';
                     break;
                 case SessionStatus.COMPLETED:
-                    statusMessage = '🏁 Cette session est déjà terminée.';
+                    statusMessage = 'Cette session est deja terminee.';
                     break;
                 case SessionStatus.CANCELLED:
-                    statusMessage = '🚫 Cette session a été annulée.';
+                    statusMessage = 'Cette session a ete annulee.';
                     break;
                 default:
-                    statusMessage = '❌ Cette session n\'est pas disponible.';
+                    statusMessage = 'Cette session n\'est pas disponible.';
             }
             res.status(403).json({ success: false, message: statusMessage });
             return;
@@ -472,25 +540,25 @@ export const verifyQRCode = async (req: AuthRequest, res: Response, next: NextFu
             if (session.status === SessionStatus.ACTIVE) {
                 await sessionRepo.update(session.id, { status: SessionStatus.COMPLETED });
             }
-            res.status(403).json({ 
-                success: false, 
-                message: '⏰ Temps écoulé ! Cette session est maintenant terminée.'
+            res.status(403).json({
+                success: false,
+                message: 'Temps ecoule ! Cette session est maintenant terminee.'
             });
             return;
         }
 
         if (etudiantProfil.ecoleId !== session.filiere?.ecoleId) {
-            res.status(403).json({ success: false, message: 'Vous n\'êtes pas dans la bonne école' });
+            res.status(403).json({ success: false, message: 'Vous n\'etes pas dans la bonne ecole' });
             return;
         }
 
         if (etudiantProfil.filiereId !== session.filiere_id) {
-            res.status(403).json({ success: false, message: 'Vous n\'êtes pas dans la bonne filière' });
+            res.status(403).json({ success: false, message: 'Vous n\'etes pas dans la bonne filiere' });
             return;
         }
 
         if (etudiantProfil.classeId !== session.classe_id) {
-            res.status(403).json({ success: false, message: 'Vous n\'êtes pas dans la bonne classe' });
+            res.status(403).json({ success: false, message: 'Vous n\'etes pas dans la bonne classe' });
             return;
         }
 
@@ -521,20 +589,20 @@ export const joinSession = async (req: AuthRequest, res: Response, next: NextFun
         });
 
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée ou déjà terminée' });
+            res.status(404).json({ success: false, message: 'Session non trouvee ou deja terminee' });
             return;
         }
 
-        // Vérifier si le temps n'est pas écoulé
+        // Verifier si le temps n'est pas ecoule
         const maintenant = new Date();
         const dateFin = new Date(session.date_fin);
         const tempsRestant = dateFin.getTime() - maintenant.getTime();
 
         if (tempsRestant <= 0) {
             await sessionRepo.update(session.id, { status: SessionStatus.COMPLETED });
-            res.status(403).json({ 
-                success: false, 
-                message: '⏰ Temps écoulé ! Vous ne pouvez plus rejoindre cette session.'
+            res.status(403).json({
+                success: false,
+                message: 'Temps ecoule ! Vous ne pouvez plus rejoindre cette session.'
             });
             return;
         }
@@ -551,6 +619,12 @@ export const joinSession = async (req: AuthRequest, res: Response, next: NextFun
                 date_joined: new Date()
             });
             await participantRepo.save(participant);
+        } else if (participant.statut === ParticipantStatus.TERMINE) {
+            res.status(403).json({
+                success: false,
+                message: 'Vous avez deja termine cette session. Vos reponses ont ete enregistrees.'
+            });
+            return;
         } else if (participant.statut !== ParticipantStatus.PRESENT) {
             participant.statut = ParticipantStatus.PRESENT;
             await participantRepo.save(participant);
@@ -559,7 +633,7 @@ export const joinSession = async (req: AuthRequest, res: Response, next: NextFun
         res.json({
             success: true,
             message: 'Vous avez rejoint la session',
-            data: { 
+            data: {
                 sessionId: session.id,
                 temps_restant: Math.floor(tempsRestant / 1000)
             }
@@ -569,53 +643,7 @@ export const joinSession = async (req: AuthRequest, res: Response, next: NextFun
     }
 };
 
-// ==================== 5. RÉCUPÉRER UNE SESSION ====================
-
-// export const getSessionForStudent = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
-//     try {
-//         const sessionId = parseId(req.params.id);
-//         if (!sessionId) {
-//             res.status(400).json({ success: false, message: 'ID invalide' });
-//             return;
-//         }
-
-//         const etudiantId = req.user!.id;
-
-//         const session = await sessionRepo.findOne({
-//             where: { id: sessionId },
-//             relations: ['classe', 'filiere', 'professeur']
-//         });
-
-//         if (!session) {
-//             res.status(404).json({ success: false, message: 'Session non trouvée' });
-//             return;
-//         }
-
-//         const participant = await participantRepo.findOne({
-//             where: { session_id: sessionId, etudiant_id: etudiantId }
-//         });
-
-//         res.json({
-//             success: true,
-//             data: {
-//                 id: session.id,
-//                 titre: session.titre,
-//                 description: session.description,
-//                 theme: session.theme,
-//                 date_debut: session.date_debut,
-//                 date_fin: session.date_fin,
-//                 duree: session.duree,
-//                 status: session.status,
-//                 a_rejoint: !!participant,
-//                 professeur: `${session.professeur?.prenom} ${session.professeur?.nom}`
-//             }
-//         });
-//     } catch (err) {
-//         next(err);
-//     }
-// };
-
-// ==================== 6. RÉCUPÉRER LES QUESTIONS ====================
+// ==================== 6. RECUPERER LES QUESTIONS ====================
 
 export const getSessionQuestions = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -652,36 +680,68 @@ export const getSessionQuestions = async (req: AuthRequest, res: Response, next:
     }
 };
 
-// ==================== 7. SOUMETTRE UNE RÉPONSE ====================
+// ==================== 7. SOUMETTRE UNE REPONSE ====================
 
 export const submitSingleReponse = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const sessionId = parseId(req.params.id);
         const questionId = parseId(req.params.questionId);
         const etudiantId = req.user!.id;
-        const { reponseIds } = req.body;
+        const { reponseIds, reponseTexte, tempsReponseMs } = req.body;
 
         if (!sessionId || !questionId) {
             res.status(400).json({ success: false, message: 'ID invalide' });
             return;
         }
 
+        if (!(await verifierSessionEcrivable(sessionId, etudiantId, res))) return;
+
         const question = await questionRepo.findOne({ where: { id: questionId } });
         if (!question) {
-            res.status(404).json({ success: false, message: 'Question non trouvée' });
+            res.status(404).json({ success: false, message: 'Question non trouvee' });
             return;
         }
-
-        const estCorrecte = arraysEqual([...reponseIds].sort(), [...question.reponses_correctes].sort());
 
         let reponseExistante = await reponseRepo.findOne({
             where: { session_id: sessionId, etudiant_id: etudiantId, question_id: questionId }
         });
 
+        // Texte libre : reponse ecrite, pas de correction automatique possible
+        if (question.type === QuestionType.TEXTE_LIBRE) {
+            if (reponseExistante) {
+                reponseExistante.reponse_texte = reponseTexte ?? null;
+                reponseExistante.submitted_at = new Date();
+                await reponseRepo.save(reponseExistante);
+            } else {
+                await reponseRepo.save(reponseRepo.create({
+                    session_id: sessionId,
+                    etudiant_id: etudiantId,
+                    question_id: questionId,
+                    reponse_texte: reponseTexte ?? null,
+                    est_correcte: false,
+                    submitted_at: new Date()
+                }));
+            }
+            res.json({ success: true, message: 'Reponse enregistree (en attente de correction)', data: { est_correcte: null } });
+            return;
+        }
+
+        // Fichier : gere par un endpoint multipart dedie, pas par cette route JSON
+        if (question.type === QuestionType.FICHIER) {
+            res.status(400).json({ success: false, message: 'Utilisez l\'upload de fichier pour ce type de question' });
+            return;
+        }
+
+        const estCorrecte = arraysEqual(
+            [...(reponseIds || [])].map(Number).sort((a: number, b: number) => a - b),
+            [...(question.reponses_correctes || [])].map(Number).sort((a: number, b: number) => a - b)
+        );
+
         if (reponseExistante) {
             reponseExistante.reponse_ids = reponseIds;
             reponseExistante.est_correcte = estCorrecte;
             reponseExistante.submitted_at = new Date();
+            if (tempsReponseMs !== undefined) reponseExistante.temps_reponse_ms = tempsReponseMs;
             await reponseRepo.save(reponseExistante);
         } else {
             const nouvelleReponse = reponseRepo.create({
@@ -690,7 +750,8 @@ export const submitSingleReponse = async (req: AuthRequest, res: Response, next:
                 question_id: questionId,
                 reponse_ids: reponseIds,
                 est_correcte: estCorrecte,
-                submitted_at: new Date()
+                submitted_at: new Date(),
+                temps_reponse_ms: tempsReponseMs ?? null
             });
             await reponseRepo.save(nouvelleReponse);
         }
@@ -699,7 +760,7 @@ export const submitSingleReponse = async (req: AuthRequest, res: Response, next:
 
         res.json({
             success: true,
-            message: 'Réponse enregistrée',
+            message: 'Reponse enregistree',
             data: { est_correcte: estCorrecte }
         });
     } catch (err) {
@@ -707,7 +768,7 @@ export const submitSingleReponse = async (req: AuthRequest, res: Response, next:
     }
 };
 
-// ==================== 8. SOUMETTRE TOUTES LES RÉPONSES ====================
+// ==================== 8. SOUMETTRE TOUTES LES REPONSES ====================
 
 export const submitReponses = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -715,24 +776,24 @@ export const submitReponses = async (req: AuthRequest, res: Response, next: Next
         const etudiantId = req.user!.id;
         const { reponses } = req.body;
 
-        console.log(`📦 Soumission massive - Session: ${sessionId}, ${reponses?.length} réponses`);
+        console.log(`Soumission massive - Session: ${sessionId}, ${reponses?.length} reponses`);
 
         if (!sessionId) {
             res.status(400).json({ success: false, message: 'ID invalide' });
             return;
         }
 
-        // 🔴 VÉRIFICATION 1: La session existe et est active
-        const session = await sessionRepo.findOne({ 
+        // VERIFICATION 1: La session existe et est active
+        const session = await sessionRepo.findOne({
             where: { id: sessionId, status: SessionStatus.ACTIVE }
         });
-        
+
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée ou terminée' });
+            res.status(404).json({ success: false, message: 'Session non trouvee ou terminee' });
             return;
         }
 
-        // 🔴 VÉRIFICATION 2: L'étudiant a bien rejoint la session
+        // VERIFICATION 2: L'etudiant a bien rejoint la session
         const participant = await participantRepo.findOne({
             where: { session_id: sessionId, etudiant_id: etudiantId }
         });
@@ -742,55 +803,81 @@ export const submitReponses = async (req: AuthRequest, res: Response, next: Next
             return;
         }
 
-        // 🔴 VÉRIFICATION 3: L'étudiant n'a pas déjà terminé
+        // VERIFICATION 3: L'etudiant n'a pas deja termine
         if (participant.statut === ParticipantStatus.TERMINE) {
-            res.status(403).json({ 
-                success: false, 
-                message: 'Vous avez déjà terminé cette session. Vous ne pouvez plus modifier vos réponses.' 
+            res.status(403).json({
+                success: false,
+                message: 'Vous avez deja termine cette session. Vous ne pouvez plus modifier vos reponses.'
             });
             return;
         }
 
-        // 🔴 VÉRIFICATION 4: Le temps n'est pas écoulé
+        // VERIFICATION 4: Le temps n'est pas ecoule
         const maintenant = new Date();
         const dateFin = new Date(session.date_fin);
         if (maintenant > dateFin) {
             await participantRepo.update(
                 { session_id: sessionId, etudiant_id: etudiantId },
-                { 
+                {
                     statut: ParticipantStatus.TERMINE,
                     date_completed: new Date()
                 }
             );
-            res.status(403).json({ 
-                success: false, 
-                message: '⏰ Temps écoulé ! Session terminée automatiquement.' 
+            res.status(403).json({
+                success: false,
+                message: 'Temps ecoule ! Session terminee automatiquement.'
             });
             return;
         }
 
-        // Traiter chaque réponse
+        // Traiter chaque reponse
         for (const rep of reponses) {
             const question = await questionRepo.findOne({ where: { id: rep.questionId } });
             if (!question) continue;
 
-            const estCorrecte = arraysEqual(
-                [...rep.reponseIds].sort(), 
-                [...question.reponses_correctes].sort()
-            );
-
             let reponseExistante = await reponseRepo.findOne({
-                where: { 
-                    session_id: sessionId, 
-                    etudiant_id: etudiantId, 
-                    question_id: rep.questionId 
+                where: {
+                    session_id: sessionId,
+                    etudiant_id: etudiantId,
+                    question_id: rep.questionId
                 }
             });
+
+            // Texte libre : pas de correction automatique, on stocke juste le texte
+            if (question.type === QuestionType.TEXTE_LIBRE) {
+                if (reponseExistante) {
+                    reponseExistante.reponse_texte = rep.reponseTexte ?? null;
+                    reponseExistante.submitted_at = new Date();
+                    await reponseRepo.save(reponseExistante);
+                } else {
+                    await reponseRepo.save(reponseRepo.create({
+                        session_id: sessionId,
+                        etudiant_id: etudiantId,
+                        question_id: rep.questionId,
+                        reponse_texte: rep.reponseTexte ?? null,
+                        est_correcte: false,
+                        submitted_at: new Date()
+                    }));
+                }
+                continue;
+            }
+
+            // Fichier : uploade separement via l'endpoint multipart dedie -
+            // on ne touche pas a la reponse deja enregistree par cet upload
+            if (question.type === QuestionType.FICHIER) {
+                continue;
+            }
+
+            const estCorrecte = arraysEqual(
+                [...(rep.reponseIds || [])].map(Number).sort((a: number, b: number) => a - b),
+                [...(question.reponses_correctes || [])].map(Number).sort((a: number, b: number) => a - b)
+            );
 
             if (reponseExistante) {
                 reponseExistante.reponse_ids = rep.reponseIds;
                 reponseExistante.est_correcte = estCorrecte;
                 reponseExistante.submitted_at = new Date();
+                if (rep.tempsReponseMs !== undefined) reponseExistante.temps_reponse_ms = rep.tempsReponseMs;
                 await reponseRepo.save(reponseExistante);
             } else {
                 const nouvelleReponse = reponseRepo.create({
@@ -799,27 +886,64 @@ export const submitReponses = async (req: AuthRequest, res: Response, next: Next
                     question_id: rep.questionId,
                     reponse_ids: rep.reponseIds,
                     est_correcte: estCorrecte,
-                    submitted_at: new Date()
+                    submitted_at: new Date(),
+                    temps_reponse_ms: rep.tempsReponseMs ?? null
                 });
                 await reponseRepo.save(nouvelleReponse);
             }
         }
 
-        // Mettre à jour le score
+        // Mettre a jour le score
         await updateEtudiantScore(sessionId, etudiantId);
 
-        // 🔴 MARQUER LA SESSION COMME TERMINÉE POUR L'ÉTUDIANT
+        // MARQUER LA SESSION COMME TERMINEE POUR L'ETUDIANT
         await participantRepo.update(
             { session_id: sessionId, etudiant_id: etudiantId },
-            { 
+            {
                 statut: ParticipantStatus.TERMINE,
                 date_completed: new Date()
             }
         );
 
+        // Notifier le professeur en temps reel
+        const io = getSocketIO();
+        if (io) {
+            const [participantMaj, etudiant, questions] = await Promise.all([
+                participantRepo.findOne({ where: { session_id: sessionId, etudiant_id: etudiantId } }),
+                userRepo.findOne({ where: { id: etudiantId } }),
+                questionRepo.find({ where: { session_id: sessionId } })
+            ]);
+
+            const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
+
+            io.to(`session_${sessionId}`).emit('student-submitted', {
+                sessionId,
+                etudiant: {
+                    id: etudiantId,
+                    nom: etudiant?.nom,
+                    prenom: etudiant?.prenom,
+                    email: etudiant?.email
+                },
+                score: participantMaj?.score || 0,
+                totalPoints,
+                statut: ParticipantStatus.TERMINE,
+                date_completed: new Date()
+            });
+
+            console.log(`Soumission notifiee a session_${sessionId}`);
+
+            await createNotification(session.created_by, {
+                titre: `${etudiant?.prenom} ${etudiant?.nom} a termine`,
+                message: `Score : ${participantMaj?.score || 0}/${totalPoints} pts`,
+                type: NotificationType.STUDENT_SUBMITTED,
+                link: `/teachers/qcm/${sessionId}`,
+                sessionId
+            })
+        }
+
         res.json({
             success: true,
-            message: 'Toutes vos réponses ont été enregistrées avec succès !'
+            message: 'Toutes vos reponses ont ete enregistrees avec succes !'
         });
     } catch (err) {
         console.error('Erreur submitReponses:', err);
@@ -827,80 +951,242 @@ export const submitReponses = async (req: AuthRequest, res: Response, next: Next
     }
 };
 
-// ==================== 9. RÉSULTATS D'UNE SESSION ====================
+// ==================== 8b. SOUMETTRE UNE REPONSE FICHIER ====================
+// Question de type "fichier" : l'etudiant televerse un document, note plus
+// tard manuellement par le professeur (jamais de correction automatique).
 
-export const getSessionResults = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const submitReponseFichier = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const sessionId = parseId(req.params.id);
+        const questionId = parseId(req.params.questionId);
+        const etudiantId = req.user!.id;
+        const file = (req as any).file;
+
+        if (!sessionId || !questionId) {
+            res.status(400).json({ success: false, message: 'ID invalide' });
+            return;
+        }
+        if (!file) {
+            res.status(400).json({ success: false, message: 'Aucun fichier recu' });
+            return;
+        }
+
+        if (!(await verifierSessionEcrivable(sessionId, etudiantId, res))) return;
+
+        const question = await questionRepo.findOne({ where: { id: questionId } });
+        if (!question || question.type !== QuestionType.FICHIER) {
+            res.status(400).json({ success: false, message: "Cette question n'accepte pas de fichier" });
+            return;
+        }
+
+        const cheminFichier = `/uploads/reponses/${file.filename}`;
+
+        const reponseExistante = await reponseRepo.findOne({
+            where: { session_id: sessionId, etudiant_id: etudiantId, question_id: questionId }
+        });
+
+        if (reponseExistante) {
+            reponseExistante.reponse_fichier = cheminFichier;
+            reponseExistante.submitted_at = new Date();
+            await reponseRepo.save(reponseExistante);
+        } else {
+            await reponseRepo.save(reponseRepo.create({
+                session_id: sessionId,
+                etudiant_id: etudiantId,
+                question_id: questionId,
+                reponse_fichier: cheminFichier,
+                est_correcte: false,
+                submitted_at: new Date()
+            }));
+        }
+
+        res.json({ success: true, message: 'Fichier envoye (en attente de correction)', data: { reponse_fichier: cheminFichier } });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ==================== DETECTION DE TRICHE BASIQUE ====================
+// Appele par le frontend a chaque changement d'onglet / sortie de plein
+// ecran detecte pendant une session active. On incremente simplement un
+// compteur sur la participation - pas de blocage, juste un signal pour le
+// professeur.
+export const signalerChangementOnglet = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const sessionId = parseId(req.params.id);
         const etudiantId = req.user!.id;
-
         if (!sessionId) {
             res.status(400).json({ success: false, message: 'ID invalide' });
             return;
         }
 
-        const session = await sessionRepo.findOne({ where: { id: sessionId } });
-        if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' });
+        const participant = await participantRepo.findOne({ where: { session_id: sessionId, etudiant_id: etudiantId } });
+        if (!participant) {
+            res.status(404).json({ success: false, message: 'Participation non trouvee' });
             return;
+        }
+
+        participant.nb_changements_onglet = (participant.nb_changements_onglet || 0) + 1;
+        await participantRepo.save(participant);
+
+        res.json({ success: true, data: { nb_changements_onglet: participant.nb_changements_onglet } });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ==================== 9. RESULTATS D'UNE SESSION ====================
+
+export const getSessionResults = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const sessionId  = parseId(req.params.id)
+        const etudiantId = req.user!.id
+
+        if (!sessionId) {
+            res.status(400).json({ success: false, message: 'ID invalide' })
+            return
+        }
+
+        const session = await sessionRepo.findOne({
+            where:     { id: sessionId },
+            relations: ['filiere', 'classe']
+        })
+        if (!session) {
+            res.status(404).json({ success: false, message: 'Session non trouvee' })
+            return
+        }
+
+        // Verifier si les resultats sont visibles
+        if (!session.resultatsVisibles) {
+            res.status(403).json({
+                success: false,
+                message: 'Les resultats ne sont pas encore disponibles.',
+                code:    'RESULTS_HIDDEN'
+            })
+            return
         }
 
         const participant = await participantRepo.findOne({
             where: { session_id: sessionId, etudiant_id: etudiantId }
-        });
+        })
+
+        if (!participant) {
+            res.status(404).json({ success: false, message: 'Vous n\'avez pas participe a cette session' })
+            return
+        }
 
         const questions = await questionRepo.find({
             where: { session_id: sessionId },
             order: { ordre: 'ASC' }
-        });
+        })
 
         const reponses = await reponseRepo.find({
             where: { session_id: sessionId, etudiant_id: etudiantId }
-        });
+        })
 
+        // Recalculer est_correcte depuis les vraies donnees
         const detailsQuestions = questions.map(q => {
-            const reponse = reponses.find(r => r.question_id === q.id);
-            return {
-                question_id: q.id,
-                texte: q.texte,
-                points: q.points,
-                reponse_donnee: reponse?.reponse_ids || [],
-                est_correcte: reponse?.est_correcte || false,
-                points_obtenus: reponse?.est_correcte ? q.points : 0
-            };
-        });
+            const reponse = reponses.find(r => r.question_id === q.id)
+            const manuel = !isTypeAutoCorrige(q.type)
 
-        const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
-        const pointsObtenus = detailsQuestions.reduce((sum, q) => sum + q.points_obtenus, 0);
-        const noteSur20 = totalPoints > 0 ? (pointsObtenus / totalPoints) * 20 : 0;
+            // Types texte_libre / fichier : jamais auto-corriges, on affiche
+            // l'etat de correction manuelle plutot qu'un est_correcte calcule
+            if (manuel) {
+                const enAttente = !!reponse && !reponse.corrige_manuellement
+                const pointsObtenus = reponse?.corrige_manuellement ? (reponse.note_manuelle || 0) : 0
+
+                return {
+                    question_id:          q.id,
+                    texte:                q.texte,
+                    type:                 q.type,
+                    points:               q.points,
+                    points_obtenus:       pointsObtenus,
+                    reponse_texte:        reponse?.reponse_texte || null,
+                    reponse_fichier:      reponse?.reponse_fichier || null,
+                    corrige_manuellement: reponse?.corrige_manuellement || false,
+                    est_correcte:         reponse?.corrige_manuellement ? pointsObtenus > 0 : null,
+                    a_repondu:            !!reponse && (!!reponse.reponse_texte || !!reponse.reponse_fichier),
+                    en_attente_correction: enAttente
+                }
+            }
+
+            const reponseDonnee:   number[] = reponse?.reponse_ids
+                ? [...reponse.reponse_ids].map(Number).sort((a, b) => a - b)
+                : []
+
+            const reponsesCorrectes: number[] = q.reponses_correctes
+                ? [...q.reponses_correctes].map(Number).sort((a, b) => a - b)
+                : []
+
+            // Comparaison stricte des tableaux tries
+            const estCorrecte = reponseDonnee.length > 0
+                && reponseDonnee.length === reponsesCorrectes.length
+                && reponseDonnee.every((val, idx) => val === reponsesCorrectes[idx])
+
+            const pointsObtenus = estCorrecte ? q.points : 0
+
+            return {
+                question_id:       q.id,
+                texte:             q.texte,
+                type:              q.type,
+                points:            q.points,
+                points_obtenus:    pointsObtenus,
+                options:           q.options           || [],
+                reponses_correctes: reponsesCorrectes,
+                reponse_donnee:    reponse?.reponse_ids
+                    ? [...reponse.reponse_ids].map(Number)
+                    : [],
+                est_correcte:      estCorrecte,
+                a_repondu:         !!reponse && reponseDonnee.length > 0,
+                en_attente_correction: false
+            }
+        })
+
+        const totalPoints   = questions.reduce((sum, q) => sum + q.points, 0)
+        const pointsObtenus = detailsQuestions.reduce((sum, q) => sum + q.points_obtenus, 0)
+        const noteSur20     = totalPoints > 0 ? (pointsObtenus / totalPoints) * 20 : 0
+        const pourcentage   = totalPoints > 0 ? (pointsObtenus / totalPoints) * 100 : 0
+
+        const nbCorrectes   = detailsQuestions.filter(q => q.est_correcte).length
+        const nbIncorrectes = detailsQuestions.filter(q => q.est_correcte === false && q.a_repondu).length
+        const nbOmises      = detailsQuestions.filter(q => !q.a_repondu).length
+        const correctionEnAttente = detailsQuestions.some(q => q.en_attente_correction)
 
         res.json({
             success: true,
             data: {
                 session: {
-                    id: session.id,
-                    titre: session.titre,
+                    id:         session.id,
+                    titre:      session.titre,
+                    theme:      session.theme,
                     date_debut: session.date_debut,
-                    date_fin: session.date_fin
+                    date_fin:   session.date_fin,
+                    filiere:    session.filiere?.nom,
+                    classe:     session.classe?.nom
                 },
                 participant: {
-                    score: participant?.score || 0,
-                    statut: participant?.statut,
-                    date_completed: participant?.date_completed
+                    score:          pointsObtenus, // recalcule, plus fiable que participant.score
+                    statut:         participant.statut,
+                    date_completed: participant.date_completed
                 },
                 resultats: {
-                    total_points: totalPoints,
+                    total_points:   totalPoints,
                     points_obtenus: pointsObtenus,
-                    note_sur_20: noteSur20.toFixed(2),
-                    pourcentage: totalPoints > 0 ? (pointsObtenus / totalPoints) * 100 : 0
+                    note_sur_20:    parseFloat(noteSur20.toFixed(2)),
+                    pourcentage:    parseFloat(pourcentage.toFixed(1)),
+                    nb_correctes:   nbCorrectes,
+                    nb_incorrectes: nbIncorrectes,
+                    nb_omises:      nbOmises,
+                    total_questions: questions.length,
+                    correction_en_attente: correctionEnAttente
                 },
                 details: detailsQuestions
             }
-        });
+        })
     } catch (err) {
-        next(err);
+        next(err)
     }
-};
+}
 
 // ==================== 10. HISTORIQUE ====================
 
@@ -908,32 +1194,40 @@ export const getHistorique = async (req: AuthRequest, res: Response, next: NextF
     try {
         const etudiantId = req.user!.id;
 
-        // Récupérer tous les participants
+        // Recuperer tous les participants
         const participants = await participantRepo.find({
             where: { etudiant_id: etudiantId },
             relations: ['session', 'session.classe', 'session.filiere'],
             order: { date_completed: 'DESC' }
         });
 
-        console.log('Participants trouvés:', participants.length);
+        console.log('Participants trouves:', participants.length);
 
-        // Ne pas filtrer sur le score > 0, juste vérifier que le participant existe
-        const historique = participants.map(p => ({
-            id: p.id,
-            session: {
-                id: p.session.id,
-                titre: p.session.titre,
-                theme: p.session.theme,
-                date_debut: p.session.date_debut,
-                date_fin: p.session.date_fin,
-                duree: p.session.duree
-            },
-            score: p.score || 0,
-            date_completed: p.date_completed || p.date_joined,
-            statut: p.statut
-        }));
+        // Ne pas filtrer sur le score > 0, juste verifier que le participant existe
+        const historique = await Promise.all(participants.map(async (p) => {
+            const questions = await questionRepo.find({ where: { session_id: p.session.id } })
+            const totalPoints = questions.reduce((sum, q) => sum + q.points, 0)
 
-        console.log('Historique généré:', historique.length);
+            return {
+                id: p.id,
+                session: {
+                    id: p.session.id,
+                    titre: p.session.titre,
+                    theme: p.session.theme,
+                    date_debut: p.session.date_debut,
+                    date_fin: p.session.date_fin,
+                    duree: p.session.duree,
+                    total_points: totalPoints,
+                    resultatsVisibles: p.session.resultatsVisibles
+
+                },
+                score: p.score || 0,
+                date_completed: p.date_completed || p.date_joined,
+                statut: p.statut
+            }
+        }))
+
+        console.log('Historique genere:', historique.length);
 
         res.json({ success: true, data: historique });
     } catch (err) {
@@ -954,9 +1248,9 @@ export const getStudentProfil = async (req: AuthRequest, res: Response, next: Ne
         });
 
         if (!etudiantProfil) {
-            res.status(404).json({ 
-                success: false, 
-                message: 'Profil étudiant non trouvé' 
+            res.status(404).json({
+                success: false,
+                message: 'Profil etudiant non trouve'
             });
             return;
         }

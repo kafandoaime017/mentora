@@ -1,0 +1,2 @@
+declare const _default: (nitroApp: import("nitropack").NitroApp) => void;
+export default _default;

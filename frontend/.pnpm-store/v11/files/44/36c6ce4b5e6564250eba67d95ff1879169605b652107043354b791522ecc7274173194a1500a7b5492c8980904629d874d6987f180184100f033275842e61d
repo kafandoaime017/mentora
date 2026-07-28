@@ -1,0 +1,25 @@
+import {
+  debug,
+  flushIfServerless,
+  getDefaultIsolationScope,
+  getIsolationScope,
+  withIsolationScope
+} from "@sentry/core";
+export function patchEventHandler(handler) {
+  return new Proxy(handler, {
+    async apply(handlerTarget, handlerThisArg, handlerArgs) {
+      const isolationScope = getIsolationScope();
+      const newIsolationScope = isolationScope === getDefaultIsolationScope() ? isolationScope.clone() : isolationScope;
+      debug.log(
+        `Patched h3 event handler. ${isolationScope === newIsolationScope ? "Using existing" : "Created new"} isolation scope.`
+      );
+      return withIsolationScope(newIsolationScope, async () => {
+        try {
+          return await handlerTarget.apply(handlerThisArg, handlerArgs);
+        } finally {
+          await flushIfServerless();
+        }
+      });
+    }
+  });
+}

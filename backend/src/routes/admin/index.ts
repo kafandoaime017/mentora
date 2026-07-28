@@ -1,0 +1,121 @@
+import { Router } from 'express'
+import { authMiddleware,requireRole } from '../../app/middleware/auth'
+import {
+    getDashboard,
+    getEcole, updateEcole,
+    getFilieres, createFiliere, updateFiliere, deleteFiliere,
+    getClasses, createClasse, updateClasse, deleteClasse, generateClasseCode,
+    getUsers, toggleUserActive, deleteUser, activateProfesseur,
+    getInvitations, sendInvitation, deleteInvitation,
+    verifyInvitationToken, registerViaInvitation,
+    revokeInvitation,
+    resendInvitation,
+    adminDeleteSession,
+    getAdminSessionDetails,
+    getAllSessions,
+    verifyInvitationEmail,
+    checkEmailVerified,
+    getUserById,
+    uploadEcoleLogo,
+    adminUpdateSession,
+    adminStartSession,
+    adminEndSession,
+    adminGetNotes,
+    adminToggleResultatsVisibles,
+    adminExportResultsPdf,
+    adminExportUserHistoryPdf,
+    createSessionUrgence,
+    duplicateSessionAdmin
+} from '../../app/controllers/adminController'
+import {
+    getAnnonces, createAnnonce, getAnnonceResultats, toggleAnnonceActif, deleteAnnonce
+} from '../../app/controllers/announcementController'
+import { getAuditLogs } from '../../app/controllers/auditLogController'
+import { checkLimiteEtudiants, checkLimiteProfesseurs, checkLimiteSessions } from '../../app/middleware/checkPlan'
+import { uploadEcoleLogo as uploadEcoleLogoMiddleware } from '../../app/middleware/upload'
+
+const router = Router()
+
+const isAdmin = [authMiddleware, requireRole(['directeur', 'superadmin'])]
+const isDirecteur = [authMiddleware, requireRole(['directeur'])]
+
+// Dashboard
+router.get('/dashboard', ...isAdmin, getDashboard)
+
+// Ecole
+router.get('/ecole',    ...isAdmin, getEcole)
+router.put('/ecole',    ...isAdmin, updateEcole)
+router.post('/ecole/logo', ...isAdmin, uploadEcoleLogoMiddleware.single('logo'), uploadEcoleLogo)
+
+// Filieres
+router.get('/filieres',        ...isAdmin, getFilieres)
+router.post('/filieres',       ...isAdmin, createFiliere)
+router.put('/filieres/:id',    ...isAdmin, updateFiliere)
+router.delete('/filieres/:id', ...isAdmin, deleteFiliere)
+
+// Classes
+router.get('/classes',                    ...isAdmin, getClasses)
+router.post('/classes',                   ...isAdmin, createClasse)
+router.put('/classes/:id',                ...isAdmin, updateClasse)
+router.delete('/classes/:id',             ...isAdmin, deleteClasse)
+router.post('/classes/:id/generate-code', ...isAdmin, generateClasseCode)
+
+// Utilisateurs
+router.get('/users',                      ...isAdmin, getUsers)
+router.patch('/users/:id/toggle-active',  ...isAdmin, toggleUserActive)
+router.delete('/users/:id',               ...isAdmin, deleteUser)
+router.get('/users/:id', ...isAdmin, getUserById)
+router.get('/users/:id/historique/pdf', ...isAdmin, adminExportUserHistoryPdf)
+
+router.patch('/users/:id/activate-prof',  ...isAdmin, activateProfesseur)
+
+// Invitations
+router.get('/invitations',        ...isAdmin, getInvitations)
+router.post('/invitations', ...isAdmin, (req, res, next) => {
+  if (req.body.role === 'etudiant') {
+    checkLimiteEtudiants(req, res, next)
+  } else if (req.body.role === 'professeur') {
+    checkLimiteProfesseurs(req, res, next)
+  } else {
+    next()
+  }
+}, sendInvitation)
+router.delete('/invitations/:id', ...isAdmin, deleteInvitation)
+
+// Routes publiques (sans auth) -- pour la page /auth/invitation
+router.get('/invitations/verify',   verifyInvitationToken)
+router.post('/invitations/register', registerViaInvitation)
+router.post('/invitations/:id/resend', ...isAdmin, resendInvitation)
+router.patch('/invitations/:id/revoke', ...isAdmin, revokeInvitation)
+
+
+
+// Sessions
+router.post('/sessions',       ...isAdmin, checkLimiteSessions, createSessionUrgence)
+router.get('/sessions',        ...isAdmin, getAllSessions)
+router.get('/sessions/:id',    ...isAdmin, getAdminSessionDetails)
+router.put('/sessions/:id',    ...isAdmin, adminUpdateSession)
+router.delete('/sessions/:id', ...isAdmin, adminDeleteSession)
+router.post('/sessions/:id/dupliquer', ...isAdmin, checkLimiteSessions, duplicateSessionAdmin)
+
+router.post('/sessions/:id/start', ...isAdmin, adminStartSession)
+router.post('/sessions/:id/end',   ...isAdmin, adminEndSession)
+
+router.get('/sessions/:id/notes',              ...isAdmin, adminGetNotes)
+router.patch('/sessions/:id/toggle-resultats', ...isAdmin, adminToggleResultatsVisibles)
+router.get('/sessions/:id/export/pdf',         ...isAdmin, adminExportResultsPdf)
+
+router.get('/invitations/verify-email', verifyInvitationEmail)
+router.get('/invitations/check-verified', checkEmailVerified)
+
+// Annonces & sondages
+router.get('/annonces',                 ...isDirecteur, getAnnonces)
+router.post('/annonces',                ...isDirecteur, createAnnonce)
+router.get('/annonces/:id/resultats',   ...isDirecteur, getAnnonceResultats)
+router.patch('/annonces/:id/toggle-actif', ...isDirecteur, toggleAnnonceActif)
+router.delete('/annonces/:id',          ...isDirecteur, deleteAnnonce)
+
+// Logs d'audit
+router.get('/audit-logs', ...isDirecteur, getAuditLogs)
+
+export default router

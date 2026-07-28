@@ -4,13 +4,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{subject}}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         /* RESET & GLOBAL – clean, robust, email-friendly */
         body {
             margin: 0;
             padding: 20px;
             background-color: #eef2f5;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             line-height: 1.5;
             -webkit-font-smoothing: antialiased;
         }
@@ -32,8 +35,9 @@
 
         .brand-header h1 {
             margin: 0;
+            font-family: 'Syne', 'Segoe UI', sans-serif;
             font-size: 28px;
-            font-weight: 600;
+            font-weight: 700;
             letter-spacing: -0.3px;
             color: white;
             display: inline-flex;
@@ -59,13 +63,15 @@
         }
 
         .main-content h2 {
+            font-family: 'Syne', 'Segoe UI', sans-serif;
             font-size: 22px;
-            font-weight: 600;
+            font-weight: 700;
             margin: 0 0 12px 0;
             color: #054348;
         }
 
         .main-content h3 {
+            font-family: 'Syne', 'Segoe UI', sans-serif;
             font-size: 18px;
             font-weight: 600;
             margin: 24px 0 12px 0;
@@ -185,11 +191,9 @@
 <body>
 
 <div class="email-container">
-    <!-- HEADER: clean brand identity, no AI weirdness -->
+    <!-- HEADER: clean brand identity -->
     <div class="brand-header">
-        <h1>
-             Mentora
-        </h1>
+        <img src="{{logoUrl}}" alt="Mentora" height="32" style="height:32px; display:block; margin:0 auto; border:0;">
     </div>
 
     <!-- MAIN CONTENT (dynamic body injected by email engine) -->
@@ -207,7 +211,7 @@
         <div class="absolute bottom-0 left-0 w-full h-40 pointer-events-none custom-waves">
             <svg viewBox="0 0 1440 110" class="waves-svg" preserveAspectRatio="none" style="display: block; width: 100%; height: auto;">
                 <path d="M0,60 Q360,20 720,55 Q1080,90 1440,40 L1440,110 L0,110 Z" fill="#054348" opacity="1"/>
-                <path d="M0,72 Q300,44 660,64 Q1020,84 1440,56 L1440,110 L0,110 Z" fill="#919e19"/>
+                <path d="M0,72 Q300,44 660,64 Q1020,84 1440,56 L1440,110 L0,110 Z" fill="#709134"/>
             </svg>
         </div>
     </div>

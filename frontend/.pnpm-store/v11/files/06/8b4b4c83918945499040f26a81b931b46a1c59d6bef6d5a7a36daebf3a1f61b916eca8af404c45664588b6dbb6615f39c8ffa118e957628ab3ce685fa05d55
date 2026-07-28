@@ -1,0 +1,22 @@
+import { _INTERNAL_getTracingHeadersForFetchRequest } from '@sentry/core';
+
+function instrumentFetcher(fetchFn) {
+  return function(input, init) {
+    const headers = _INTERNAL_getTracingHeadersForFetchRequest(input, { headers: init?.headers });
+    if (input instanceof Request && init === void 0) {
+      if (!headers) {
+        return fetchFn(input);
+      }
+      const requestWithTracing = new Request(input, { headers });
+      return fetchFn(requestWithTracing);
+    }
+    const mergedInit = {
+      ...init,
+      ...headers ? { headers } : {}
+    };
+    return fetchFn(input, mergedInit);
+  };
+}
+
+export { instrumentFetcher };
+//# sourceMappingURL=instrumentFetcher.js.map

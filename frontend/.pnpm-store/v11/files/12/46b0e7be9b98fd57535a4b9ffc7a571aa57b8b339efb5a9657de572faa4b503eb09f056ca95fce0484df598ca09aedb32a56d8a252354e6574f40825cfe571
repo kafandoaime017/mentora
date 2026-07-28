@@ -1,0 +1,23 @@
+function isJSRPC(item) {
+  try {
+    return !!item[`__some_property_that_will_never_exist__${Math.random()}`];
+  } catch {
+    return false;
+  }
+}
+const isNotJSRPC = (item) => !isJSRPC(item);
+function isDurableObjectNamespace(item) {
+  return item != null && isNotJSRPC(item) && typeof item.idFromName === "function";
+}
+function isQueue(item) {
+  return item != null && isNotJSRPC(item) && typeof item.send === "function" && typeof item.sendBatch === "function";
+}
+function isD1Database(item) {
+  return item != null && isNotJSRPC(item) && typeof item.prepare === "function" && typeof item.batch === "function" && typeof item.exec === "function";
+}
+function isR2Bucket(item) {
+  return item != null && isNotJSRPC(item) && typeof item.head === "function" && typeof item.put === "function" && typeof item.createMultipartUpload === "function";
+}
+
+export { isD1Database, isDurableObjectNamespace, isJSRPC, isQueue, isR2Bucket };
+//# sourceMappingURL=isBinding.js.map

@@ -1,0 +1,28 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+
+const core = require('@sentry/core');
+
+function workersStackLineParser(getModule2) {
+  const [arg1, arg2] = core.nodeStackLineParser(getModule2);
+  const fn = (line) => {
+    const result = arg2(line);
+    if (result) {
+      const filename = result.filename;
+      result.abs_path = filename !== void 0 && !filename.startsWith("/") ? `/${filename}` : filename;
+      result.in_app = filename !== void 0;
+    }
+    return result;
+  };
+  return [arg1, fn];
+}
+function getModule(filename) {
+  if (!filename) {
+    return;
+  }
+  return core.basename(filename, ".js");
+}
+const defaultStackParser = core.createStackParser(workersStackLineParser(getModule));
+
+exports.defaultStackParser = defaultStackParser;
+exports.getModule = getModule;
+//# sourceMappingURL=stacktrace.js.map

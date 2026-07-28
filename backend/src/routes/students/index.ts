@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware, requireRole } from '../../app/middleware/auth';
 import * as studentController from '../../app/controllers/studentController';
+import { uploadReponseFichier } from '../../app/middleware/upload';
 
 const router = Router();
 
@@ -20,8 +21,10 @@ router.get('/sessions/:id', studentController.getSessionForStudent);
 router.get('/sessions/:id/questions', studentController.getSessionQuestions);
 router.post('/sessions/:id/reponses', studentController.submitReponses);
 router.post('/sessions/:id/reponses/:questionId', studentController.submitSingleReponse);
+router.post('/sessions/:id/reponses/:questionId/fichier', uploadReponseFichier.single('fichier'), studentController.submitReponseFichier);
+router.post('/sessions/:id/signaler-onglet', studentController.signalerChangementOnglet);
 
-// ==================== RÉSULTATS ====================
+// ==================== RESULTATS ====================
 router.get('/sessions/:id/resultats', studentController.getSessionResults);
 router.get('/historique', studentController.getHistorique);
 router.get('/profil', studentController.getStudentProfil);

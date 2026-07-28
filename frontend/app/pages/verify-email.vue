@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-cream font-body flex flex-col relative overflow-hidden">
+  <div class="min-h-screen bg-layout font-body flex flex-col relative overflow-hidden">
 
     <!-- Header identique à auth -->
     <div style="box-shadow: 1px 1px 8px 1px #cfcfcf;" class="h-20 flex-shrink-0 bg-white flex items-center justify-between px-6 md:px-20 relative">
@@ -50,7 +50,7 @@
                 v-model="code[index]"
                 type="text"
                 maxlength="1"
-                class="w-12 h-12 text-center text-2xl font-bold border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all bg-input"
+                class="w-14 h-14 text-center text-2xl font-bold border    focus:border-transparent transition-all bg-input"
                 :class="{ 'border-red-500 bg-red-50': error, 'border-gray-300': !error }"
                 @input="handleInput(index, $event)"
                 @keydown="handleKeydown(index, $event)"

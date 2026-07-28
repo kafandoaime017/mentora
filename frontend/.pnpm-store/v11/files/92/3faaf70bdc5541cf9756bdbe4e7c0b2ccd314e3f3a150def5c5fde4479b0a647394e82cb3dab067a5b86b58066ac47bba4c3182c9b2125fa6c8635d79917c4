@@ -1,0 +1,4 @@
+import { patchEventHandler } from "../utils/patchEventHandler.js";
+export default (nitroApp) => {
+  nitroApp.h3App.handler = patchEventHandler(nitroApp.h3App.handler);
+};

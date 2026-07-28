@@ -42,6 +42,23 @@ export const useTeacher = () => {
     }
 
     /**
+     * Dupliquer un QCM (session) comme modèle - questions incluses,
+     * dates provisoires a redefinir ensuite.
+     */
+    const duplicateQCM = async (id: number) => {
+        try {
+            const res = await $fetch(`/api/teacher/qcm/${id}/dupliquer`, {
+                method: 'POST',
+                headers: getAuthHeader()
+            })
+            return res
+        } catch (error: any) {
+            console.error('Erreur duplication QCM:', error)
+            return error?.data || { success: false, message: 'Erreur lors de la duplication' }
+        }
+    }
+
+    /**
      * Récupérer la liste des QCM
      */
     const getQCMList = async () => {
@@ -195,22 +212,6 @@ export const useTeacher = () => {
     }
 
     /**
-     * Publier les notes
-     */
-    const publishNotes = async (sessionId: number) => {
-        try {
-            const res = await $fetch(`/api/teacher/sessions/${sessionId}/notes/publier`, {
-                method: 'POST',
-                headers: getAuthHeader()
-            })
-            return res
-        } catch (error: any) {
-            console.error('Erreur publication notes:', error)
-            return error.data || { success: false, message: 'Erreur lors de la publication' }
-        }
-    }
-
-    /**
      * Exporter les résultats en CSV
      */
     const exportResults = async (sessionId: number) => {
@@ -349,32 +350,206 @@ const getTeacherStats = async () => {
     }
 }
 
+
+/**
+ * Générer des questions avec l'IA
+ */
+const generateQuestionsAI = async (data: {
+    titre: string
+    description?: string
+    theme?: string
+    nombreQuestions: number
+}) => {
+    try {
+        const res = await $fetch('/api/ai/generate-questions', {
+            method: 'POST',
+            body: data,
+            headers: getAuthHeader()
+        })
+
+        return res
+    } catch (error: any) {
+        console.error('Erreur génération IA:', error)
+        return error.data || {
+            success: false,
+            message: 'Erreur lors de la génération des questions'
+        }
+    }
+}
+
+/**
+ * Plan de l'école du professeur connecté (utilisé pour n'afficher la
+ * génération IA que si l'école est sur le plan Pro).
+ */
+const getPlanInfo = async () => {
+    try {
+        const res = await $fetch('/api/teacher/plan', { headers: getAuthHeader() })
+        return res
+    } catch (error: any) {
+        console.error('Erreur récupération plan:', error)
+        return error.data || { success: false, data: { plan: 'gratuit', ia: false } }
+    }
+}
+
+    // ==================== BANQUE DE QUESTIONS ====================
+
+    /**
+     * Récupérer la banque de questions (filtrable par thème/difficulté/type)
+     */
+    const getBanqueQuestions = async (filtres: { theme?: string; difficulte?: string; type?: string } = {}) => {
+        try {
+            const params = new URLSearchParams()
+            if (filtres.theme)      params.set('theme', filtres.theme)
+            if (filtres.difficulte) params.set('difficulte', filtres.difficulte)
+            if (filtres.type)       params.set('type', filtres.type)
+            const qs = params.toString()
+            const res = await $fetch(`/api/teacher/banque-questions${qs ? `?${qs}` : ''}`, {
+                headers: getAuthHeader()
+            })
+            return res
+        } catch (error: any) {
+            console.error('Erreur récupération banque de questions:', error)
+            return error.data || { success: false, data: [] }
+        }
+    }
+
+    /**
+     * Ajouter une question à la banque
+     */
+    const createBanqueQuestion = async (data: any) => {
+        try {
+            const res = await $fetch('/api/teacher/banque-questions', {
+                method: 'POST',
+                body: data,
+                headers: getAuthHeader()
+            })
+            return res
+        } catch (error: any) {
+            console.error('Erreur création question banque:', error)
+            return error.data || { success: false, message: 'Erreur lors de la création' }
+        }
+    }
+
+    const createBanqueQuestionsBulk = async (questions: any[]) => {
+        try {
+            const res = await $fetch('/api/teacher/banque-questions/bulk', {
+                method: 'POST',
+                body: { questions },
+                headers: getAuthHeader()
+            })
+            return res
+        } catch (error: any) {
+            console.error('Erreur import banque:', error)
+            return error.data || { success: false, message: 'Erreur lors de l\'import' }
+        }
+    }
+
+    /**
+     * Modifier une question de la banque
+     */
+    const updateBanqueQuestion = async (id: number, data: any) => {
+        try {
+            const res = await $fetch(`/api/teacher/banque-questions/${id}`, {
+                method: 'PUT',
+                body: data,
+                headers: getAuthHeader()
+            })
+            return res
+        } catch (error: any) {
+            console.error('Erreur modification question banque:', error)
+            return error.data || { success: false, message: 'Erreur lors de la modification' }
+        }
+    }
+
+    /**
+     * Supprimer une question de la banque
+     */
+    const deleteBanqueQuestion = async (id: number) => {
+        try {
+            const res = await $fetch(`/api/teacher/banque-questions/${id}`, {
+                method: 'DELETE',
+                headers: getAuthHeader()
+            })
+            return res
+        } catch (error: any) {
+            console.error('Erreur suppression question banque:', error)
+            return error.data || { success: false, message: 'Erreur lors de la suppression' }
+        }
+    }
+
+    // ==================== CORRECTION MANUELLE ====================
+
+    /**
+     * Récupérer les réponses (texte_libre / fichier) à corriger pour une session
+     */
+    const getReponsesACorreger = async (sessionId: number) => {
+        try {
+            const res = await $fetch(`/api/teacher/sessions/${sessionId}/reponses-a-corriger`, {
+                headers: getAuthHeader()
+            })
+            return res
+        } catch (error: any) {
+            console.error('Erreur récupération réponses à corriger:', error)
+            return error.data || { success: false, data: [] }
+        }
+    }
+
+    /**
+     * Attribuer une note manuelle à une réponse texte_libre/fichier
+     */
+    const corrigerReponse = async (reponseId: number, points: number) => {
+        try {
+            const res = await $fetch(`/api/teacher/reponses/${reponseId}/corriger`, {
+                method: 'PATCH',
+                body: { points },
+                headers: getAuthHeader()
+            })
+            return res
+        } catch (error: any) {
+            console.error('Erreur correction réponse:', error)
+            return error.data || { success: false, message: 'Erreur lors de la correction' }
+        }
+    }
+
     return {
         // QCM
         createQCM,
+        generateQuestionsAI,
+        getPlanInfo,
         getQCMList,
         getQCMDetails,
         updateQCM,
         deleteQCM,
-        
+
         // Gestion des sessions
         startSession,
         endSession,
         getParticipants,
         getStatistics,
         getNotes,
-        publishNotes,
         exportResults,
+        duplicateQCM,
         getEtudiantReponses,
         // Données pour formulaires
         getFilieres,
         getClassesByFiliere,
         getAllClasses,
         getMonEcole,
-        
+
         // Utilitaires
         generateQRCode,
         generateNewCode,
-        getTeacherStats
+        getTeacherStats,
+
+        // Banque de questions
+        getBanqueQuestions,
+        createBanqueQuestion,
+        createBanqueQuestionsBulk,
+        updateBanqueQuestion,
+        deleteBanqueQuestion,
+
+        // Correction manuelle
+        getReponsesACorreger,
+        corrigerReponse
     }
 }

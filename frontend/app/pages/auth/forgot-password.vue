@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-cream font-body flex flex-col relative overflow-hidden">
+  <div class="min-h-screen bg-layout font-body flex flex-col relative overflow-hidden">
 
     <!-- Header identique à auth -->
     <div style="box-shadow: 1px 1px 8px 1px #cfcfcf;" class="h-20 flex-shrink-0 bg-white flex items-center justify-between px-6 md:px-20 relative">
@@ -49,7 +49,7 @@
               type="email"
               required
               :disabled="loading || emailEnvoye"
-              class="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all bg-input"
+              class="w-full pl-4 pr-10 py-3 text-sm text-gray-800 bg-input rounded-xl focus:bg-input focus:outline-none transition-all duration-200"
               :class="{ 'border-red-500 bg-red-50': error, 'border-gray-300': !error }"
               placeholder="exemple@email.com"
               autofocus

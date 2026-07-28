@@ -1,0 +1,3 @@
+import type { SyncKvStorage } from '@cloudflare/workers-types';
+export declare function instrumentDurableObjectSyncKvStorage(syncKv: SyncKvStorage): SyncKvStorage;
+//# sourceMappingURL=instrumentDurableObjectSyncKvStorage.d.ts.map

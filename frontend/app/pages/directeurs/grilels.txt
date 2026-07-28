@@ -1,0 +1,125 @@
+   <!-- Grille 2 colonnes -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+            <!-- Invitations en attente -->
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="text-base font-body font-bold text-[#1e3a2f]">Invitations en attente</h3>
+                <nuxt-link to="/directeurs/invitations"
+                  class="text-xs text-primary font-semibold hover:underline font-body">
+                  Voir tout →
+                </nuxt-link>
+              </div>
+              <div v-if="invitationsEnAttente.length === 0" class="p-8 text-center text-gray-400">
+                <svg class="w-10 h-10 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <p class="text-sm font-body">Aucune invitation en attente</p>
+              </div>
+              <div v-else class="divide-y divide-gray-50">
+                <div v-for="inv in invitationsEnAttente.slice(0, 4)" :key="inv.id"
+                  class="px-5 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                  <div>
+                    <p class="text-sm font-semibold text-gray-800 font-body">{{ inv.prenom }} {{ inv.nom }}</p>
+                    <p class="text-xs text-gray-400 font-body">{{ inv.email }} · {{ inv.role }}</p>
+                  </div>
+                  <span class="px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-700 font-semibold font-body">
+                    En attente
+                  </span>
+                </div>
+                <div v-if="invitationsEnAttente.length > 4" class="px-5 py-3 text-center">
+                  <nuxt-link to="/directeurs/invitations"
+                    class="text-xs text-primary font-semibold hover:underline font-body">
+                    +{{ invitationsEnAttente.length - 4 }} autres invitations
+                  </nuxt-link>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dernières sessions -->
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="text-base font-body font-bold text-[#1e3a2f]">Dernières sessions</h3>
+                <nuxt-link to="/directeurs/sessions"
+                  class="text-xs text-primary font-semibold hover:underline font-body">
+                  Voir tout →
+                </nuxt-link>
+              </div>
+              <div v-if="dernieresSessions.length === 0" class="p-8 text-center text-gray-400">
+                <svg class="w-10 h-10 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p class="text-sm font-body">Aucune session</p>
+              </div>
+              <div v-else class="divide-y divide-gray-50">
+                <div v-for="session in dernieresSessions.slice(0, 4)" :key="session.id"
+                  class="px-5 py-3 hover:bg-gray-50 transition-colors">
+                  <div class="flex items-center justify-between">
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-semibold text-gray-800 font-body truncate">{{ session.titre }}</p>
+                      <p class="text-xs text-gray-400 font-body">{{ session.classe }} · {{ session.professeur?.prenom }}
+                        {{ session.professeur?.nom }}</p>
+                    </div>
+                    <span class="ml-3 px-2 py-0.5 text-xs rounded-full font-semibold font-body shrink-0" :class="{
+                      'bg-green-100 text-green-700': session.status === 'active',
+                      'bg-blue-100 text-blue-700': session.status === 'completed',
+                      'bg-gray-100 text-gray-600': session.status === 'draft',
+                      'bg-yellow-100 text-yellow-700': session.status === 'pending'
+                    }">
+                      {{ session.status === 'active' ? 'En cours' : session.status === 'completed' ? 'Terminée' :
+                        session.status === 'pending' ? 'En attente' : 'Brouillon' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Professeurs en attente -->
+          <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 class="text-base font-body font-bold text-[#1e3a2f]">
+                Professeurs en attente
+                <span v-if="profsPending.length > 0"
+                  class="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full font-body">
+                  {{ profsPending.length }}
+                </span>
+              </h3>
+              <nuxt-link to="/directeurs/users" class="text-xs text-primary font-semibold hover:underline font-body">
+                Voir tous les users →
+              </nuxt-link>
+            </div>
+            <div v-if="profsPending.length === 0" class="p-10 text-center text-gray-400">
+              <svg class="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p class="font-body text-sm">Aucun professeur en attente</p>
+            </div>
+            <div v-else class="divide-y divide-gray-50">
+              <div v-for="prof in profsPending" :key="prof.id" class="px-5 py-4 hover:bg-gray-50 transition-colors">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span class="text-sm font-bold text-primary">{{ prof.prenom?.[0] || '' }}{{ prof.nom?.[0] || ''
+                      }}</span>
+                    </div>
+                    <div>
+                      <p class="text-sm font-semibold text-gray-800 font-body">{{ prof.prenom }} {{ prof.nom }}</p>
+                      <p class="text-xs text-gray-400 font-body">{{ prof.email }}</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <span class="px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-700 font-body">En
+                      attente</span>
+                    <button @click="activateProf(prof.id)"
+                      class="px-3 py-1.5 text-xs bg-green-100 text-green-700 hover:bg-green-200 font-semibold rounded-lg transition-colors font-body">
+                      Activer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>

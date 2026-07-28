@@ -1,0 +1,49 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+
+const api = require('@opentelemetry/api');
+const core = require('@sentry/core');
+
+function setupOpenTelemetryTracer() {
+  api.trace.setGlobalTracerProvider(new SentryCloudflareTraceProvider());
+}
+class SentryCloudflareTraceProvider {
+  constructor() {
+    this._tracers = /* @__PURE__ */ new Map();
+  }
+  getTracer(name, version, options) {
+    const key = `${name}@${version || ""}:${options?.schemaUrl || ""}`;
+    if (!this._tracers.has(key)) {
+      this._tracers.set(key, new SentryCloudflareTracer());
+    }
+    return this._tracers.get(key);
+  }
+}
+class SentryCloudflareTracer {
+  startSpan(name, options) {
+    return core.startInactiveSpan({
+      ...options,
+      name,
+      attributes: {
+        ...options?.attributes,
+        "sentry.cloudflare_tracer": true
+      }
+    });
+  }
+  startActiveSpan(name, options, context, fn) {
+    const opts = typeof options === "object" && options !== null ? options : {};
+    const spanOpts = {
+      ...opts,
+      name,
+      attributes: {
+        ...opts.attributes,
+        "sentry.cloudflare_tracer": true
+      }
+    };
+    const callback = typeof options === "function" ? options : typeof context === "function" ? context : typeof fn === "function" ? fn : () => {
+    };
+    return core.startSpanManual(spanOpts, callback);
+  }
+}
+
+exports.setupOpenTelemetryTracer = setupOpenTelemetryTracer;
+//# sourceMappingURL=tracer.js.map

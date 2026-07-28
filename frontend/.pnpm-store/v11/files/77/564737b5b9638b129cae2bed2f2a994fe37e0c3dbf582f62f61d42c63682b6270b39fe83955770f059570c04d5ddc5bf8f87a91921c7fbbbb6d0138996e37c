@@ -1,0 +1,6 @@
+import type { NitroApp } from 'nitro/types';
+/**
+ * This plugin patches the h3 event handler for Nuxt v5+ (Nitro v3+).
+ */
+declare const _default: (nitroApp: NitroApp) => void;
+export default _default;

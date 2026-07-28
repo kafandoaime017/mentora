@@ -1,0 +1,77 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+
+const core = require('@sentry/core');
+
+const flushLockRegistries = /* @__PURE__ */ new WeakMap();
+function getOriginalWaitUntil(context) {
+  const currentWaitUntil = context.waitUntil;
+  const original = flushLockRegistries.get(currentWaitUntil)?.originalWaitUntil;
+  return original ?? currentWaitUntil;
+}
+function makeFlushLock(context) {
+  const registry = getOrCreateFlushLockRegistry(context);
+  let resolveAllDone = () => void 0;
+  const allDone = new Promise((res) => {
+    resolveAllDone = res;
+  });
+  let pending = 0;
+  const lock = {
+    ready: allDone,
+    acquire: () => {
+      pending++;
+    },
+    release: () => {
+      if (--pending === 0) {
+        registry.locks.delete(lock);
+        resolveAllDone();
+      }
+    },
+    finalize: () => {
+      if (pending === 0) {
+        registry.locks.delete(lock);
+        resolveAllDone();
+      }
+      return allDone;
+    }
+  };
+  registry.locks.add(lock);
+  return Object.freeze(lock);
+}
+function getOrCreateFlushLockRegistry(context) {
+  const waitUntil = context.waitUntil;
+  const existingRegistry = flushLockRegistries.get(waitUntil);
+  if (existingRegistry) {
+    return existingRegistry;
+  }
+  const originalWaitUntil = context.waitUntil.bind(context);
+  const registry = { locks: /* @__PURE__ */ new Set(), originalWaitUntil };
+  const instrumentedWaitUntil = (promise) => {
+    const locks = [...registry.locks];
+    for (const lock of locks) {
+      lock.acquire();
+    }
+    return originalWaitUntil(
+      promise.finally(() => {
+        for (const lock of locks) {
+          lock.release();
+        }
+      })
+    );
+  };
+  flushLockRegistries.set(instrumentedWaitUntil, registry);
+  context.waitUntil = instrumentedWaitUntil;
+  return registry;
+}
+async function flushAndDispose(client, timeout = 2e3) {
+  if (!client) {
+    await core.flush(timeout);
+    return;
+  }
+  await client.flush(timeout);
+  client.dispose();
+}
+
+exports.flushAndDispose = flushAndDispose;
+exports.getOriginalWaitUntil = getOriginalWaitUntil;
+exports.makeFlushLock = makeFlushLock;
+//# sourceMappingURL=flush.js.map

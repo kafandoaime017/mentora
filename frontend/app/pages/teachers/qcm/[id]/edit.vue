@@ -195,7 +195,7 @@
                     </option>
                   </select>
                   <p class="text-xs text-[#9b9589] mt-1">
-                    Seules les filières de votre école sont visibles
+                    Vous ne pouvez créer une session que pour votre propre filière
                   </p>
                 </div>
                 
@@ -284,14 +284,18 @@
                     <div class="grid grid-cols-2 gap-4">
                       <div>
                         <label class="block text-sm font-semibold text-[#1e3a2f] mb-2">Type</label>
-                        <select 
+                        <select
                           v-model="question.type"
+                          @change="onTypeChange(index)"
                           :disabled="!canModify"
                           class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 bg-input rounded-xl focus:bg-input focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                         >
                           <option value="qcm">QCM (une seule réponse)</option>
                           <option value="qcm_multiple">QCM multiple</option>
                           <option value="vrai_faux">Vrai / Faux</option>
+                          <option value="texte_libre">Texte libre (correction manuelle)</option>
+                          <option value="appariement">Appariement</option>
+                          <option value="fichier">Upload de fichier</option>
                         </select>
                       </div>
                       <div>
@@ -306,7 +310,7 @@
                       </div>
                     </div>
                     
-                    <div v-if="question.type !== 'vrai_faux'">
+                    <div v-if="!['vrai_faux', 'texte_libre', 'appariement', 'fichier'].includes(question.type)">
                       <label class="block text-sm font-semibold text-[#1e3a2f] mb-2">Options</label>
                       <div class="space-y-2">
                         <div 
@@ -385,6 +389,77 @@
                           <span class="text-sm text-gray-700">Faux</span>
                         </label>
                       </div>
+                    </div>
+
+                    <!-- Texte libre -->
+                    <div v-if="question.type === 'texte_libre'">
+                      <label class="block text-sm font-semibold text-[#1e3a2f] mb-2">Réponse indicative (facultatif)</label>
+                      <textarea
+                        v-model="question.reponse_indicative"
+                        rows="2"
+                        :disabled="!canModify"
+                        class="w-full font-body pl-4 pr-4 py-3 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        placeholder="Ex: réponse attendue, pour vous aider lors de la correction"
+                      />
+                      <p class="text-xs text-[#9b9589] mt-1">
+                        Cette question sera à corriger manuellement après la session (pas de note automatique).
+                      </p>
+                    </div>
+
+                    <!-- Appariement -->
+                    <div v-if="question.type === 'appariement'">
+                      <label class="block text-sm font-semibold text-[#1e3a2f] mb-2">Paires à apparier</label>
+                      <div class="space-y-2">
+                        <div
+                          v-for="(_, pIndex) in question.appariement_gauche"
+                          :key="pIndex"
+                          class="flex items-center gap-2"
+                        >
+                          <input
+                            v-model="question.appariement_gauche[pIndex]"
+                            type="text"
+                            :disabled="!canModify"
+                            class="flex-1 font-body pl-4 pr-4 py-2.5 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            :placeholder="`Terme ${pIndex + 1}`"
+                          />
+                          <svg class="w-4 h-4 text-[#9b9589] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                          </svg>
+                          <input
+                            v-model="question.appariement_droite[pIndex]"
+                            type="text"
+                            :disabled="!canModify"
+                            class="flex-1 font-body pl-4 pr-4 py-2.5 text-sm text-gray-800 placeholder-gray-600 bg-input rounded-xl focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            :placeholder="`Correspond à ${pIndex + 1}`"
+                          />
+                          <button
+                            v-if="canModify"
+                            type="button"
+                            @click="removePaire(index, pIndex)"
+                            class="text-red-400 hover:text-red-600 shrink-0"
+                          >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                          </button>
+                        </div>
+                        <button
+                          v-if="canModify"
+                          type="button"
+                          @click="addPaire(index)"
+                          class="text-sm text-[#4a7c5e] hover:text-[#1e3a2f] transition-colors"
+                        >
+                          + Ajouter une paire
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Upload de fichier -->
+                    <div v-if="question.type === 'fichier'">
+                      <p class="text-xs text-[#9b9589] bg-[#f5f0e8]/50 rounded-lg p-3">
+                        L'étudiant devra téléverser un fichier (max 10 Mo) en réponse à cette question.
+                        Cette question sera à corriger manuellement après la session (pas de note automatique).
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -548,7 +623,10 @@ const addQuestion = () => {
     type: 'qcm',
     points: 1,
     options: ['', ''],
-    reponses_correctes: []
+    reponses_correctes: [],
+    reponse_indicative: '',
+    appariement_gauche: ['', ''],
+    appariement_droite: ['', '']
   })
 }
 
@@ -562,6 +640,33 @@ const addOption = (questionIndex) => {
 
 const removeOption = (questionIndex, optionIndex) => {
   form.value.questions[questionIndex].options.splice(optionIndex, 1)
+}
+
+const addPaire = (questionIndex) => {
+  const q = form.value.questions[questionIndex]
+  q.appariement_gauche.push('')
+  q.appariement_droite.push('')
+}
+
+const removePaire = (questionIndex, paireIndex) => {
+  const q = form.value.questions[questionIndex]
+  q.appariement_gauche.splice(paireIndex, 1)
+  q.appariement_droite.splice(paireIndex, 1)
+}
+
+const onTypeChange = (index) => {
+  const q = form.value.questions[index]
+  q.reponses_correctes = []
+  if (q.type === 'vrai_faux') {
+    q.options = ['Vrai', 'Faux']
+  } else if (q.type === 'appariement') {
+    if (!q.appariement_gauche || q.appariement_gauche.length < 2) q.appariement_gauche = ['', '']
+    if (!q.appariement_droite || q.appariement_droite.length < 2) q.appariement_droite = ['', '']
+  } else if (q.type === 'texte_libre' || q.type === 'fichier') {
+    // Pas d'options nécessaires
+  } else if (q.options.length < 2) {
+    q.options = ['', '']
+  }
 }
 
 const onFiliereChange = async () => {
@@ -637,7 +742,12 @@ const loadSession = async () => {
       duree: result.data.duree || 0,
       filiere_id: result.data.filiere_id ? String(result.data.filiere_id) : '',
       classe_id: result.data.classe_id ? String(result.data.classe_id) : '',
-      questions: result.data.questions || []
+      questions: (result.data.questions || []).map(q => ({
+        ...q,
+        reponse_indicative: q.reponse_indicative || '',
+        appariement_gauche: q.type === 'appariement' ? (q.options?.gauche || ['', '']) : ['', ''],
+        appariement_droite: q.type === 'appariement' ? (q.options?.droite || ['', '']) : ['', '']
+      }))
     }
     
     formattedDateDebut.value = formatDateDisplay(result.data.date_debut)
@@ -703,18 +813,42 @@ const submitUpdate = async () => {
       toast.error(`Question ${i + 1} : veuillez saisir le texte`)
       return
     }
-    if (q.type !== 'vrai_faux' && q.options.some(opt => !opt.trim())) {
-      toast.error(`Question ${i + 1} : veuillez remplir toutes les options`)
-      return
-    }
-    if (q.reponses_correctes.length === 0) {
-      toast.error(`Question ${i + 1} : veuillez sélectionner la réponse correcte`)
-      return
+    if (q.type === 'appariement') {
+      if (q.appariement_gauche.length < 2 || q.appariement_gauche.some(v => !v.trim()) || q.appariement_droite.some(v => !v.trim())) {
+        toast.error(`Question ${i + 1} : veuillez remplir toutes les paires à apparier (au moins 2)`)
+        return
+      }
+    } else if (q.type === 'texte_libre' || q.type === 'fichier') {
+      // Rien à valider : pas d'options, correction manuelle après la session
+    } else {
+      if (q.options.some(opt => !opt.trim())) {
+        toast.error(`Question ${i + 1} : veuillez remplir toutes les options`)
+        return
+      }
+      if (q.reponses_correctes.length === 0) {
+        toast.error(`Question ${i + 1} : veuillez sélectionner la réponse correcte`)
+        return
+      }
     }
   }
-  
+
   submitting.value = true
   const id = parseInt(route.params.id)
+
+  const questionsAEnvoyer = form.value.questions.map(q => {
+    if (q.type === 'appariement') {
+      return {
+        ...q,
+        options: { gauche: q.appariement_gauche, droite: q.appariement_droite },
+        reponses_correctes: q.appariement_gauche.map((_, idx) => idx)
+      }
+    }
+    if (q.type === 'texte_libre' || q.type === 'fichier') {
+      return { ...q, options: [], reponses_correctes: [] }
+    }
+    return q
+  })
+
   const result = await updateQCM(id, {
     titre: form.value.titre,
     description: form.value.description,
@@ -724,7 +858,7 @@ const submitUpdate = async () => {
     duree: form.value.duree,
     filiere_id: parseInt(form.value.filiere_id),
     classe_id: parseInt(form.value.classe_id),
-    questions: form.value.questions
+    questions: questionsAEnvoyer
   })
   
   if (result.success) {

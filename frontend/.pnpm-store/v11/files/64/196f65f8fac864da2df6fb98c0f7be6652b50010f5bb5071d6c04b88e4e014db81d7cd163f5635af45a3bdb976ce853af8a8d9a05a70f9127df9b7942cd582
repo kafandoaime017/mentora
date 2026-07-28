@@ -1,0 +1,60 @@
+import { startSpan, SEMANTIC_ATTRIBUTE_SENTRY_ORIGIN, isThenable } from '@sentry/core';
+import { storeSpanContext } from '../utils/traceLinks.js';
+import { instrumentDurableObjectSyncKvStorage } from './instrumentDurableObjectSyncKvStorage.js';
+
+const STORAGE_METHODS_TO_INSTRUMENT = ["get", "put", "delete", "list", "setAlarm", "getAlarm", "deleteAlarm"];
+function instrumentDurableObjectStorage(storage, waitUntil) {
+  return new Proxy(storage, {
+    get(target, prop, _receiver) {
+      const original = Reflect.get(target, prop, target);
+      if (prop === "kv" && original != null && "get" in original && "put" in original) {
+        return instrumentDurableObjectSyncKvStorage(original);
+      }
+      if (typeof original !== "function") {
+        return original;
+      }
+      const methodName = prop;
+      if (!STORAGE_METHODS_TO_INSTRUMENT.includes(methodName)) {
+        return original.bind(target);
+      }
+      return function(...args) {
+        return startSpan(
+          {
+            // Use underscore naming to match Cloudflare's native instrumentation (e.g., "durable_object_storage_get")
+            name: `durable_object_storage_${methodName}`,
+            op: "db",
+            attributes: {
+              [SEMANTIC_ATTRIBUTE_SENTRY_ORIGIN]: "auto.db.cloudflare.durable_object",
+              "db.system.name": "cloudflare.durable_object.storage",
+              "db.operation.name": methodName
+            }
+          },
+          () => {
+            const teardown = async () => {
+              if (methodName === "setAlarm") {
+                storeSpanContext(target, "alarm");
+              }
+            };
+            const result = original.apply(target, args);
+            if (!isThenable(result)) {
+              waitUntil?.(teardown());
+              return result;
+            }
+            return result.then(
+              (res) => {
+                waitUntil?.(teardown());
+                return res;
+              },
+              (e) => {
+                throw e;
+              }
+            );
+          }
+        );
+      };
+    }
+  });
+}
+
+export { instrumentDurableObjectStorage };
+//# sourceMappingURL=instrumentDurableObjectStorage.js.map

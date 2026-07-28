@@ -1,0 +1,16 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+
+const core = require('@sentry/core');
+
+const vueIntegration = core.defineIntegration((options = {}) => {
+  return {
+    // NOTE: This name is different from the original vueIntegration's name.
+    name: "NuxtVueIntegration",
+    setup() {
+      core.GLOBAL_OBJ._sentryNuxtVueIntegrationOptions = options;
+    }
+  };
+});
+
+exports.vueIntegration = vueIntegration;
+//# sourceMappingURL=vueIntegration.js.map

@@ -1,0 +1,26 @@
+import { debug } from "@sentry/core";
+import { sentryCaptureErrorHook } from "../hooks/captureErrorHook.js";
+import { addSentryTracingMetaTags } from "../utils.js";
+export default (nitroApp) => {
+  nitroApp.hooks.hook("error", sentryCaptureErrorHook);
+  nitroApp.hooks.hook("render:html", (html, { event }) => {
+    const nodeResHeadersH3v1 = event.node?.res?.getHeaders() || {};
+    const isPreRenderedPage = Object.keys(nodeResHeadersH3v1).includes("x-nitro-prerender") || // fix   × typescript-eslint(no-unsafe-member-access): Unsafe member access .res on an `any` value.
+    // oxlint-disable-next-line typescript/no-explicit-any,typescript-oxlint/no-unsafe-member-access
+    !!event.res?.headers?.has?.("x-nitro-prerender");
+    const isSWRCachedPage = (
+      /* Nitro v2 */
+      event?.context?.cache?.options?.swr || // oxlint-disable-next-line typescript-oxlint/no-unsafe-member-access
+      /* Nitro v3 */
+      event?.context?.routeRules?.swr
+    );
+    if (!isPreRenderedPage && !isSWRCachedPage) {
+      addSentryTracingMetaTags(html.head);
+    } else {
+      const reason = isPreRenderedPage ? "the page was pre-rendered" : "SWR caching is enabled for the route";
+      debug.log(
+        `Not adding Sentry tracing meta tags to HTML for ${event.path} because ${reason}. This will disable distributed tracing and prevent connecting multiple client page loads to the same server request.`
+      );
+    }
+  });
+};

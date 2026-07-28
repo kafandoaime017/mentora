@@ -1,0 +1,119 @@
+import { withIsolationScope, parseStringToURLObject, getHttpSpanDetailsFromUrlObject, httpHeadersToSpanAttributes, winterCGHeadersToDict, getClient, SEMANTIC_ATTRIBUTE_SENTRY_OP, captureException, continueTrace, startSpanManual, setHttpStatus } from '@sentry/core';
+import { captureIncomingRequestBody } from './integrations/httpServer.js';
+import { getOriginalWaitUntil, flushAndDispose } from './flush.js';
+import { addCloudResourceContext, addRequest, addCultureContext } from './scope-utils.js';
+import { init } from './sdk.js';
+import { classifyResponseStreaming } from './utils/streaming.js';
+
+function getRequestErrorMechanismType(context) {
+  return context && "storage" in context ? "auto.faas.cloudflare.durable_object" : "auto.http.cloudflare";
+}
+function wrapRequestHandler(wrapperOptions, handler) {
+  return withIsolationScope(async (isolationScope) => {
+    const { options, request, captureErrors = true } = wrapperOptions;
+    const context = wrapperOptions.context;
+    const waitUntil = context ? getOriginalWaitUntil(context)?.bind(context) : void 0;
+    const errorMechanismType = getRequestErrorMechanismType(context);
+    const client = init({ ...options, ctx: context });
+    isolationScope.setClient(client);
+    const urlObject = parseStringToURLObject(request.url);
+    const [name, attributes] = getHttpSpanDetailsFromUrlObject(urlObject, "server", "auto.http.cloudflare", request);
+    const contentLength = request.headers.get("content-length");
+    if (contentLength) {
+      attributes["http.request.body.size"] = parseInt(contentLength, 10);
+    }
+    const userAgentHeader = request.headers.get("user-agent");
+    if (userAgentHeader) {
+      attributes["user_agent.original"] = userAgentHeader;
+    }
+    Object.assign(
+      attributes,
+      httpHeadersToSpanAttributes(
+        winterCGHeadersToDict(request.headers),
+        getClient()?.getDataCollectionOptions() ?? false
+      )
+    );
+    attributes[SEMANTIC_ATTRIBUTE_SENTRY_OP] = "http.server";
+    addCloudResourceContext(isolationScope);
+    addRequest(isolationScope, request);
+    if (request.cf) {
+      addCultureContext(isolationScope, request.cf);
+      if (typeof request.cf.httpProtocol === "string") {
+        attributes["network.protocol.name"] = request.cf.httpProtocol;
+      }
+    }
+    if (request.method === "OPTIONS" || request.method === "HEAD") {
+      try {
+        return await handler();
+      } catch (e) {
+        if (captureErrors) {
+          captureException(e, { mechanism: { handled: false, type: errorMechanismType } });
+        }
+        throw e;
+      } finally {
+        waitUntil?.(flushAndDispose(client));
+      }
+    }
+    if (client) {
+      await captureIncomingRequestBody(client, request);
+    }
+    return continueTrace(
+      { sentryTrace: request.headers.get("sentry-trace") || "", baggage: request.headers.get("baggage") },
+      () => {
+        return startSpanManual({ name, attributes }, async (span) => {
+          let res;
+          try {
+            res = await handler();
+            setHttpStatus(span, res.status);
+          } catch (e) {
+            span.end();
+            if (captureErrors) {
+              captureException(e, { mechanism: { handled: false, type: errorMechanismType } });
+            }
+            waitUntil?.(flushAndDispose(client));
+            throw e;
+          }
+          const classification = classifyResponseStreaming(res);
+          if (classification.isStreaming && res.body) {
+            try {
+              let ended = false;
+              const endSpanOnce = () => {
+                if (ended) return;
+                ended = true;
+                span.end();
+                waitUntil?.(flushAndDispose(client));
+              };
+              const transform = new TransformStream({
+                flush() {
+                  endSpanOnce();
+                },
+                cancel() {
+                  endSpanOnce();
+                }
+              });
+              return new Response(res.body.pipeThrough(transform), {
+                status: res.status,
+                statusText: res.statusText,
+                headers: res.headers
+              });
+            } catch {
+              span.end();
+              waitUntil?.(flushAndDispose(client));
+              return res;
+            }
+          }
+          span.end();
+          if (res.status === 101) {
+            waitUntil?.(client?.flush(2e3));
+          } else {
+            waitUntil?.(flushAndDispose(client));
+          }
+          return res;
+        });
+      }
+    );
+  });
+}
+
+export { wrapRequestHandler };
+//# sourceMappingURL=request.js.map

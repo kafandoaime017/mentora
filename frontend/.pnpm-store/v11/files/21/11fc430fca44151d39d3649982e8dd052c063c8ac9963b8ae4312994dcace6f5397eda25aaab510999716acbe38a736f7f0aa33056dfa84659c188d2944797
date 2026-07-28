@@ -1,0 +1,32 @@
+function hasCloudflareProperty(context) {
+  return context !== null && typeof context === "object" && // context.cloudflare properties
+  "cloudflare" in context && typeof context.cloudflare === "object" && context.cloudflare !== null && "context" in context.cloudflare;
+}
+export function hasCfProperty(context) {
+  return context !== null && typeof context === "object" && // context.cf properties
+  "cf" in context && typeof context.cf === "object" && context.cf !== null;
+}
+function hasCfAndCloudflare(context) {
+  return hasCfProperty(context) && hasCloudflareProperty(context);
+}
+export function isEventType(event) {
+  if (event === null || typeof event !== "object") return false;
+  return (
+    // basic properties
+    "protocol" in event && "host" in event && typeof event.protocol === "string" && typeof event.host === "string" && // context property
+    "context" in event && typeof event.context === "object" && event.context !== null && // context.cf properties
+    (hasCfAndCloudflare(event.context) || "_platform" in event.context && hasCfAndCloudflare(event.context._platform))
+  );
+}
+export function getCfProperties(event) {
+  if ("cf" in event.context) {
+    return event.context.cf;
+  }
+  return event.context._platform.cf;
+}
+export function getCloudflareProperties(event) {
+  if ("cloudflare" in event.context) {
+    return event.context.cloudflare;
+  }
+  return event.context._platform.cloudflare;
+}

@@ -1,0 +1,41 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+
+const rpcMeta = require('../utils/rpcMeta.js');
+const instrumentFetcher = require('./worker/instrumentFetcher.js');
+
+const STUB_NON_RPC_METHODS = /* @__PURE__ */ new Set(["fetch", "connect", "dup"]);
+function instrumentDurableObjectNamespace(namespace) {
+  return new Proxy(namespace, {
+    get(target, prop, _receiver) {
+      const value = Reflect.get(target, prop);
+      if (typeof value !== "function") {
+        return value;
+      }
+      if (prop === "get" || prop === "getByName") {
+        return function(...args) {
+          const stub = Reflect.apply(value, target, args);
+          return instrumentDurableObjectStub(stub);
+        };
+      }
+      return value.bind(target);
+    }
+  });
+}
+function instrumentDurableObjectStub(stub) {
+  return new Proxy(stub, {
+    get(target, prop) {
+      const value = Reflect.get(target, prop);
+      if (prop === "fetch" && typeof value === "function") {
+        return instrumentFetcher.instrumentFetcher((...args) => Reflect.apply(value, target, args));
+      }
+      if (typeof value === "function" && typeof prop === "string" && !STUB_NON_RPC_METHODS.has(prop)) {
+        return (...args) => Reflect.apply(value, target, rpcMeta.appendRpcMeta(args));
+      }
+      return value;
+    }
+  });
+}
+
+exports.STUB_NON_RPC_METHODS = STUB_NON_RPC_METHODS;
+exports.instrumentDurableObjectNamespace = instrumentDurableObjectNamespace;
+//# sourceMappingURL=instrumentDurableObjectNamespace.js.map

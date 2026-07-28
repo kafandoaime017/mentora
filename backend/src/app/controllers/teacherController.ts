@@ -8,15 +8,25 @@ import { Classe } from '../models/Classe';
 import { Filiere } from '../models/Filiere';
 import { User } from '../models/User';
 import QRCode from 'qrcode';
+import { getSocketIO } from '../../socket';
+import { createNotification } from './notificationController';
+import { NotificationType } from '../models/Notification';
+import { EtudiantProfil } from '../models/EtudiantProfil';
+import { QuestionBanque, QuestionDifficulte } from '../models/QuestionBanque';
+import { ProfesseurProfil } from '../models/ProfesseurProfil';
+import { Ecole } from '../models/Ecole';
+import {
+    envoyerEmailSessionDemarree,
+    envoyerEmailNouvelleSession,
+    envoyerEmailNotesPubliees
+} from '../services/emailService'
+import { logAudit, getClientIp } from '../services/auditService'
+import { LIMITES_PLANS } from '../middleware/checkPlan'
 
 
-let ioInstance: any;
 
-export const setSocketIO = (io: any) => {
-  ioInstance = io;
-};
 
-// Définir le type pour les requêtes authentifiées
+// Definir le type pour les requetes authentifiees
 interface AuthRequest extends Request {
     user?: User;
 }
@@ -28,13 +38,37 @@ const reponseRepo = AppDataSource.getRepository(ReponseEtudiant);
 const classeRepo = AppDataSource.getRepository(Classe);
 const filiereRepo = AppDataSource.getRepository(Filiere);
 const userRepo = AppDataSource.getRepository(User);
+const etudiantProfilRepo = AppDataSource.getRepository(EtudiantProfil);
+const banqueRepo = AppDataSource.getRepository(QuestionBanque);
+const professeurProfilRepo = AppDataSource.getRepository(ProfesseurProfil);
+const ecoleRepo = AppDataSource.getRepository(Ecole);
+
+// --- Detection de triche basique : seuils (arbitraires, ajustables) ---
+const SEUIL_CHANGEMENTS_ONGLET = 3;      // nb de fois ou l'etudiant a quitte l'onglet/le plein ecran
+const SEUIL_TEMPS_REPONSE_MS   = 1500;   // en dessous, une reponse est jugee "trop rapide"
+const SEUIL_NB_REPONSES_RAPIDES = 2;     // nb de reponses "trop rapides" avant suspicion
+
+// Journalise une action professeur pour le log d'audit du directeur.
+// Best-effort : l'ecoleId est resolu a la volee via le profil professeur.
+const auditProf = async (req: AuthRequest, action: string, cibleType?: string, cibleId?: number, details?: any) => {
+    const profil = await professeurProfilRepo.findOne({ where: { userId: req.user!.id } })
+    logAudit({
+        ecoleId: profil?.ecoleId ?? null,
+        userId: req.user!.id,
+        userNom: `${req.user!.prenom} ${req.user!.nom}`,
+        userRole: req.user!.role,
+        action, cibleType, cibleId, details,
+        ip: getClientIp(req)
+    })
+}
 
 interface QuestionInput {
     texte: string;
     type: QuestionType;
     points: number;
-    options: string[];
+    options: any;
     reponses_correctes: number[];
+    reponse_indicative?: string;
 }
 
 // ==================== UTILS ====================
@@ -49,12 +83,73 @@ const parseId = (id: string | string[] | undefined): number => {
     return isNaN(parsed) ? 0 : parsed;
 };
 
-const autoCloseSession = async (sessionId: number): Promise<void> => {
-    const session = await sessionRepo.findOne({ where: { id: sessionId } });
+export const autoCloseSession = async (sessionId: number): Promise<void> => {
+    const session = await sessionRepo.findOne({
+        where: { id: sessionId },
+        relations: ['classe', 'filiere']
+    });
     if (session && session.status === SessionStatus.ACTIVE) {
         await sessionRepo.update(sessionId, { status: SessionStatus.COMPLETED });
         await calculateAndUpdateScores(sessionId);
+
+        const io = getSocketIO();
+        if (io) {
+            const roomName = `classe_${session.classe_id}_filiere_${session.filiere_id}`;
+
+            // Notifier le dashboard etudiant
+            io.to(roomName).emit('session-completed', {
+                sessionId: session.id,
+                message: `La session "${session.titre}" est maintenant terminee.`
+            })
+
+            // Notifier les etudiants EN TRAIN de participer
+            io.to(roomName).emit('session-force-ended', {
+                sessionId: session.id,
+                message: `La session "${session.titre}" a ete terminee par le professeur.`
+            })
+
+            console.log(`Session terminee notifiee a: ${roomName}`)
+        }
     }
+};
+
+// Points obtenus pour UNE reponse : les types auto-corriges (qcm/qcm_multiple/
+// vrai_faux/appariement) se basent sur est_correcte ; les types a correction
+// manuelle (texte_libre/fichier) ne comptent que si le professeur les a deja
+// corriges (note_manuelle), sinon 0 en attendant la correction.
+const computePointsForReponse = (r: ReponseEtudiant, q: Question): number => {
+    if (q.type === QuestionType.TEXTE_LIBRE || q.type === QuestionType.FICHIER) {
+        return r.corrige_manuellement ? (r.note_manuelle || 0) : 0;
+    }
+    return r.est_correcte ? q.points : 0;
+};
+
+// Vrai si la session contient encore des reponses texte_libre/fichier non
+// corrigees par le professeur (utilise pour bloquer la publication des notes).
+const hasUngradedManualReponses = async (sessionId: number): Promise<boolean> => {
+    const count = await reponseRepo
+        .createQueryBuilder('r')
+        .innerJoin('r.question', 'q')
+        .where('r.session_id = :sessionId', { sessionId })
+        .andWhere('q.type IN (:...types)', { types: [QuestionType.TEXTE_LIBRE, QuestionType.FICHIER] })
+        .andWhere('r.corrige_manuellement = false')
+        .getCount();
+    return count > 0;
+};
+
+const recomputerScoreParticipant = async (sessionId: number, etudiantId: number): Promise<void> => {
+    const reponses = await reponseRepo.find({ where: { session_id: sessionId, etudiant_id: etudiantId } });
+    const questions = await questionRepo.find({ where: { session_id: sessionId } });
+
+    const pointsObtenus = reponses.reduce((sum, r) => {
+        const q = questions.find(q => q.id === r.question_id);
+        return q ? sum + computePointsForReponse(r, q) : sum;
+    }, 0);
+
+    await participantRepo.update(
+        { session_id: sessionId, etudiant_id: etudiantId },
+        { score: pointsObtenus }
+    );
 };
 
 const calculateAndUpdateScores = async (sessionId: number): Promise<void> => {
@@ -63,31 +158,44 @@ const calculateAndUpdateScores = async (sessionId: number): Promise<void> => {
     });
 
     const questions = await questionRepo.find({ where: { session_id: sessionId } });
-    const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
 
     for (const participant of participants) {
         const reponses = await reponseRepo.find({
             where: { session_id: sessionId, etudiant_id: participant.etudiant_id }
         });
 
+        // Points bruts, pas pourcentage
         const pointsObtenus = reponses.reduce((sum, r) => {
             const question = questions.find(q => q.id === r.question_id);
-            return sum + (r.est_correcte ? (question?.points || 0) : 0);
+            return question ? sum + computePointsForReponse(r, question) : sum;
         }, 0);
 
-        participant.score = totalPoints > 0 ? (pointsObtenus / totalPoints) * 100 : 0;
+        participant.score = pointsObtenus; // points bruts
         participant.statut = ParticipantStatus.TERMINE;
         participant.date_completed = new Date();
         await participantRepo.save(participant);
     }
 };
 
-// ==================== 1. CRÉER UN QCM ====================
+// ==================== 1. CREER UN QCM ====================
 
 export const createQCM = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { titre, description, theme, questions, date_debut, date_fin, duree, classe_id, filiere_id } = req.body;
         const professeurId = req.user!.id;
+
+        const professeur = await userRepo.findOne({
+            where: { id: professeurId },
+            relations: ['professeurProfil']
+        });
+
+        if (professeur?.professeurProfil?.filiereId && professeur.professeurProfil.filiereId !== filiere_id) {
+            res.status(403).json({
+                success: false,
+                message: 'Vous ne pouvez creer une session que pour votre propre filiere'
+            });
+            return;
+        }
 
         const classe = await classeRepo.findOne({
             where: { id: classe_id },
@@ -97,7 +205,7 @@ export const createQCM = async (req: AuthRequest, res: Response, next: NextFunct
         if (!classe || classe.filiereId !== filiere_id) {
             res.status(400).json({
                 success: false,
-                message: 'Cette classe n\'appartient pas à la filière sélectionnée'
+                message: 'Cette classe n\'appartient pas a la filiere selectionnee'
             });
             return;
         }
@@ -127,7 +235,8 @@ export const createQCM = async (req: AuthRequest, res: Response, next: NextFunct
                 points: q.points || 1,
                 ordre: i + 1,
                 options: q.options || [],
-                reponses_correctes: q.reponses_correctes
+                reponses_correctes: q.reponses_correctes,
+                reponse_indicative: q.reponse_indicative || null
             });
             await questionRepo.save(question);
         }
@@ -137,10 +246,11 @@ export const createQCM = async (req: AuthRequest, res: Response, next: NextFunct
         session.qr_code = qrCodeImage;
         await sessionRepo.save(session);
 
-        // 🔴 NOTIFIER LES ÉTUDIANTS VIA WEBSOCKET
-        if (ioInstance) {
+        // NOTIFIER LES ETUDIANTS VIA WEBSOCKET
+        const io = getSocketIO();
+        if (io) {
             const roomName = `classe_${classe_id}_filiere_${filiere_id}`;
-            
+
             const sessionData = {
                 id: session.id,
                 titre: session.titre,
@@ -151,13 +261,33 @@ export const createQCM = async (req: AuthRequest, res: Response, next: NextFunct
                 code: session.code,
                 professeur: `${req.user!.prenom} ${req.user!.nom}`
             };
-            
-            ioInstance.to(roomName).emit('new-session', {
+
+            io.to(roomName).emit('new-session', {
                 session: sessionData,
-                message: `📚 Nouvelle session disponible: ${session.titre}`
+                message: `Nouvelle session disponible: ${session.titre}`
             });
-            
-            console.log(`📢 Nouvelle session notifiée à la salle: ${roomName}`);
+
+            // Notifier les etudiants de la classe en DB
+            const etudiants = await etudiantProfilRepo.find({
+                where: { classeId: classe_id, filiereId: filiere_id }
+            })
+            for (const etudiant of etudiants) {
+                await createNotification(etudiant.userId, {
+                    titre: 'Nouvelle session disponible',
+                    message: `La session "${session.titre}" a ete creee par ${req.user!.prenom} ${req.user!.nom}`,
+                    type: NotificationType.NEW_SESSION,
+                    link: '/students',
+                    sessionId: session.id
+                })
+
+
+                const user = await userRepo.findOne({ where: { id: etudiant.userId } })
+                if (user?.notifNouvelleSession) {
+                    await envoyerEmailNouvelleSession(user.email, user.prenom, session.titre)
+                }
+            }
+
+            console.log(`Nouvelle session notifiee a la salle: ${roomName}`);
         }
 
         const sessionWithQuestions = await sessionRepo.findOne({
@@ -165,9 +295,11 @@ export const createQCM = async (req: AuthRequest, res: Response, next: NextFunct
             relations: ['questions', 'classe', 'filiere']
         });
 
+        auditProf(req, 'creation_session', 'session', session.id, { titre: session.titre })
+
         res.json({
             success: true,
-            message: 'QCM créé avec succès',
+            message: 'QCM cree avec succes',
             data: sessionWithQuestions
         });
     } catch (err) {
@@ -182,6 +314,19 @@ export const createSession = async (req: AuthRequest, res: Response, next: NextF
         const { titre, description, theme, date_debut, date_fin, duree, classe_id, filiere_id } = req.body;
         const professeurId = req.user!.id;
 
+        const professeur = await userRepo.findOne({
+            where: { id: professeurId },
+            relations: ['professeurProfil']
+        });
+
+        if (professeur?.professeurProfil?.filiereId && professeur.professeurProfil.filiereId !== filiere_id) {
+            res.status(403).json({
+                success: false,
+                message: 'Vous ne pouvez creer une session que pour votre propre filiere'
+            });
+            return;
+        }
+
         const classe = await classeRepo.findOne({
             where: { id: classe_id },
             relations: ['filiere']
@@ -190,7 +335,7 @@ export const createSession = async (req: AuthRequest, res: Response, next: NextF
         if (!classe || classe.filiereId !== filiere_id) {
             res.status(400).json({
                 success: false,
-                message: 'Classe invalide pour cette filière'
+                message: 'Classe invalide pour cette filiere'
             });
             return;
         }
@@ -216,10 +361,11 @@ export const createSession = async (req: AuthRequest, res: Response, next: NextF
         session.qr_code = qrCodeImage;
         await sessionRepo.save(session);
 
-        // 🔴 NOTIFIER LES ÉTUDIANTS VIA WEBSOCKET
-        if (ioInstance) {
+        // NOTIFIER LES ETUDIANTS VIA WEBSOCKET
+        const io = getSocketIO();
+        if (io) {
             const roomName = `classe_${classe_id}_filiere_${filiere_id}`;
-            
+
             const sessionData = {
                 id: session.id,
                 titre: session.titre,
@@ -230,18 +376,18 @@ export const createSession = async (req: AuthRequest, res: Response, next: NextF
                 code: session.code,
                 professeur: `${req.user!.prenom} ${req.user!.nom}`
             };
-            
-            ioInstance.to(roomName).emit('new-session', {
+
+            io.to(roomName).emit('new-session', {
                 session: sessionData,
-                message: `📚 Nouvelle session planifiée: ${session.titre}`
+                message: `Nouvelle session planifiee: ${session.titre}`
             });
-            
-            console.log(`📢 Nouvelle session notifiée à la salle: ${roomName}`);
+
+            console.log(`Nouvelle session notifiee a la salle: ${roomName}`);
         }
 
         res.json({
             success: true,
-            message: 'Session planifiée avec succès',
+            message: 'Session planifiee avec succes',
             data: {
                 id: session.id,
                 code: session.code,
@@ -277,7 +423,7 @@ export const getSessions = async (req: AuthRequest, res: Response, next: NextFun
     }
 };
 
-// ==================== 4. DÉTAILS D'UNE SESSION ====================
+// ==================== 4. DETAILS D'UNE SESSION ====================
 
 export const getSessionDetails = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -293,7 +439,7 @@ export const getSessionDetails = async (req: AuthRequest, res: Response, next: N
         });
 
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' });
+            res.status(404).json({ success: false, message: 'Session non trouvee' });
             return;
         }
 
@@ -315,6 +461,74 @@ export const getSessionDetails = async (req: AuthRequest, res: Response, next: N
     }
 };
 
+// ==================== DUPLIQUER UNE SESSION (MODELE) ====================
+// Recopie une session (questions incluses) pour eviter de tout ressaisir a
+// chaque examen. La copie repart en PENDING avec des dates provisoires
+// (demain, a l'heure actuelle) - le professeur est renvoye vers l'edition
+// pour les redefinir avant de la demarrer.
+export const duplicateSession = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const sessionId = parseId(req.params.id);
+        const professeurId = req.user!.id;
+        if (!sessionId) {
+            res.status(400).json({ success: false, message: 'ID invalide' });
+            return;
+        }
+
+        const original = await sessionRepo.findOne({
+            where: { id: sessionId, created_by: professeurId },
+            relations: ['questions']
+        });
+        if (!original) {
+            res.status(404).json({ success: false, message: 'Session non trouvee' });
+            return;
+        }
+
+        const dateDebut = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const dateFin   = new Date(dateDebut.getTime() + (original.duree || 30) * 60 * 1000);
+
+        const copie = sessionRepo.create({
+            titre: `${original.titre} (copie)`,
+            description: original.description,
+            theme: original.theme,
+            code: generateUniqueCode(),
+            date_debut: dateDebut,
+            date_fin: dateFin,
+            duree: original.duree,
+            classe_id: original.classe_id,
+            filiere_id: original.filiere_id,
+            created_by: professeurId,
+            status: SessionStatus.PENDING
+        });
+        await sessionRepo.save(copie);
+
+        const questionsOriginales = [...original.questions].sort((a, b) => a.ordre - b.ordre);
+        for (let i = 0; i < questionsOriginales.length; i++) {
+            const q = questionsOriginales[i];
+            await questionRepo.save(questionRepo.create({
+                session_id: copie.id,
+                texte: q.texte,
+                type: q.type,
+                points: q.points,
+                ordre: i + 1,
+                options: q.options,
+                reponses_correctes: q.reponses_correctes,
+                reponse_indicative: q.reponse_indicative
+            }));
+        }
+
+        auditProf(req, 'duplication_session', 'session', copie.id, { titre: copie.titre, sourceId: original.id });
+
+        res.json({
+            success: true,
+            message: 'Session dupliquee - pensez a redefinir les dates avant de la demarrer',
+            data: { id: copie.id }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const updateSession = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const sessionId = parseId(req.params.id);
@@ -324,49 +538,49 @@ export const updateSession = async (req: AuthRequest, res: Response, next: NextF
         }
 
         const { titre, description, theme, date_debut, date_fin, duree, classe_id, filiere_id, questions } = req.body;
-        
-        // ID du professeur connecté
+
+        // ID du professeur connecte
         const professeurId = req.user!.id;
 
-        // Récupérer la session avec vérification du créateur
-        const session = await sessionRepo.findOne({ 
-            where: { 
+        // Recuperer la session avec verification du createur
+        const session = await sessionRepo.findOne({
+            where: {
                 id: sessionId,
-                created_by: professeurId 
-            } 
+                created_by: professeurId
+            }
         });
 
         if (!session) {
-            res.status(404).json({ 
-                success: false, 
-                message: 'Session non trouvée ou vous n\'êtes pas autorisé à la modifier' 
+            res.status(404).json({
+                success: false,
+                message: 'Session non trouvee ou vous n\'etes pas autorise a la modifier'
             });
             return;
         }
 
-        // Vérifier le statut
+        // Verifier le statut
         if (session.status !== SessionStatus.PENDING) {
             res.status(400).json({
                 success: false,
-                message: 'Seules les sessions en attente peuvent être modifiées'
+                message: 'Seules les sessions en attente peuvent etre modifiees'
             });
             return;
         }
 
-        // Vérifier si des réponses existent déjà (optionnel)
-        const hasReponses = await reponseRepo.count({ 
-            where: { session_id: sessionId } 
+        // Verifier si des reponses existent deja (optionnel)
+        const hasReponses = await reponseRepo.count({
+            where: { session_id: sessionId }
         });
-        
+
         if (hasReponses > 0 && questions) {
             res.status(400).json({
                 success: false,
-                message: 'Des étudiants ont déjà répondu, vous ne pouvez pas modifier les questions'
+                message: 'Des etudiants ont deja repondu, vous ne pouvez pas modifier les questions'
             });
             return;
         }
 
-        // Mettre à jour les informations de base
+        // Mettre a jour les informations de base
         session.titre = titre || session.titre;
         session.description = description !== undefined ? description : session.description;
         session.theme = theme !== undefined ? theme : session.theme;
@@ -378,12 +592,12 @@ export const updateSession = async (req: AuthRequest, res: Response, next: NextF
 
         await sessionRepo.save(session);
 
-        // Mettre à jour les questions si fournies
+        // Mettre a jour les questions si fournies
         if (questions && Array.isArray(questions)) {
             // Supprimer les anciennes questions
             await questionRepo.delete({ session_id: sessionId });
-            
-            // Créer les nouvelles questions
+
+            // Creer les nouvelles questions
             for (let i = 0; i < questions.length; i++) {
                 const q = questions[i];
                 const question = questionRepo.create({
@@ -393,7 +607,8 @@ export const updateSession = async (req: AuthRequest, res: Response, next: NextF
                     points: q.points || 1,
                     ordre: i + 1,
                     options: q.options || [],
-                    reponses_correctes: q.reponses_correctes
+                    reponses_correctes: q.reponses_correctes,
+                    reponse_indicative: q.reponse_indicative || null
                 });
                 await questionRepo.save(question);
             }
@@ -407,7 +622,7 @@ export const updateSession = async (req: AuthRequest, res: Response, next: NextF
 
         res.json({
             success: true,
-            message: 'Session mise à jour avec succès',
+            message: 'Session mise a jour avec succes',
             data: updatedSession
         });
     } catch (err) {
@@ -428,30 +643,31 @@ export const deleteSession = async (req: AuthRequest, res: Response, next: NextF
         const session = await sessionRepo.findOne({ where: { id: sessionId } });
 
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' });
+            res.status(404).json({ success: false, message: 'Session non trouvee' });
             return;
         }
 
         if (session.status !== SessionStatus.PENDING && session.status !== SessionStatus.DRAFT) {
             res.status(400).json({
                 success: false,
-                message: 'Seules les sessions non commencées peuvent être supprimées'
+                message: 'Seules les sessions non commencees peuvent etre supprimees'
             });
             return;
         }
 
         await sessionRepo.delete(sessionId);
+        auditProf(req, 'suppression_session', 'session', sessionId, { titre: session.titre })
 
         res.json({
             success: true,
-            message: 'Session supprimée'
+            message: 'Session supprimee'
         });
     } catch (err) {
         next(err);
     }
 };
 
-// ==================== 7. DÉMARRER UNE SESSION ====================
+// ==================== 7. DEMARRER UNE SESSION ====================
 
 export const startSession = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -461,20 +677,20 @@ export const startSession = async (req: AuthRequest, res: Response, next: NextFu
             return;
         }
 
-        const session = await sessionRepo.findOne({ 
+        const session = await sessionRepo.findOne({
             where: { id: sessionId },
             relations: ['classe', 'filiere']
         });
 
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' });
+            res.status(404).json({ success: false, message: 'Session non trouvee' });
             return;
         }
 
         if (session.status !== SessionStatus.PENDING) {
             res.status(400).json({
                 success: false,
-                message: 'La session ne peut pas être démarrée'
+                message: 'La session ne peut pas etre demarree'
             });
             return;
         }
@@ -483,12 +699,14 @@ export const startSession = async (req: AuthRequest, res: Response, next: NextFu
             status: SessionStatus.ACTIVE,
             date_debut: new Date()
         });
+        auditProf(req, 'demarrage_session', 'session', sessionId, { titre: session.titre })
 
-        // 🔴 NOTIFIER LES ÉTUDIANTS QUE LA SESSION A COMMENCÉ
-        if (ioInstance) {
+        // NOTIFIER LES ETUDIANTS QUE LA SESSION A COMMENCE
+        const io = getSocketIO();
+        if (io) {
             const roomName = `classe_${session.classe_id}_filiere_${session.filiere_id}`;
-            
-            ioInstance.to(roomName).emit('session-started', {
+
+            io.to(roomName).emit('session-started', {
                 sessionId: session.id,
                 session: {
                     id: session.id,
@@ -500,11 +718,30 @@ export const startSession = async (req: AuthRequest, res: Response, next: NextFu
                     code: session.code,
                     status: 'active'
                 },
-                message: `▶️ La session "${session.titre}" vient de commencer ! Rejoignez maintenant.`,
+                message: `La session "${session.titre}" vient de commencer ! Rejoignez maintenant.`,
                 timestamp: new Date()
             });
-            
-            console.log(`📢 Session démarrée - Notification envoyée à la salle: ${roomName}`);
+
+            // Notifier les etudiants en DB
+            const etudiants = await etudiantProfilRepo.find({
+                where: { classeId: session.classe_id, filiereId: session.filiere_id }
+            })
+            for (const etudiant of etudiants) {
+                await createNotification(etudiant.userId, {
+                    titre: 'Session demarree !',
+                    message: `La session "${session.titre}" vient de commencer. Rejoignez maintenant !`,
+                    type: NotificationType.SESSION_STARTED,
+                    link: `/students/join-session?code=${session.code}`,
+                    sessionId: session.id
+                })
+
+                 const user = await userRepo.findOne({ where: { id: etudiant.userId } })
+                    if (user?.notifSessionDemarree) {
+                        await envoyerEmailSessionDemarree(user.email, user.prenom, session.titre)
+                    }
+                            }
+
+            console.log(`Session demarree - Notification envoyee a la salle: ${roomName}`);
         }
 
         const now = new Date();
@@ -518,7 +755,7 @@ export const startSession = async (req: AuthRequest, res: Response, next: NextFu
 
         res.json({
             success: true,
-            message: 'Session démarrée'
+            message: 'Session demarree'
         });
     } catch (err) {
         next(err);
@@ -529,22 +766,20 @@ export const startSession = async (req: AuthRequest, res: Response, next: NextFu
 
 export const endSession = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const sessionId = parseId(req.params.id);
+        const sessionId = parseId(req.params.id)
         if (!sessionId) {
-            res.status(400).json({ success: false, message: 'ID invalide' });
-            return;
+            res.status(400).json({ success: false, message: 'ID invalide' })
+            return
         }
 
-        await autoCloseSession(sessionId);
+        await autoCloseSession(sessionId) // autoCloseSession emet deja les deux events
+        auditProf(req, 'fin_session', 'session', sessionId)
 
-        res.json({
-            success: true,
-            message: 'Session terminée'
-        });
+        res.json({ success: true, message: 'Session terminee' })
     } catch (err) {
-        next(err);
+        next(err)
     }
-};
+}
 
 // ==================== 9. PARTICIPANTS D'UNE SESSION ====================
 
@@ -556,18 +791,18 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
             return;
         }
 
-        // Récupérer toutes les questions pour calculer le total des points
+        // Recuperer toutes les questions pour calculer le total des points
         const questions = await questionRepo.find({
             where: { session_id: sessionId }
         });
         const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
 
-        // Récupérer toutes les réponses pour calculer les scores
+        // Recuperer toutes les reponses pour calculer les scores
         const allReponses = await reponseRepo.find({
             where: { session_id: sessionId }
         });
 
-        // Créer un map des réponses par étudiant
+        // Creer un map des reponses par etudiant
         const reponsesMap = new Map<number, any[]>();
         allReponses.forEach(reponse => {
             if (!reponsesMap.has(reponse.etudiant_id)) {
@@ -576,7 +811,7 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
             reponsesMap.get(reponse.etudiant_id)!.push(reponse);
         });
 
-        // Créer un map des questions par ID pour accès rapide
+        // Creer un map des questions par ID pour acces rapide
         const questionsMap = new Map<number, any>();
         questions.forEach(q => questionsMap.set(q.id, q));
 
@@ -585,7 +820,7 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
             .innerJoinAndSelect('p.etudiant', 'e')
             .where('p.session_id = :sessionId', { sessionId })
             .select([
-                'p.id', 'p.statut', 'p.score', 'p.date_joined', 'p.date_completed',
+                'p.id', 'p.statut', 'p.score', 'p.date_joined', 'p.date_completed', 'p.nb_changements_onglet',
                 'e.id', 'e.nom', 'e.prenom', 'e.email'
             ])
             .getMany();
@@ -594,8 +829,8 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
 
         const participantsWithProgress = await Promise.all(participants.map(async (p) => {
             const etudiantReponses = reponsesMap.get(p.etudiant.id) || [];
-            
-            // Calculer le score réel de l'étudiant
+
+            // Calculer le score reel de l'etudiant
             let calculatedScore = 0;
             for (const reponse of etudiantReponses) {
                 if (reponse.est_correcte) {
@@ -606,7 +841,7 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
                 }
             }
 
-            // Mettre à jour le score dans la base s'il a changé
+            // Mettre a jour le score dans la base s'il a change
             if (p.score !== calculatedScore) {
                 p.score = calculatedScore;
                 await participantRepo.save(p);
@@ -616,6 +851,13 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
 
             // Calculer la note sur 20
             const noteSur20 = totalPoints > 0 ? (calculatedScore / totalPoints) * 20 : 0;
+
+            // --- Detection de triche basique ---
+            const nbReponsesRapides = etudiantReponses.filter(
+                (r: any) => r.temps_reponse_ms != null && r.temps_reponse_ms < SEUIL_TEMPS_REPONSE_MS
+            ).length;
+            const nbChangementsOnglet = p.nb_changements_onglet || 0;
+            const suspect = nbChangementsOnglet >= SEUIL_CHANGEMENTS_ONGLET || nbReponsesRapides >= SEUIL_NB_REPONSES_RAPIDES;
 
             return {
                 id: p.id,
@@ -629,6 +871,11 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
                     total: questionsCount,
                     pourcentage: questionsCount > 0 ? (reponsesCount / questionsCount) * 100 : 0
                 },
+                triche: {
+                    suspect,
+                    nb_changements_onglet: nbChangementsOnglet,
+                    nb_reponses_rapides: nbReponsesRapides
+                },
                 etudiant: {
                     id: p.etudiant.id,
                     nom: p.etudiant.nom,
@@ -638,7 +885,7 @@ export const getParticipants = async (req: AuthRequest, res: Response, next: Nex
             };
         }));
 
-        // Trier par score décroissant
+        // Trier par score decroissant
         participantsWithProgress.sort((a, b) => b.score - a.score);
 
         res.json({
@@ -702,12 +949,13 @@ export const getStatistics = async (req: AuthRequest, res: Response, next: NextF
         const meilleur = Math.max(...scores, 0);
         const moinsBon = Math.min(...scores.filter(s => s > 0), 0);
 
+        // Remplace la repartition actuelle par :
         const repartition = {
-            '0-20%': scores.filter(s => s <= 20).length,
-            '20-40%': scores.filter(s => s > 20 && s <= 40).length,
-            '40-60%': scores.filter(s => s > 40 && s <= 60).length,
-            '60-80%': scores.filter(s => s > 60 && s <= 80).length,
-            '80-100%': scores.filter(s => s > 80).length
+            '0-20%': scores.filter(s => totalPoints > 0 && (s / totalPoints) <= 0.2).length,
+            '20-40%': scores.filter(s => totalPoints > 0 && (s / totalPoints) > 0.2 && (s / totalPoints) <= 0.4).length,
+            '40-60%': scores.filter(s => totalPoints > 0 && (s / totalPoints) > 0.4 && (s / totalPoints) <= 0.6).length,
+            '60-80%': scores.filter(s => totalPoints > 0 && (s / totalPoints) > 0.6 && (s / totalPoints) <= 0.8).length,
+            '80-100%': scores.filter(s => totalPoints > 0 && (s / totalPoints) > 0.8).length,
         };
 
         res.json({
@@ -733,30 +981,30 @@ export const getStatistics = async (req: AuthRequest, res: Response, next: NextF
     }
 };
 
-// ==================== 11. RÉPONSES D'UN ÉTUDIANT POUR UNE SESSION ====================
+// ==================== 11. REPONSES D'UN ETUDIANT POUR UNE SESSION ====================
 
 export const getEtudiantReponses = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const sessionId = parseId(req.params.id);
         const etudiantId = parseId(req.params.etudiantId);
-        
+
         if (!sessionId || !etudiantId) {
             res.status(400).json({ success: false, message: 'ID invalide' });
             return;
         }
 
-        // Récupérer toutes les questions de la session
+        // Recuperer toutes les questions de la session
         const questions = await questionRepo.find({
             where: { session_id: sessionId },
             order: { ordre: 'ASC' }
         });
 
-        // Récupérer les réponses de l'étudiant
+        // Recuperer les reponses de l'etudiant
         const reponses = await reponseRepo.find({
             where: { session_id: sessionId, etudiant_id: etudiantId }
         });
 
-        // Créer un map des réponses par question
+        // Creer un map des reponses par question
         const reponsesMap = new Map<number, any>();
         reponses.forEach(reponse => {
             reponsesMap.set(reponse.question_id, reponse);
@@ -766,33 +1014,40 @@ export const getEtudiantReponses = async (req: AuthRequest, res: Response, next:
         let totalScore = 0;
         const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
 
-        // Formater les réponses pour chaque question
+        // Formater les reponses pour chaque question
         const formattedReponses = questions.map(question => {
             const reponse = reponsesMap.get(question.id);
             const estCorrecte = reponse?.est_correcte || false;
-            const pointsObtenus = estCorrecte ? question.points : 0;
-            
-            if (estCorrecte) {
-                totalScore += question.points;
-            }
+            const pointsObtenus = reponse ? computePointsForReponse(reponse, question) : 0;
+
+            totalScore += pointsObtenus;
 
             return {
                 question_id: question.id,
                 reponse_ids: reponse?.reponse_ids || [],
+                reponse_texte: reponse?.reponse_texte || null,
+                reponse_fichier: reponse?.reponse_fichier || null,
                 est_correcte: estCorrecte,
                 points_obtenus: pointsObtenus,
+                corrige_manuellement: reponse?.corrige_manuellement || false,
+                note_manuelle: reponse?.note_manuelle ?? null,
                 submitted_at: reponse?.submitted_at || null,
+                temps_reponse_ms: reponse?.temps_reponse_ms ?? null,
+                reponse_rapide_suspecte: reponse?.temps_reponse_ms != null && reponse.temps_reponse_ms < SEUIL_TEMPS_REPONSE_MS,
                 question: {
                     texte: question.texte,
                     type: question.type,
                     points: question.points,
                     options: question.options,
-                    reponses_correctes: question.reponses_correctes
+                    reponses_correctes: question.reponses_correctes,
+                    reponse_indicative: question.reponse_indicative
                 }
             };
         });
 
         const noteSur20 = totalPoints > 0 ? (totalScore / totalPoints) * 20 : 0;
+
+        const participant = await participantRepo.findOne({ where: { session_id: sessionId, etudiant_id: etudiantId } });
 
         res.json({
             success: true,
@@ -800,7 +1055,8 @@ export const getEtudiantReponses = async (req: AuthRequest, res: Response, next:
                 reponses: formattedReponses,
                 score: totalScore,
                 total_points: totalPoints,
-                note_sur_20: Math.round(noteSur20 * 100) / 100
+                note_sur_20: Math.round(noteSur20 * 100) / 100,
+                nb_changements_onglet: participant?.nb_changements_onglet || 0
             }
         });
     } catch (err) {
@@ -821,7 +1077,7 @@ export const getNotes = async (req: AuthRequest, res: Response, next: NextFuncti
 
         const session = await sessionRepo.findOne({ where: { id: sessionId } });
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' });
+            res.status(404).json({ success: false, message: 'Session non trouvee' });
             return;
         }
 
@@ -865,26 +1121,10 @@ export const getNotes = async (req: AuthRequest, res: Response, next: NextFuncti
     }
 };
 
-// ==================== 12. PUBLIER LES NOTES ====================
+// (La publication reelle des notes se fait via toggleResultatsVisibles,
+// cf. plus bas - cet endpoint etait un stub mort qui ne faisait rien.)
 
-export const publishNotes = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
-    try {
-        const sessionId = parseId(req.params.id);
-        if (!sessionId) {
-            res.status(400).json({ success: false, message: 'ID invalide' });
-            return;
-        }
-
-        res.json({
-            success: true,
-            message: 'Notes publiées avec succès'
-        });
-    } catch (err) {
-        next(err);
-    }
-};
-
-// ==================== 13. EXPORTER LES RÉSULTATS ====================
+// ==================== 13. EXPORTER LES RESULTATS ====================
 
 export const exportResults = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -904,7 +1144,7 @@ export const exportResults = async (req: AuthRequest, res: Response, next: NextF
         const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
 
         const csvRows = [
-            ['Nom', 'Prénom', 'Email', 'Score', 'Note / 20', 'Statut', 'Date complétion']
+            ['Nom', 'Prenom', 'Email', 'Score', 'Note / 20', 'Statut', 'Date completion']
         ];
 
         for (const p of participants) {
@@ -929,7 +1169,7 @@ export const exportResults = async (req: AuthRequest, res: Response, next: NextF
     }
 };
 
-// ==================== 14. GÉNÉRER QR CODE ====================
+// ==================== 14. GENERER QR CODE ====================
 
 export const generateQRCode = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -942,7 +1182,7 @@ export const generateQRCode = async (req: AuthRequest, res: Response, next: Next
         const session = await sessionRepo.findOne({ where: { id: sessionId } });
 
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' });
+            res.status(404).json({ success: false, message: 'Session non trouvee' });
             return;
         }
 
@@ -960,7 +1200,7 @@ export const generateQRCode = async (req: AuthRequest, res: Response, next: Next
     }
 };
 
-// ==================== 15. GÉNÉRER NOUVEAU CODE ====================
+// ==================== 15. GENERER NOUVEAU CODE ====================
 
 export const generateCode = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -973,7 +1213,7 @@ export const generateCode = async (req: AuthRequest, res: Response, next: NextFu
         const session = await sessionRepo.findOne({ where: { id: sessionId } });
 
         if (!session) {
-            res.status(404).json({ success: false, message: 'Session non trouvée' });
+            res.status(404).json({ success: false, message: 'Session non trouvee' });
             return;
         }
 
@@ -990,60 +1230,86 @@ export const generateCode = async (req: AuthRequest, res: Response, next: NextFu
 };
 
 
-// ==================== FILIÈRES ET CLASSES ====================
+// ==================== FILIERES ET CLASSES ====================
 
 /**
- * Récupérer les filières (selon l'école du professeur)
+ * Recuperer les filieres (selon l'ecole du professeur)
  */
 export const getFilieres = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const professeurId = req.user!.id;
-        
-        // Récupérer le professeur avec son école
+
+        // Recuperer le professeur avec son ecole
         const professeur = await userRepo.findOne({
             where: { id: professeurId },
             relations: ['professeurProfil']
         });
-        
+
         let filieres;
-        
-        if (professeur?.professeurProfil?.ecoleId) {
-            // Si le professeur est affecté à une école, ne voir que ses filières
+
+        if (professeur?.professeurProfil?.filiereId) {
+            // Le professeur ne voit que SA propre filiere, pour eviter toute
+            // affectation de session a une filiere qu'il ne donne pas
+            filieres = await filiereRepo.find({
+                where: { id: professeur.professeurProfil.filiereId },
+                relations: ['classes'],
+                order: { nom: 'ASC' }
+            });
+        } else if (professeur?.professeurProfil?.ecoleId) {
+            // Filet de securite : professeur affecte a une ecole mais sans
+            // filiere assignee pour le moment
             filieres = await filiereRepo.find({
                 where: { ecoleId: professeur.professeurProfil.ecoleId },
                 relations: ['classes'],
                 order: { nom: 'ASC' }
             });
         } else {
-            // Sinon, voir toutes les filières (admin)
+            // Sinon, voir toutes les filieres (admin)
             filieres = await filiereRepo.find({
                 relations: ['classes'],
                 order: { nom: 'ASC' }
             });
         }
-        
-        res.json({ 
-            success: true, 
-            data: filieres 
+
+        res.json({
+            success: true,
+            data: filieres
         });
     } catch (error) {
-        console.error('Erreur récupération filières:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erreur lors de la récupération des filières' 
+        console.error('Erreur recuperation filieres:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la recuperation des filieres'
         });
     }
 };
 
 /**
- * Récupérer les classes (filtrées par filière)
+ * Recuperer les classes (filtrees par filiere)
  */
 export const getClasses = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { filiereId } = req.query;
-        
+        const professeurId = req.user!.id;
+
+        const professeur = await userRepo.findOne({
+            where: { id: professeurId },
+            relations: ['professeurProfil']
+        });
+
+        // Un professeur affecte a une filiere ne peut consulter que les
+        // classes de CETTE filiere (pas celles des autres filieres de l'ecole)
+        if (
+            professeur?.professeurProfil?.filiereId &&
+            filiereId &&
+            parseInt(filiereId as string) !== professeur.professeurProfil.filiereId
+        ) {
+            res.status(403).json({ success: false, message: "Vous n'avez pas acces a cette filiere" });
+            return;
+        }
+
         let classes;
-        
+
         if (filiereId) {
             classes = await classeRepo.find({
                 where: { filiereId: parseInt(filiereId as string) },
@@ -1055,21 +1321,217 @@ export const getClasses = async (req: AuthRequest, res: Response, next: NextFunc
                 order: { nom: 'ASC' }
             });
         }
-        
-        res.json({ 
-            success: true, 
-            data: classes 
+
+        res.json({
+            success: true,
+            data: classes
         });
     } catch (error) {
-        console.error('Erreur récupération classes:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erreur lors de la récupération des classes' 
+        console.error('Erreur recuperation classes:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la recuperation des classes'
         });
     }
 };
 
 
+
+// ==================== BANQUE DE QUESTIONS ====================
+// Permet a un professeur de reutiliser des questions deja redigees d'une
+// session a l'autre, avec des tags theme/difficulte pour les retrouver.
+
+export const getBanqueQuestions = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const professeurId = req.user!.id;
+        const professeur = await userRepo.findOne({
+            where: { id: professeurId },
+            relations: ['professeurProfil']
+        });
+
+        const ecoleId = professeur?.professeurProfil?.ecoleId;
+        if (!ecoleId) {
+            res.status(403).json({ success: false, message: "Vous n'etes rattache a aucune ecole" });
+            return;
+        }
+
+        const { theme, difficulte, type } = req.query;
+
+        const qb = banqueRepo.createQueryBuilder('qb')
+            .where('qb.ecole_id = :ecoleId', { ecoleId })
+            .orderBy('qb.created_at', 'DESC');
+
+        // Un professeur affecte a une filiere ne voit que les questions
+        // generales (sans filiere) ou celles de SA propre filiere
+        if (professeur?.professeurProfil?.filiereId) {
+            qb.andWhere('(qb.filiere_id IS NULL OR qb.filiere_id = :filiereId)', {
+                filiereId: professeur.professeurProfil.filiereId
+            });
+        }
+
+        if (theme)      qb.andWhere('qb.theme = :theme', { theme });
+        if (difficulte) qb.andWhere('qb.difficulte = :difficulte', { difficulte });
+        if (type)       qb.andWhere('qb.type = :type', { type });
+
+        const questions = await qb.getMany();
+
+        res.json({ success: true, data: questions });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const createBanqueQuestion = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const professeurId = req.user!.id;
+        const professeur = await userRepo.findOne({
+            where: { id: professeurId },
+            relations: ['professeurProfil']
+        });
+
+        const ecoleId = professeur?.professeurProfil?.ecoleId;
+        if (!ecoleId) {
+            res.status(403).json({ success: false, message: "Vous n'etes rattache a aucune ecole" });
+            return;
+        }
+
+        const { texte, type, points, options, reponses_correctes, reponse_indicative, theme, difficulte } = req.body;
+
+        if (!texte || !type) {
+            res.status(400).json({ success: false, message: 'Le texte et le type de la question sont requis' });
+            return;
+        }
+
+        const question = banqueRepo.create({
+            ecole_id: ecoleId,
+            professeur_id: professeurId,
+            filiere_id: professeur?.professeurProfil?.filiereId || null,
+            texte,
+            type,
+            points: points || 1,
+            options: options || null,
+            reponses_correctes: reponses_correctes || null,
+            reponse_indicative: reponse_indicative || null,
+            theme: theme || null,
+            difficulte: difficulte || QuestionDifficulte.MOYEN
+        });
+
+        await banqueRepo.save(question);
+
+        res.json({ success: true, message: 'Question ajoutee a la banque', data: question });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Import en masse (CSV/Excel parse cote frontend, on ne recoit ici qu'un
+// tableau de questions deja structurees). Ne gere pas les types
+// appariement/fichier - pas de format tabulaire simple pour ceux-la, ils
+// restent a ajouter manuellement.
+export const createBanqueQuestionsBulk = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const professeurId = req.user!.id;
+        const professeur = await userRepo.findOne({
+            where: { id: professeurId },
+            relations: ['professeurProfil']
+        });
+
+        const ecoleId = professeur?.professeurProfil?.ecoleId;
+        if (!ecoleId) {
+            res.status(403).json({ success: false, message: "Vous n'etes rattache a aucune ecole" });
+            return;
+        }
+
+        const { questions } = req.body;
+        if (!Array.isArray(questions) || questions.length === 0) {
+            res.status(400).json({ success: false, message: 'Aucune question a importer' });
+            return;
+        }
+
+        const filiereId = professeur?.professeurProfil?.filiereId || null;
+        let importees = 0;
+
+        for (const q of questions) {
+            if (!q?.texte || !q?.type) continue;
+            const question = banqueRepo.create({
+                ecole_id: ecoleId,
+                professeur_id: professeurId,
+                filiere_id: filiereId,
+                texte: q.texte,
+                type: q.type,
+                points: q.points || 1,
+                options: q.options || null,
+                reponses_correctes: q.reponses_correctes || null,
+                reponse_indicative: q.reponse_indicative || null,
+                theme: q.theme || null,
+                difficulte: q.difficulte || QuestionDifficulte.MOYEN
+            });
+            await banqueRepo.save(question);
+            importees++;
+        }
+
+        res.json({ success: true, message: `${importees} question(s) importee(s)`, data: { importees } });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const updateBanqueQuestion = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const id = parseId(req.params.id);
+        const professeurId = req.user!.id;
+
+        const question = await banqueRepo.findOne({ where: { id } });
+        if (!question) {
+            res.status(404).json({ success: false, message: 'Question non trouvee' });
+            return;
+        }
+        if (question.professeur_id !== professeurId) {
+            res.status(403).json({ success: false, message: 'Vous ne pouvez modifier que vos propres questions' });
+            return;
+        }
+
+        const { texte, type, points, options, reponses_correctes, reponse_indicative, theme, difficulte } = req.body;
+
+        if (texte !== undefined)              question.texte = texte;
+        if (type !== undefined)               question.type = type;
+        if (points !== undefined)             question.points = points;
+        if (options !== undefined)            question.options = options;
+        if (reponses_correctes !== undefined) question.reponses_correctes = reponses_correctes;
+        if (reponse_indicative !== undefined) question.reponse_indicative = reponse_indicative;
+        if (theme !== undefined)              question.theme = theme;
+        if (difficulte !== undefined)         question.difficulte = difficulte;
+
+        await banqueRepo.save(question);
+
+        res.json({ success: true, message: 'Question mise a jour', data: question });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const deleteBanqueQuestion = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const id = parseId(req.params.id);
+        const professeurId = req.user!.id;
+
+        const question = await banqueRepo.findOne({ where: { id } });
+        if (!question) {
+            res.status(404).json({ success: false, message: 'Question non trouvee' });
+            return;
+        }
+        if (question.professeur_id !== professeurId) {
+            res.status(403).json({ success: false, message: 'Vous ne pouvez supprimer que vos propres questions' });
+            return;
+        }
+
+        await banqueRepo.delete(id);
+
+        res.json({ success: true, message: 'Question supprimee de la banque' });
+    } catch (err) {
+        next(err);
+    }
+};
 
 // ==================== STATISTIQUES GLOBALES DU PROFESSEUR ====================
 
@@ -1077,16 +1539,16 @@ export const getTeacherStats = async (req: AuthRequest, res: Response, next: Nex
     try {
         const professeurId = req.user!.id;
 
-        if (req.user!.role !== 'professeur' && req.user!.role !== 'admin') {
+if (req.user!.role !== 'professeur' && req.user!.role !== 'superadmin') {
             res.status(403).json({
                 success: false,
-                message: 'Accès non autorisé. Seuls les professeurs peuvent accéder à ces statistiques.'
+                message: 'Acces non autorise. Seuls les professeurs peuvent acceder a ces statistiques.'
             });
             return;
         }
 
         const sessions = await sessionRepo.find({
-            where: { created_by: professeurId }, 
+            where: { created_by: professeurId },
             relations: ['questions', 'participants', 'classe', 'filiere']
         });
 
@@ -1098,7 +1560,7 @@ export const getTeacherStats = async (req: AuthRequest, res: Response, next: Nex
         let enCours = 0;
         let terminees = 0;
 
-        // Liste des sessions à venir
+        // Liste des sessions a venir
         const sessionsAVenir: any[] = [];
 
         for (const session of sessions) {
@@ -1107,7 +1569,7 @@ export const getTeacherStats = async (req: AuthRequest, res: Response, next: Nex
 
             if (session.status === 'completed' || dateFin < maintenant) {
                 terminees++;
-            } 
+            }
             else if (session.status === 'active' || (dateDebut <= maintenant && dateFin >= maintenant)) {
                 enCours++;
             }
@@ -1130,27 +1592,61 @@ export const getTeacherStats = async (req: AuthRequest, res: Response, next: Nex
             }
         }
 
-        // Trier les sessions à venir par date (plus proche d'abord)
+        // Trier les sessions a venir par date (plus proche d'abord)
         sessionsAVenir.sort((a, b) => new Date(a.date_debut).getTime() - new Date(b.date_debut).getTime());
 
-        // Calculer la moyenne générale des étudiants (uniquement pour les sessions du professeur)
+        // Calculer la moyenne generale des etudiants (uniquement pour les sessions du professeur)
         let totalScores = 0;
         let totalParticipants = 0;
         let totalPointsPossibles = 0;
 
+        // Statistiques par session (pour les graphiques) : moyenne /20 et repartition
+        // des notes par tranche pour chaque session terminee ayant des resultats.
+        const sessionsStats: any[] = [];
+
         for (const session of sessions) {
             if (session.status === 'completed' && session.questions && session.participants) {
                 const pointsSession = session.questions.reduce((sum, q) => sum + q.points, 0);
-                
+
+                const scoresSur20: number[] = [];
+
                 for (const participant of session.participants) {
                     if (participant.score !== null) {
                         totalScores += participant.score;
                         totalParticipants++;
                         totalPointsPossibles += pointsSession;
+
+                        if (pointsSession > 0) {
+                            scoresSur20.push((participant.score / pointsSession) * 20);
+                        }
                     }
+                }
+
+                if (scoresSur20.length > 0) {
+                    const moyenneSession = scoresSur20.reduce((a, b) => a + b, 0) / scoresSur20.length;
+                    // Repartition par tranche : [0-5[, [5-10[, [10-15[, [15-20]
+                    const distribution = [0, 0, 0, 0];
+                    for (const note of scoresSur20) {
+                        if (note < 5) distribution[0]++;
+                        else if (note < 10) distribution[1]++;
+                        else if (note < 15) distribution[2]++;
+                        else distribution[3]++;
+                    }
+
+                    sessionsStats.push({
+                        id: session.id,
+                        titre: session.titre,
+                        date_fin: session.date_fin,
+                        participantsCount: scoresSur20.length,
+                        moyenneSur20: Math.round(moyenneSession * 100) / 100,
+                        distribution
+                    });
                 }
             }
         }
+
+        // Sessions les plus recentes en premier
+        sessionsStats.sort((a, b) => new Date(b.date_fin).getTime() - new Date(a.date_fin).getTime());
 
         const moyenneGenerale = totalParticipants > 0 ? (totalScores / totalParticipants) : 0;
         const moyenneSur20 = totalPointsPossibles > 0 ? (totalScores / totalPointsPossibles) * 20 : 0;
@@ -1168,7 +1664,8 @@ export const getTeacherStats = async (req: AuthRequest, res: Response, next: Nex
                     generale: Math.round(moyenneGenerale * 100) / 100,
                     sur20: Math.round(moyenneSur20 * 100) / 100
                 },
-                sessionsAVenir
+                sessionsAVenir,
+                sessionsStats
             }
         });
 
@@ -1182,4 +1679,183 @@ export const getTeacherStats = async (req: AuthRequest, res: Response, next: Nex
 
 
 
+// ==================== TOGGLE RESULTATS VISIBLES ====================
 
+export const toggleResultatsVisibles = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const sessionId = parseId(req.params.id)
+        if (!sessionId) {
+            res.status(400).json({ success: false, message: 'ID invalide' })
+            return
+        }
+
+        const session = await sessionRepo.findOne({
+            where: { id: sessionId },
+            relations: ['classe', 'filiere']
+        })
+        if (!session) {
+            res.status(404).json({ success: false, message: 'Session non trouvee' })
+            return
+        }
+
+        // On s'apprete a publier : verifier qu'il ne reste aucune reponse
+        // texte_libre/fichier en attente de correction manuelle
+        if (!session.resultatsVisibles) {
+            const enAttente = await hasUngradedManualReponses(sessionId)
+            if (enAttente) {
+                res.status(400).json({
+                    success: false,
+                    message: "Certaines reponses (texte libre / fichier) n'ont pas encore ete corrigees. Corrigez-les avant de publier les notes."
+                })
+                return
+            }
+        }
+
+        session.resultatsVisibles = !session.resultatsVisibles
+        await sessionRepo.save(session)
+        auditProf(req, session.resultatsVisibles ? 'publication_notes' : 'masquage_notes', 'session', session.id, { titre: session.titre })
+
+        // --- Notifier les etudiants si notes maintenant visibles ---
+        if (session.resultatsVisibles) {
+            const io = getSocketIO()
+            if (io) {
+                const roomName = `classe_${session.classe_id}_filiere_${session.filiere_id}`
+
+                // WebSocket temps reel
+                io.to(roomName).emit('notes-publiees', {
+                    sessionId: session.id,
+                    titre:     session.titre,
+                    message:   `Les notes de "${session.titre}" sont maintenant disponibles.`
+                })
+
+                // Notification en base pour chaque etudiant
+                const etudiants = await etudiantProfilRepo.find({
+                    where: { classeId: session.classe_id, filiereId: session.filiere_id }
+                })
+                for (const etudiant of etudiants) {
+                    await createNotification(etudiant.userId, {
+                        titre:     'Notes disponibles',
+                        message:   `Vos notes pour "${session.titre}" sont maintenant disponibles.`,
+                        type:      NotificationType.SESSION_COMPLETED,
+                        link:      `/students/notes/${session.id}`,
+                        sessionId: session.id
+                    })
+
+                        const user = await userRepo.findOne({ where: { id: etudiant.userId } })
+                        if (user?.notifNotesPubliees) {
+                            await envoyerEmailNotesPubliees(user.email, user.prenom, session.titre, session.id)
+                        }
+                }
+
+                console.log(`Notes publiees notifiees a: ${roomName}`)
+            }
+        }
+
+        res.json({
+            success: true,
+            data: { resultatsVisibles: session.resultatsVisibles }
+        })
+    } catch (err) { next(err) }
+}
+
+// ==================== CORRECTION MANUELLE (texte_libre / fichier) ====================
+// Les reponses a correction manuelle ne sont jamais auto-corrigees : le
+// professeur doit attribuer lui-meme une note par reponse avant de pouvoir
+// publier les resultats de la session (voir hasUngradedManualReponses ci-dessus).
+
+export const getReponsesACorreger = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const sessionId = parseId(req.params.id);
+        if (!sessionId) {
+            res.status(400).json({ success: false, message: 'ID invalide' });
+            return;
+        }
+
+        const reponses = await reponseRepo
+            .createQueryBuilder('r')
+            .innerJoinAndSelect('r.question', 'q')
+            .innerJoinAndSelect('r.etudiant', 'e')
+            .where('r.session_id = :sessionId', { sessionId })
+            .andWhere('q.type IN (:...types)', { types: [QuestionType.TEXTE_LIBRE, QuestionType.FICHIER] })
+            .orderBy('q.ordre', 'ASC')
+            .getMany();
+
+        const data = reponses.map(r => ({
+            id: r.id,
+            question_id: r.question_id,
+            question_texte: r.question.texte,
+            question_type: r.question.type,
+            points_max: r.question.points,
+            reponse_indicative: r.question.reponse_indicative,
+            reponse_texte: r.reponse_texte,
+            reponse_fichier: r.reponse_fichier,
+            corrige_manuellement: r.corrige_manuellement,
+            note_manuelle: r.note_manuelle,
+            etudiant: {
+                id: r.etudiant.id,
+                nom: r.etudiant.nom,
+                prenom: r.etudiant.prenom,
+                email: r.etudiant.email
+            }
+        }));
+
+        res.json({ success: true, data });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const corrigerReponse = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const reponseId = parseId(req.params.reponseId);
+        const { points } = req.body;
+
+        if (!reponseId || points === undefined || points === null) {
+            res.status(400).json({ success: false, message: 'Parametres invalides' });
+            return;
+        }
+
+        const reponse = await reponseRepo.findOne({ where: { id: reponseId } });
+        if (!reponse) {
+            res.status(404).json({ success: false, message: 'Reponse non trouvee' });
+            return;
+        }
+
+        const question = await questionRepo.findOne({ where: { id: reponse.question_id } });
+        if (!question) {
+            res.status(404).json({ success: false, message: 'Question non trouvee' });
+            return;
+        }
+
+        const notePlafonnee = Math.max(0, Math.min(Number(points), question.points));
+
+        reponse.note_manuelle = notePlafonnee;
+        reponse.corrige_manuellement = true;
+        reponse.est_correcte = notePlafonnee > 0;
+        await reponseRepo.save(reponse);
+
+        await recomputerScoreParticipant(reponse.session_id, reponse.etudiant_id);
+
+        res.json({ success: true, message: 'Reponse corrigee', data: { note_manuelle: notePlafonnee } });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ==================== PLAN DE L'ECOLE (pour gater la generation IA cote front) ====================
+export const getPlanInfo = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const profil = await professeurProfilRepo.findOne({ where: { userId: req.user!.id } });
+        if (!profil?.ecoleId) {
+            res.json({ success: true, data: { plan: 'gratuit', ia: false } });
+            return;
+        }
+
+        const ecole = await ecoleRepo.findOne({ where: { id: profil.ecoleId } });
+        const plan = ecole?.plan || 'gratuit';
+
+        res.json({ success: true, data: { plan, ia: LIMITES_PLANS[plan].ia } });
+    } catch (err) {
+        next(err);
+    }
+};

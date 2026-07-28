@@ -2,23 +2,34 @@
 export default defineNuxtRouteMiddleware((to) => {
   if (import.meta.server) return
 
-  // 🔥 Ignorer les routes API
-  if (to.path.startsWith('/api/')) {
-    return
-  }
+  if (to.path.startsWith('/api/')) return
 
   if (import.meta.client) {
     const token = useCookie('auth_token').value
-    const user = JSON.parse(localStorage.getItem('user') || 'null')
+    const user  = JSON.parse(localStorage.getItem('user') || 'null')
 
-    const publicRoutes = ['/auth', '/', '/verify-email', '/auth/forgot-password', '/auth/reinitialisation-password']
-    
+    const publicRoutes = [
+      '/',
+      '/auth',
+      '/verify-email',
+      '/auth/forgot-password',
+      '/auth/reinitialisation-password',
+      '/auth/invitation',
+      '/auth/verify-invitation',
+      '/auth/totp',
+      '/inscription-ecole',
+      '/legal/cgu',
+      '/legal/politique-confidentialite',
+      '/legal/mentions-legales'
+    ]
+
     if (publicRoutes.includes(to.path)) {
       if (token && user?.role) {
         const allowedRoutes = {
-          etudiant: '/students',
+          etudiant:   '/students',
           professeur: '/teachers',
-          admin: '/admin'
+          directeur:  '/directeurs',
+          superadmin: '/superadmin'
         }
         return navigateTo(allowedRoutes[user.role] || '/auth')
       }
@@ -30,9 +41,10 @@ export default defineNuxtRouteMiddleware((to) => {
     }
 
     const allowedRoutes = {
-      etudiant: '/students',
+      etudiant:   '/students',
       professeur: '/teachers',
-      admin: '/admin'
+      directeur:  '/directeurs',
+      superadmin: '/superadmin'
     }
 
     const dashboard = allowedRoutes[user.role] || '/auth'

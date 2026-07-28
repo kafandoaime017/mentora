@@ -1,0 +1,5 @@
+/**
+ * Nitro plugin that instruments storage driver calls for Nuxt v3/v4 (Nitro v2)
+ */
+declare const _default: (_nitroApp: import("nitropack").NitroApp) => Promise<void>;
+export default _default;

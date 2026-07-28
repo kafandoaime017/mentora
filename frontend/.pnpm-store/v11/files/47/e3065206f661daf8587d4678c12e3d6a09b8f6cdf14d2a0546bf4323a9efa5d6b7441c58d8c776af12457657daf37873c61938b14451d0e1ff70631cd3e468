@@ -1,0 +1,7 @@
+/**
+ * Creates the Nitro storage plugin setup by instrumenting all relevant storage drivers.
+ *
+ * The `useStorage` parameter is typed as `() => unknown` because nitropack (Nitro v2) and nitro (Nitro v3+) define `StorageValue` differently.
+ * Cast to `NitroStorage` is safe since all Nitro versions expose `getMounts()` at runtime.
+ */
+export declare function createStoragePlugin(useStorage: () => unknown, userStorageMounts: string[]): Promise<void>;

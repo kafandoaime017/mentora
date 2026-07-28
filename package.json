@@ -1,5 +1,14 @@
 {
   "dependencies": {
+    "jsqr": "^1.4.0",
     "vue-spinner": "^3.0.1"
+  },
+  "scripts": {
+    "dev": "docker compose -f docker-compose.dev.yml up --build",
+    "dev:down": "docker compose -f docker-compose.dev.yml down",
+    "prod": "docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build",
+    "prod:down": "docker compose --env-file .env.prod -f docker-compose.prod.yml down",
+    "prod:logs": "docker compose -f docker-compose.prod.yml logs -f",
+    "db:sync-dev": "bash scripts/sync-prod-to-dev.sh"
   }
 }
