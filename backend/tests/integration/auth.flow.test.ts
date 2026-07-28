@@ -96,7 +96,7 @@ describe("Flux d'authentification étudiant", () => {
       motDePasse: payload.motDePasse,
     });
 
-    expect(res.status).toBe(500); // erreur métier générique remontée par errorHandler
+    expect(res.status).toBe(403); // erreur métier générique remontée par errorHandler
     expect(res.body.success).toBe(false);
     expect(res.body.message).toEqual(expect.stringContaining('vérifier votre email'));
   });
@@ -142,7 +142,7 @@ describe("Flux d'authentification étudiant", () => {
       .post('/api/auth/login')
       .send({ email: payload.email, motDePasse: 'mauvais-mot-de-passe' });
 
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(401);
     expect(res.body.message).toEqual(expect.stringContaining('incorrect'));
   });
 
