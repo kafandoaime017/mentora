@@ -23,13 +23,23 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_DATABASE}
     ports:
-      - "3309:3306"  # <- change de 3306 a 3309
+      - "3309:3306" # <- change de 3306 a 3309
     volumes:
       - mentora_data_prod:/var/lib/mysql
     networks:
       - mentora-net-prod
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${DB_ROOT_PASSWORD}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -42,7 +52,7 @@ services:
     container_name: mentora_backend_prod
     restart: always
     ports:
-      - "5001:5000"  # <- change de 5000 a 5001 (optionnel)
+      - "5001:5000" # <- change de 5000 a 5001 (optionnel)
     env_file:
       - ./backend/.env.prod
     depends_on:
@@ -65,7 +75,7 @@ services:
     container_name: mentora_frontend_prod
     restart: always
     ports:
-      - "3001:3000"  # <- change de 3000 a 3001 (optionnel)
+      - "3001:3000" # <- change de 3000 a 3001 (optionnel)
     env_file:
       - ./frontend/.env.prod
     depends_on:
@@ -131,7 +141,7 @@ services:
       glitchtip-valkey:
         condition: service_healthy
     ports:
-      - "8001:8000"  # <- change de 8000 a 8001 (optionnel)
+      - "8001:8000" # <- change de 8000 a 8001 (optionnel)
     networks:
       - mentora-net-prod
     # Pas de "command:" ici : on laisse l'image lancer son script de démarrage

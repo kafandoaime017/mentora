@@ -1,4 +1,3 @@
-
 # Environnement de DEVELOPPEMENT
 # Lancer avec : docker compose -f docker-compose.dev.yml up --build
 #
@@ -61,17 +60,17 @@ services:
       - backend
     volumes:
       - ./frontend:/app
-      - /app/node_modules   # 🔥 CRUCIAL
+      - /app/node_modules # 🔥 CRUCIAL
     command: npm run dev
     environment:
-      - CHOKIDAR_USEPOLLING=true  # 🔥 important pour Docker
+      - CHOKIDAR_USEPOLLING=true # 🔥 important pour Docker
 
 networks:
   default:
-    external: true
+    # external: true
     name: mentora_default
 
 volumes:
   mentora_data:
-    external: true
+    # external: true
     name: mentora_mentora_data
