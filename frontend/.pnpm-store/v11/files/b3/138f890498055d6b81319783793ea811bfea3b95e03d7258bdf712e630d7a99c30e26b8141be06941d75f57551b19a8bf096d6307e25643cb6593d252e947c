@@ -1,6 +1,0 @@
-/**
- * Nitro plugin that instruments database calls for Nuxt v5+ (Nitro v3+)
- */
-declare const _default: () => void;
-export default _default;
-//# sourceMappingURL=database.server.d.ts.map

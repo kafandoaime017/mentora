@@ -1,6 +1,0 @@
-import type { Nuxt } from '@nuxt/schema';
-/**
- * Prepares the storage config export to be used in the runtime storage instrumentation.
- */
-export declare function addStorageInstrumentation(nuxt: Nuxt, isLegacyNitro: boolean): void;
-//# sourceMappingURL=storageConfig.d.ts.map

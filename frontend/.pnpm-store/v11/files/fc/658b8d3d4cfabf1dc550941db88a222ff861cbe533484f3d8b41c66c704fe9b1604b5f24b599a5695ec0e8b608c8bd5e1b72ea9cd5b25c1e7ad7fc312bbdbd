@@ -1,4 +1,0 @@
-import { updateRouteBeforeResponse } from "../hooks/updateRouteBeforeResponse.js";
-export default (nitroApp) => {
-  nitroApp.hooks.hook("response", (_response, event) => updateRouteBeforeResponse(event));
-};

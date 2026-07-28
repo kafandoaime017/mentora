@@ -1,8 +1,0 @@
-import type { EventHandler, EventHandlerObject } from 'h3';
-/**
- * Wraps a middleware handler with Sentry instrumentation.
- *
- * @param handler The middleware handler.
- * @param fileName The name of the middleware file.
- */
-export declare function wrapMiddlewareHandlerWithSentry<THandler extends EventHandler | EventHandlerObject>(handler: THandler, fileName: string): THandler;

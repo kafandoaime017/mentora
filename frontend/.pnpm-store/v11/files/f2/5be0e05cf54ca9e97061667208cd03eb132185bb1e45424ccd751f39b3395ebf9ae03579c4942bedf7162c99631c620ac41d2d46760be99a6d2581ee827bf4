@@ -1,7 +1,0 @@
-import type { H3Event } from 'h3';
-type EventWithMatchedRoute = Pick<H3Event, 'context'> & Partial<Pick<H3Event, 'path' | '_path'>>;
-/**
- * Update the root span (transaction) name for routes with parameters based on the matched route.
- */
-export declare function updateRouteBeforeResponse(event: EventWithMatchedRoute): void;
-export {};
